@@ -24,7 +24,12 @@ target_metadata = Base.metadata
 
 
 def database_url() -> str:
-    return get_settings().database_url.get_secret_value()
+    """The direct endpoint when one is configured, otherwise the pooled one."""
+    settings = get_settings()
+    return (
+        settings.migration_url.get_secret_value()
+        or settings.database_url.get_secret_value()
+    )
 
 
 def run_migrations_offline() -> None:

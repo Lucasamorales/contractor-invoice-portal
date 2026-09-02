@@ -38,19 +38,47 @@ Neon shows a connection string once the project exists. It arrives looking like:
 postgresql://portal_owner:PASSWORD@ep-something-123456.eu-central-1.aws.neon.tech/portal?sslmode=require
 ```
 
-Two changes are needed before it goes anywhere:
+Three changes are needed before it goes anywhere:
 
 - `postgresql://` becomes **`postgresql+psycopg://`** — we use psycopg 3.
 - `sslmode=require` becomes **`sslmode=verify-full`** (R-SEC-07). `require`
   encrypts the traffic but does not prove who is on the other end, and Neon is
   a third party on the public internet. `app/db/session.py` refuses to start a
   production engine without it.
+- **`sslrootcert`** must be added. `verify-full` needs a certificate authority
+  to verify *against*, and libpq's default path — `%APPDATA%/postgresql/root.crt`
+  on Windows, `~/.postgresql/root.crt` elsewhere — does not exist on a
+  development machine or in a slim container. Without it the connection fails
+  outright, which is the right failure but an obscure one.
+
+  On Cloud Run, and anywhere with a populated OS trust store, use
+  `sslrootcert=system`. On Windows this is not enough: libpq's bundled OpenSSL
+  has no default store and verification fails with `certificate verify failed`.
+  Point it at the Mozilla bundle that ships with certifi instead:
+
+  ```bash
+  uv run python -c "import certifi; print(certifi.where())"
+  ```
 
 Final form:
 
 ```
-postgresql+psycopg://portal_owner:PASSWORD@ep-something-123456.eu-central-1.aws.neon.tech/portal?sslmode=verify-full
+postgresql+psycopg://USER:PASSWORD@ep-something-123456.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=verify-full&sslrootcert=system&channel_binding=require
 ```
+
+Keep `channel_binding=require` if Neon includes it. It binds the SCRAM
+authentication to the TLS channel, which is a free improvement on top of
+`verify-full`.
+
+### 1.2.1 Pooled and direct endpoints
+
+Neon hands out a **pooled** host, with `-pooler` in the name. That is the one
+the application uses. Migrations use the **direct** host — the same string with
+`-pooler` removed — because DDL through PgBouncer's transaction pooling is not
+something to rely on.
+
+`PORTAL_MIGRATION_URL` holds the direct endpoint and Alembic prefers it when set,
+falling back to `PORTAL_DATABASE_URL`.
 
 ### 1.3 Repeat for production
 
@@ -66,6 +94,17 @@ staging.
 No connection string is ever committed, pasted into `alembic.ini`, or put in a
 Cloud Run environment variable in plain text (R-SEC-02).
 
+Set the project first — `gcloud config get-value project` is very likely still
+pointing at whatever you last worked on:
+
+```bash
+gcloud config set project PROJECT_ID
+```
+
+```bash
+gcloud services enable secretmanager.googleapis.com
+```
+
 ```bash
 gcloud secrets create portal-database-url-staging --replication-policy=automatic
 ```
@@ -74,6 +113,9 @@ gcloud secrets create portal-database-url-staging --replication-policy=automatic
 printf '%s' 'postgresql+psycopg://...' | gcloud secrets versions add portal-database-url-staging --data-file=-
 ```
 
+`printf` rather than `echo`: `echo` appends a newline, and a trailing newline in
+a connection string is a confusing failure to debug.
+
 Repeat with `portal-database-url-production`. Cloud Run reads them through its
 attached service account — there are no downloaded key files anywhere in this
 system (CLAUDE.md §2.7).
@@ -81,8 +123,12 @@ system (CLAUDE.md §2.7).
 ### 1.5 Create the schema
 
 ```bash
-PORTAL_DATABASE_URL='postgresql+psycopg://...staging...' uv run alembic upgrade head
+uv run alembic upgrade head
 ```
+
+That reads `PORTAL_MIGRATION_URL` from `.env`, so it runs against the direct
+endpoint. For production, pass the credential inline rather than writing it
+to a file — it is break-glass and belongs in Secret Manager, not on a laptop.
 
 Check what it will do first, without connecting:
 

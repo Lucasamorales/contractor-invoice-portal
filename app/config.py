@@ -69,6 +69,10 @@ class Settings(BaseSettings):
 
     # --- Data ------------------------------------------------------------------
     database_url: SecretStr = SecretStr("")
+    # The same database on its direct, unpooled endpoint. Alembic uses this
+    # when set: DDL through PgBouncer's transaction pooling is not something
+    # to rely on. Falls back to database_url.
+    migration_url: SecretStr = SecretStr("")
 
     # --- Money -----------------------------------------------------------------
     # 1 kudo = £20 (R-KUD-04). Config, never a literal in the code that uses it.
