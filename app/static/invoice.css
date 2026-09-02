@@ -1,0 +1,152 @@
+/*
+  Invoice layout (R-PDF-01 .. R-PDF-13).
+
+  The measurements come from Robin's template, which is set in Calibri at
+  11-16pt with a 30mm left margin. Carlito is metric-compatible with Calibri
+  and is the font actually installed in the container; naming Calibri first
+  means a machine that has it renders identically.
+
+  SPEC section 9 specifies A4 while the original .pdf is US Letter. SPEC wins
+  (CLAUDE.md section 1), and the page size is one declaration if that changes.
+
+  Vertical spacing is flow-based rather than absolutely positioned: an address
+  may run to three lines, and R-PDF-13 requires one page for all sixteen people.
+*/
+
+@page {
+  size: A4 portrait;
+  margin: 26mm 26mm 20mm 30mm;
+}
+
+html {
+  font-family: "Calibri", "Carlito", "Segoe UI", sans-serif;
+  font-size: 11pt;
+  color: #000;
+}
+
+body { margin: 0; }
+
+/* ---- Letterhead (R-PDF-02), centred ---------------------------------- */
+
+.letterhead { text-align: center; }
+
+.letterhead .name {
+  font-size: 16pt;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.letterhead .role {
+  font-size: 12pt;
+  font-weight: bold;
+  line-height: 1.35;
+  margin-bottom: 6pt;
+}
+
+.letterhead .detail {
+  font-size: 10pt;
+  line-height: 1.32;
+}
+
+.rule {
+  border: 0;
+  border-top: 0.7pt solid #000;
+  margin: 9pt 0 0;
+}
+
+/* ---- Bill-to (R-PDF-03) and the reference block ----------------------- */
+
+.bill-to {
+  margin-top: 16pt;
+  line-height: 1.22;
+}
+
+.refs {
+  margin-top: 40pt;
+  line-height: 1.22;
+}
+
+/* ---- Role and period (R-PDF-07) -------------------------------------- */
+
+.role-block { margin-top: 26pt; }
+
+.role-line {
+  font-size: 12pt;
+  font-weight: bold;
+}
+
+.month-line {
+  font-size: 14pt;
+  margin-top: 4pt;
+}
+
+/* ---- Figures (R-PDF-08), right-aligned ------------------------------- */
+
+.figures {
+  margin-top: 20pt;
+  text-align: right;
+}
+
+.figure {
+  line-height: 1.45;
+}
+
+.figure .label {
+  font-size: 12pt;
+  font-weight: bold;
+}
+
+.figure .amount {
+  font-size: 11pt;
+  margin-left: 6pt;
+}
+
+.figure.total { margin-top: 22pt; }
+
+/* R-PDF-09: the italic breakdown, smaller type, directly beneath Additional. */
+.detail-line {
+  font-size: 9pt;
+  font-style: italic;
+  margin-top: 1pt;
+}
+
+/* ---- Terms (R-PDF-10) ------------------------------------------------ */
+
+.terms {
+  margin: 26pt 0 0;
+  text-align: center;
+  font-size: 12pt;
+  font-weight: bold;
+}
+
+/* ---- Bank details (R-PDF-11) ----------------------------------------- */
+
+.bank { margin-top: 26pt; }
+
+.bank h2 {
+  font-size: 14pt;
+  font-weight: normal;
+  margin: 0 0 8pt;
+}
+
+.bank-line {
+  font-size: 12pt;
+  line-height: 1.22;
+}
+
+/* The preview (R-WIZ-06) renders the same markup in the browser, so it needs
+   the page's own white ground rather than the app's. */
+@media screen {
+  body {
+    background: #f2f2f4;
+    padding: 24px 0;
+  }
+  .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 26mm 26mm 20mm 30mm;
+    background: #fff;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+  }
+}

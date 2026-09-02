@@ -1,0 +1,105 @@
+{#
+  THE invoice (R-PDF-01 .. R-PDF-15).
+
+  This one template renders both the PDF and the on-screen preview, so what a
+  person approves in R-WIZ-06 is exactly what Robin receives.
+
+  Everything it renders comes from the print snapshot (R-DATA-09), never from a
+  live query: an invoice re-rendered in December must be identical to the one
+  issued in March.
+#}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Invoice {{ number }}</title>
+  <link rel="stylesheet" href="{{ stylesheet_url|default('/static/invoice.css') }}">
+</head>
+<body>
+<div class="sheet">
+
+  {# R-PDF-02: letterhead, centred, frozen into the snapshot. #}
+  <header class="letterhead">
+    <div class="name">{{ letterhead.legal_name }}</div>
+    <div class="role">{{ letterhead.role }}</div>
+    {% for line in letterhead.address_lines %}
+      <div class="detail">{{ line }}</div>
+    {% endfor %}
+    <div class="detail">{{ letterhead.phone }}</div>
+    <div class="detail">{{ letterhead.contact_email }}</div>
+  </header>
+
+  <hr class="rule">
+
+  {# R-PDF-03: bill-to, fixed and versioned so a later address change cannot
+     rewrite an old invoice. #}
+  <section class="bill-to">
+    {% for line in bill_to.lines %}
+      <div>{{ line }}</div>
+    {% endfor %}
+  </section>
+
+  <section class="refs">
+    <div>Your ref: Your Company</div>       {# R-PDF-04, constant #}
+    <div>Invoice No: {{ number }}</div>  {# R-PDF-05, plain and unpadded #}
+    <div>Invoice Date: {{ issued_at|invoice_date }}</div>  {# R-PDF-06 #}
+  </section>
+
+  {# R-PDF-07. The month line is an addition to Robin's template, agreed with
+     him: the original never said which period an invoice covered. #}
+  <section class="role-block">
+    <div class="role-line">ROLE: {{ letterhead.role|upper }}</div>
+    <div class="month-line">{{ month_heading }}</div>
+  </section>
+
+  {# R-PDF-08, right-aligned. SPEC calls for this; the Word original had the
+     three lines placed by hand at three different right edges. #}
+  <section class="figures">
+    <div class="figure">
+      <span class="label">Remuneration:</span>
+      <span class="amount">{{ remuneration_pence|gbp }}</span>
+    </div>
+    <div class="figure">
+      <span class="label">Additional:</span>
+      <span class="amount">{{ additional_pence|gbp }}</span>
+    </div>
+    {# R-PDF-09: rendered only when there is something additional. #}
+    {% if detail_line %}
+      <div class="detail-line">{{ detail_line }}</div>
+    {% endif %}
+    <div class="figure total">
+      <span class="label">Total Invoice:</span>
+      <span class="amount">{{ total_pence|gbp }}</span>
+    </div>
+  </section>
+
+  {# R-PDF-10, constant. due_at is issued_at + 14 days. #}
+  <p class="terms">Please pay within 14 days of date of invoice</p>
+
+  {# R-PDF-11: rendered conditionally by payout region. The template Robin uses
+     carries both captions; only the applicable ones print. #}
+  <section class="bank">
+    <h2>Bank Details</h2>
+
+    <div class="bank-line">Name: {{ bank.account_name }}</div>
+    <div class="bank-line">Bank: {{ bank.bank_name }}</div>
+
+    {% if payout_region == 'UK' %}
+      <div class="bank-line">Account number: {{ bank.account_number }}</div>
+      <div class="bank-line">Sort code: {{ bank.sort_code|sort_code }}</div>
+      <div class="bank-line">Use when sending money from the UK</div>
+      {% if bank.iban and bank.swift_bic %}
+        <div class="bank-line">IBAN: {{ bank.iban|iban }}</div>
+        <div class="bank-line">Swift/BIC: {{ bank.swift_bic }}</div>
+        <div class="bank-line">Use when sending money from outside the UK</div>
+      {% endif %}
+    {% else %}
+      <div class="bank-line">IBAN: {{ bank.iban|iban }}</div>
+      <div class="bank-line">Swift/BIC: {{ bank.swift_bic }}</div>
+      <div class="bank-line">Use when sending money from outside the UK</div>
+    {% endif %}
+  </section>
+
+</div>
+</body>
+</html>
