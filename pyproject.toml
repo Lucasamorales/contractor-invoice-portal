@@ -1,0 +1,78 @@
+[project]
+name = "contractor-invoice-portal"
+version = "0.1.0"
+description = "Internal invoice portal"
+requires-python = "==3.12.*"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.20",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "weasyprint>=63",
+    "cryptography>=44",
+    "google-auth>=2.36",
+    "httpx>=0.28",
+    "openpyxl>=3.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "C4",        # comprehensions
+    "SIM",       # simplify
+    "ANN",       # type annotations everywhere (CLAUDE.md §6)
+    "S",         # bandit
+    "BLE",       # no bare/blind except (CLAUDE.md §6)
+    "T20",       # no print() outside scripts
+    "RUF",
+]
+ignore = [
+    "ANN401",  # allow typing.Any where a payload is genuinely untyped
+]
+
+# Characters the invoice itself is specified to print: the multiplication sign
+# and middle dot in the R-PDF-09 detail line, the pound sign, the em dash in the
+# R-PDF-15 filename, and the bullet used to mask a number to its last four.
+allowed-confusables = ["×", "·", "£", "—", "•"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# The seed report is a CLI: printing is its purpose. Asserts are pytest's idiom.
+"app/scripts/*" = ["T20"]
+"tests/*" = ["S101", "ANN201", "ANN001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "integration: requires a throwaway Postgres (R-TEST-02)",
+]

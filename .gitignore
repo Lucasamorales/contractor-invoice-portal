@@ -1,0 +1,35 @@
+# Real bank details and fees live here. Never committed. (CLAUDE.md §7)
+data/*
+*.xlsx
+
+# Robin's blank template carries only XXXXX placeholders, and R-PDF-13 needs it
+# committed as the visual reference for the regression test.
+!data/invoice-template.pdf
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*-key.json
+
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# Rendered output from local runs
+/out/
