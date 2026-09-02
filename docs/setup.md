@@ -116,9 +116,38 @@ printf '%s' 'postgresql+psycopg://...' | gcloud secrets versions add portal-data
 `printf` rather than `echo`: `echo` appends a newline, and a trailing newline in
 a connection string is a confusing failure to debug.
 
+**In PowerShell** there is no `printf`, and piping to a native command appends a
+newline anyway. Write a temporary file with no trailing byte instead:
+
+```powershell
+$tmp = [System.IO.Path]::GetTempFileName(); try { [System.IO.File]::WriteAllText($tmp, 'postgresql+psycopg://...', (New-Object System.Text.UTF8Encoding($false))); gcloud secrets versions add portal-database-url-staging --data-file="$tmp" } finally { Remove-Item $tmp -Force }
+```
+
 Repeat with `portal-database-url-production`. Cloud Run reads them through its
 attached service account — there are no downloaded key files anywhere in this
 system (CLAUDE.md §2.7).
+
+### 1.4.1 What exists today
+
+Project `your-gcp-project`. All four secrets are populated, and the
+connection strings were read back and checked byte-for-byte against what was
+written.
+
+| Secret | Holds |
+|---|---|
+| `portal-database-url-staging` | Neon staging, pooled endpoint |
+| `portal-database-url-production` | Neon production, pooled endpoint |
+| `portal-bank-encryption-key-staging` | AES-256 key, base64 (R-SEC-03) |
+| `portal-bank-encryption-key-production` | AES-256 key, base64 (R-SEC-03) |
+
+Neither encryption key has ever been printed or written to a file that outlived
+the command that created it. The staging one is mirrored into `.env` for local
+development; the production one exists only in Secret Manager, and if it is
+lost every stored bank detail is unrecoverable.
+
+Cloud Run's service account will need `roles/secretmanager.secretAccessor` on
+the two it reads, granted per-secret rather than project-wide. That waits for
+the service account to exist.
 
 ### 1.5 Create the schema
 
@@ -202,11 +231,16 @@ is metric-compatible with the Calibri that Robin's template is set in.
 
 ## 3. The encryption key
 
-Generate once, per environment, and store it in Secret Manager:
+Already generated for both environments (§1.4.1). To create another — a
+rotation, or a new environment — generate it straight into Secret Manager
+rather than through a terminal, so it never reaches a scrollback buffer:
 
 ```bash
-uv run python -c "from app.services.crypto import generate_key; print(generate_key())"
+uv run python -c "import pathlib,sys; from app.services.crypto import generate_key; pathlib.Path(sys.argv[1]).write_text(generate_key())" /tmp/k && gcloud secrets versions add portal-bank-encryption-key-staging --data-file=/tmp/k; rm -f /tmp/k
 ```
+
+Bump `PORTAL_BANK_ENCRYPTION_KEY_ID` when you rotate. The id is stored beside
+every ciphertext, so old rows stay readable by the key that wrote them.
 
 Losing this key means losing every stored bank detail — the database holds only
 ciphertext (R-SEC-03). It is never written to a file by the application, and
