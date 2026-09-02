@@ -19,7 +19,9 @@ from app.db.models import (
     Counter,
     Fee,
     Invoice,
+    InvoiceLine,
     InvoiceStatus,
+    Outbox,
     Person,
     PersonStatus,
 )
@@ -164,3 +166,21 @@ def record_audit(
     )
     session.add(entry)
     return entry
+
+
+def queue_email(*, kind: str, payload: dict) -> Outbox:
+    """Build an outbox row (R-DATA-10, R-SUB-06).
+
+    Returned rather than added, so the caller decides which transaction it
+    belongs to. Mail is queued inside the submit transaction and sent later by
+    the dispatcher: a Postmark outage must not lose an invoice Postgres has
+    already accepted.
+    """
+    return Outbox(kind=kind, payload=payload)
+
+
+def invoice_lines(session: Session, invoice_id: uuid.UUID) -> list[InvoiceLine]:
+    """The frozen breakdown for one invoice (R-DATA-07)."""
+    return list(
+        session.scalars(select(InvoiceLine).where(InvoiceLine.invoice_id == invoice_id))
+    )

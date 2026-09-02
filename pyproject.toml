@@ -68,7 +68,9 @@ known-first-party = ["app", "tests"]
 [tool.ruff.lint.per-file-ignores]
 # The seed report is a CLI: printing is its purpose. Asserts are pytest's idiom.
 "app/scripts/*" = ["T20"]
-"tests/*" = ["S101", "ANN201", "ANN001"]
+# Test functions take pytest fixtures; annotating every one adds noise
+# without adding safety. asserts are pytest's idiom.
+"tests/*" = ["S101", "ANN001", "ANN003", "ANN201", "ANN202"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
