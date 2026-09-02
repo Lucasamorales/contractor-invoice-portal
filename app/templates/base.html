@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
-<body>
+<body{% if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
   <header class="bar">
     <a class="brand" href="/">Invoices</a>
     <nav>

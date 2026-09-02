@@ -16,11 +16,12 @@ import hashlib
 import hmac
 import time
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 
 from app.config import Settings
 
 FIELD_NAME = "csrf_token"
+HEADER_NAME = "X-CSRF-Token"
 
 # Tokens stay valid across this window and the one before it, so a form left
 # open over a coffee break still submits.
@@ -81,3 +82,19 @@ def require(settings: Settings, identity: str, token: str | None) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your form expired. Go back, reload the page and try again.",
         ) from exc
+
+
+def token_from_request(request: Request, form_value: str | None = None) -> str | None:
+    """The token, from the form field or the header HTMX sets on every request.
+
+    Both carry the same value; a full form post sends the field, an HTMX
+    fragment sends the header.
+    """
+    return form_value or request.headers.get(HEADER_NAME)
+
+
+def require_request(
+    settings: Settings, identity: str, request: Request, form_value: str | None = None
+) -> None:
+    """``require`` for a handler that may be called either way."""
+    require(settings, identity, token_from_request(request, form_value))

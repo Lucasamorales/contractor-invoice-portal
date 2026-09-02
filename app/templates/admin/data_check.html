@@ -1,0 +1,53 @@
+{% extends "admin/_base.html" %}
+{% block title %}Data check{% endblock %}
+{% block content %}
+{% set ready = rows | selectattr("ready") | list %}
+<h1>Data check</h1>
+<p class="lead">
+  <strong>{{ ready | length }}</strong> of <strong>{{ rows | length }}</strong>
+  people are ready to invoice. This is the screen that says whether the first
+  real cycle will work.
+</p>
+
+<table class="kv wide">
+  <tr>
+    <th>Name</th><th>Fee set</th><th>Profile</th><th>Bank confirmed</th>
+    <th>Number seeded</th>
+  </tr>
+  {% for row in rows %}
+    <tr>
+      <td>
+        <a href="/admin/people/{{ row.person.id }}">
+          {{ row.person.display_name }}
+        </a>
+      </td>
+      <td>{{ "yes" if row.fee_set else "no" }}</td>
+      <td>{{ "yes" if row.profile_complete else "no" }}</td>
+      <td>{{ "yes" if row.bank_confirmed else "no" }}</td>
+      <td>{{ "yes" if row.counter_seeded else "no" }}</td>
+    </tr>
+  {% endfor %}
+</table>
+
+<section>
+  <h2>Flagged by the import</h2>
+  <p class="hint">
+    These came out of the spreadsheet and need a human to confirm or chase.
+  </p>
+  {% set flagged = rows | rejectattr("notes", "equalto", ()) | list %}
+  {% if flagged %}
+    {% for row in flagged %}
+      <div class="panel blocks">
+        <strong>
+          <a href="/admin/people/{{ row.person.id }}">
+            {{ row.person.display_name }}
+          </a>
+        </strong>
+        <ul>{% for note in row.notes %}<li>{{ note }}</li>{% endfor %}</ul>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="hint">Nothing outstanding.</p>
+  {% endif %}
+</section>
+{% endblock %}

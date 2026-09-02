@@ -1,0 +1,81 @@
+{% extends "admin/_base.html" %}
+{% block title %}{{ period.label }}{% endblock %}
+{% block content %}
+<h1>{{ period.label }}</h1>
+<p class="lead">
+  <strong>{{ view.received }}</strong> of <strong>{{ view.expected }}</strong>
+  invoices received. The window is the 24th to the 28th.
+</p>
+
+<section>
+  <h2>Not yet in ({{ view.missing | length }})</h2>
+  {% if view.missing %}
+    <ul class="history">
+      {% for row in view.missing %}
+        <li>
+          <a href="/admin/people/{{ row.person.id }}">
+            {{ row.person.display_name }}
+          </a>
+          <span class="tag">{{ row.person.team or "no team" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">Everyone active has invoiced.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Worth a look ({{ view.flagged | length }})</h2>
+  {% if view.flagged %}
+    {% for row in view.flagged %}
+      <div class="panel blocks">
+        <strong>
+          <a href="/admin/people/{{ row.person.id }}">
+            {{ row.person.display_name }}
+          </a>
+        </strong>
+        {% if row.invoice %}
+          &mdash; invoice {{ row.invoice.number }},
+          {{ row.invoice.total_pence | gbp }}
+        {% endif %}
+        <ul>
+          {% for flag in row.flags %}
+            <li><span class="tag">{{ flag.kind }}</span> {{ flag.detail }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="hint">Nothing flagged.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Everyone</h2>
+  <table class="kv wide">
+    <tr><th>Name</th><th>Status</th><th>Invoice</th><th>Total</th><th>Flags</th></tr>
+    {% for row in view.rows %}
+      <tr>
+        <td>
+          <a href="/admin/people/{{ row.person.id }}">
+            {{ row.person.display_name }}
+          </a>
+        </td>
+        <td>{{ row.person.status.value }}</td>
+        <td>
+          {% if row.invoice %}
+            {{ row.invoice.number }}
+          {% else %}
+            <span class="missing">none</span>
+          {% endif %}
+        </td>
+        <td>{{ row.invoice.total_pence | gbp if row.invoice else "" }}</td>
+        <td>
+          {% for flag in row.flags %}<span class="tag">{{ flag.kind }}</span>{% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

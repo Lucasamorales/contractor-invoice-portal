@@ -78,6 +78,12 @@ class Settings(BaseSettings):
     # 1 kudo = £20 (R-KUD-04). Config, never a literal in the code that uses it.
     kudos_rate_pence: int = 2000
     payment_terms_days: int = 14  # R-PDF-10
+    # An expense above this is flagged in the admin period view (R-ADM-04).
+    # A threshold, not a limit: it asks Robin to look, it does not refuse.
+    expense_flag_threshold_pence: int = 20000
+    # A bank change this close to the window closing flags the invoice
+    # rather than blocking it (R-BANK-06).
+    bank_change_flag_hours: int = 72
 
     # --- Encryption (R-SEC-03) -------------------------------------------------
     # AES-GCM key, base64, from Secret Manager. The key id is stored alongside

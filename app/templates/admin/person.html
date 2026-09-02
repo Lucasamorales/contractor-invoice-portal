@@ -1,0 +1,155 @@
+{% extends "admin/_base.html" %}
+{% block title %}{{ person.display_name }}{% endblock %}
+{% block content %}
+<h1>{{ person.display_name }}</h1>
+<p class="lead">{{ person.email }} &middot; {{ person.status.value }}</p>
+
+{% if errors %}
+  <div class="panel blocks">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+<section>
+  <h2>Profile</h2>
+  <table class="kv">
+    <tr><th>Legal name</th><td>{{ person.legal_name or "not set" }}</td></tr>
+    <tr><th>Role</th><td>{{ person.role or "not set" }}</td></tr>
+    <tr>
+      <th>Address</th>
+      <td>{{ person.address.replace("\n", ", ") if person.address else "not set" }}</td>
+    </tr>
+    <tr><th>Phone</th><td>{{ person.phone or "not set" }}</td></tr>
+    <tr><th>Contact email</th><td>{{ person.contact_email or "not set" }}</td></tr>
+    <tr>
+      <th>Payout region</th>
+      <td>{{ person.payout_region.value if person.payout_region else "not set" }}</td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Fee history</h2>
+  {% if fees %}
+    <table class="kv wide">
+      <tr><th>From</th><th>To</th><th>Amount</th><th>Set by</th><th>Note</th></tr>
+      {% for fee in fees %}
+        <tr>
+          <td>{{ fee.valid_from.strftime("%d %b %Y") }}</td>
+          <td>{{ fee.valid_to.strftime("%d %b %Y") if fee.valid_to else "open" }}</td>
+          <td>{{ fee.fee_pence | gbp }}</td>
+          <td>{{ fee.set_by }}</td>
+          <td>{{ fee.note }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="hint">No fee has ever been set. They cannot invoice until one is.</p>
+  {% endif %}
+
+  <h2>Set a new fee</h2>
+  <form method="post" action="/admin/people/{{ person.id }}/fee" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field">
+      <span class="label">Amount</span>
+      <span class="hint">Per month, in pounds: 2500 or 2500.00</span>
+      <input type="text" name="amount" inputmode="decimal">
+    </label>
+    <label class="field">
+      <span class="label">Effective from</span>
+      <span class="hint">The current fee is closed the day before this.</span>
+      <input type="date" name="valid_from" value="{{ today.isoformat() }}">
+    </label>
+    <label class="field">
+      <span class="label">Note</span>
+      <span class="hint">
+        Required. In December this is how the change explains itself.
+      </span>
+      <input type="text" name="note">
+    </label>
+    <button class="button" type="submit">Set fee</button>
+  </form>
+</section>
+
+<section>
+  <h2>Bank history</h2>
+  <p class="hint">
+    Masked by default. You can reveal a row where you need to pay it, and the
+    reveal is recorded. You cannot make a row payable &mdash; only its owner can.
+  </p>
+  {% for bank in banks %}
+    <div class="panel">
+      <table class="kv">
+        <tr><th>Added</th><td>{{ bank.created_at.strftime("%d %b %Y") }}</td></tr>
+        <tr>
+          <th>State</th>
+          <td>{{ bank.state }} <span class="tag">{{ bank.source }}</span></td>
+        </tr>
+        <tr><th>Account name</th><td>{{ bank.account_name or "not given" }}</td></tr>
+        <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
+        <tr><th>Account number</th><td>{{ bank.account_number or "none" }}</td></tr>
+        <tr><th>IBAN</th><td>{{ bank.iban or "none" }}</td></tr>
+        <tr>
+          <th>Confirmed by them</th>
+          <td>
+            {{ bank.verified_at.strftime("%d %b %Y") if bank.verified_at
+               else "not yet" }}
+          </td>
+        </tr>
+      </table>
+      <div id="bank-{{ bank.id }}">
+        <button class="link" type="button"
+                hx-post="/admin/bank/{{ bank.id }}/reveal"
+                hx-target="#bank-{{ bank.id }}" hx-swap="innerHTML">
+          Reveal full details
+        </button>
+      </div>
+    </div>
+  {% else %}
+    <p class="hint">No bank details on file.</p>
+  {% endfor %}
+</section>
+
+<section>
+  <h2>Invoices</h2>
+  {% if invoices %}
+    <table class="kv wide">
+      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>Issued</th></tr>
+      {% for invoice in invoices %}
+        <tr>
+          <td>{{ invoice.number }}</td>
+          <td>{{ invoice.period }}</td>
+          <td>{{ invoice.total_pence | gbp }}</td>
+          <td>
+            {{ invoice.status.value }}
+            {% if invoice.is_late %}<span class="tag">late</span>{% endif %}
+          </td>
+          <td>
+            {{ invoice.issued_at.strftime("%d %b %Y") if invoice.issued_at
+               else "not issued" }}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="hint">None yet.</p>
+  {% endif %}
+</section>
+
+{% if person.status.value != "inactive" %}
+<section>
+  <h2>Deactivate</h2>
+  <p class="hint">
+    No reminders, cannot invoice, history kept. Nothing is deleted.
+  </p>
+  <form method="post" action="/admin/people/{{ person.id }}/deactivate" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field">
+      <span class="label">Reason</span>
+      <input type="text" name="reason">
+    </label>
+    <button class="button ghost" type="submit">Deactivate</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

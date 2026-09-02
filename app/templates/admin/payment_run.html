@@ -1,0 +1,54 @@
+{% extends "admin/_base.html" %}
+{% block title %}Payment run {{ period.key }}{% endblock %}
+{% block content %}
+<h1>Payment run &mdash; {{ period.label }}</h1>
+<p class="lead">
+  Split into the two batches you pay separately. Account numbers are masked on
+  screen; the CSV carries them in full and taking it is recorded.
+</p>
+
+<form method="post" action="/admin/payment-run.csv" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="month" value="{{ period.key }}">
+  <button class="button" type="submit">Export CSV</button>
+</form>
+
+{% macro batch(title, lines, total) %}
+  <section>
+    <h2>{{ title }} &mdash; {{ lines | length }} payments, {{ total | gbp }}</h2>
+    {% if lines %}
+      <table class="kv wide">
+        <tr>
+          <th>Payee</th><th>Legal name</th><th>Invoice</th><th>Amount</th>
+          <th>Account</th>
+        </tr>
+        {% for line in lines %}
+          <tr>
+            <td>{{ line.payee }}</td>
+            <td>{{ line.legal_name }}</td>
+            <td>{{ line.invoice_number }}</td>
+            <td>{{ line.amount_pence | gbp }}</td>
+            <td>
+              {{ line.account_name }}
+              {% if line.sort_code %}
+                <br>{{ line.sort_code | sort_code }}
+              {% endif %}
+              {% if line.account_number %}
+                &middot; {{ line.account_number | mask }}
+              {% endif %}
+              {% if line.iban %}
+                <br>IBAN {{ line.iban | mask }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="hint">Nothing in this batch.</p>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+{{ batch("UK", run.uk, run.uk_total_pence) }}
+{{ batch("International", run.intl, run.intl_total_pence) }}
+{% endblock %}

@@ -1,0 +1,18 @@
+{# The result of a reveal (R-ACC-06). The reveal itself is already audited. #}
+{% if revealed %}
+  <div class="revealed">
+    {% if bank.account_number %}
+      <div>Account number: <strong>{{ bank.account_number }}</strong></div>
+    {% endif %}
+    {% if bank.sort_code %}
+      <div>Sort code: <strong>{{ bank.sort_code | sort_code }}</strong></div>
+    {% endif %}
+    {% if bank.iban %}
+      <div>IBAN: <strong>{{ bank.iban | iban }}</strong></div>
+    {% endif %}
+    {% if bank.swift_bic %}
+      <div>Swift/BIC: <strong>{{ bank.swift_bic }}</strong></div>
+    {% endif %}
+    <p class="hint">This reveal has been recorded.</p>
+  </div>
+{% endif %}

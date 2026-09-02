@@ -1,0 +1,11 @@
+{# One cell of the people table. Masked until revealed (R-ADM-01):
+   a screenshare of this page should not leak the payroll. #}
+{% if fee_pence is none %}
+  <span class="missing">not set</span>
+{% elif revealed %}
+  <strong>{{ fee_pence | gbp }}</strong>
+{% else %}
+  <button class="link" type="button"
+          hx-post="/admin/people/{{ person.id }}/reveal-fee"
+          hx-target="closest td" hx-swap="innerHTML">&pound;&bull;&bull;&bull;</button>
+{% endif %}

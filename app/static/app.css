@@ -199,3 +199,32 @@ ul.history time { color: var(--muted); margin-right: 10px; }
   color: var(--muted);
   font-size: 0.78rem;
 }
+
+/* ---- Admin ----------------------------------------------------------- */
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 26px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+.admin-nav a { color: var(--accent); text-decoration: none; }
+
+button.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.revealed {
+  border-left: 3px solid #a0522d;
+  padding-left: 12px;
+  font-variant-numeric: tabular-nums;
+}

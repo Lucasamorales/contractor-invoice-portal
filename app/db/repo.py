@@ -17,6 +17,7 @@ from app.db.models import (
     BankDetail,
     BankState,
     Counter,
+    Expense,
     Fee,
     Invoice,
     InvoiceLine,
@@ -183,4 +184,83 @@ def invoice_lines(session: Session, invoice_id: uuid.UUID) -> list[InvoiceLine]:
     """The frozen breakdown for one invoice (R-DATA-07)."""
     return list(
         session.scalars(select(InvoiceLine).where(InvoiceLine.invoice_id == invoice_id))
+    )
+
+
+# --- Admin read models (R-ADM-01 .. R-ADM-07) ------------------------------
+# Every one of these is reachable only behind require_finance (R-ACC-04).
+
+
+def all_people(session: Session) -> list[Person]:
+    """Everyone, in a stable order. Nothing is ever deleted (R-ADM-09)."""
+    return list(session.scalars(select(Person).order_by(Person.display_name)))
+
+
+def fee_history(session: Session, person_id: uuid.UUID) -> list[Fee]:
+    """Every fee ever set, newest first (R-ADM-02).
+
+    Effective-dated rows, never updates, so this is the whole story of what
+    someone was paid and when it changed.
+    """
+    return list(
+        session.scalars(
+            select(Fee)
+            .where(Fee.person_id == person_id)
+            .order_by(Fee.valid_from.desc(), Fee.created_at.desc())
+        )
+    )
+
+
+def current_fee(session: Session, person_id: uuid.UUID) -> Fee | None:
+    """The open-ended fee row, if there is one."""
+    return session.scalar(
+        select(Fee).where(Fee.person_id == person_id, Fee.valid_to.is_(None))
+    )
+
+
+def invoices_for_period(session: Session, period: str) -> list[Invoice]:
+    """Every live invoice for a period (R-ADM-04, R-ADM-05)."""
+    return list(
+        session.scalars(
+            select(Invoice)
+            .where(Invoice.period == period, Invoice.status != InvoiceStatus.VOID)
+            .order_by(Invoice.number)
+        )
+    )
+
+
+def counters_for(session: Session, person_ids: list[uuid.UUID]) -> dict:
+    """Counter rows keyed by person, for the go-live grid (R-ADM-06)."""
+    if not person_ids:
+        return {}
+    rows = session.scalars(select(Counter).where(Counter.person_id.in_(person_ids)))
+    return {row.person_id: row for row in rows}
+
+
+def pending_bank_rows(session: Session) -> list[BankDetail]:
+    """Proposed changes waiting on their owner (R-ADM-07, R-BANK-07)."""
+    return list(
+        session.scalars(
+            select(BankDetail)
+            .where(BankDetail.state == BankState.PENDING)
+            .order_by(BankDetail.created_at.desc())
+        )
+    )
+
+
+def unverified_bank_rows(session: Session) -> list[BankDetail]:
+    """Imported rows nobody has confirmed yet (R-SEED-10, R-ADM-06)."""
+    return list(
+        session.scalars(
+            select(BankDetail).where(BankDetail.state == BankState.UNVERIFIED)
+        )
+    )
+
+
+def expenses_for_invoices(session: Session, invoice_ids: list[uuid.UUID]) -> list:
+    """Expense rows across a period's invoices, for the over-threshold flag."""
+    if not invoice_ids:
+        return []
+    return list(
+        session.scalars(select(Expense).where(Expense.invoice_id.in_(invoice_ids)))
     )

@@ -1,0 +1,64 @@
+{% extends "admin/_base.html" %}
+{% block title %}Queue{% endblock %}
+{% block content %}
+<h1>Queue</h1>
+<p class="lead">Anything waiting on somebody.</p>
+
+<section>
+  <h2>Waiting for a fee ({{ queue.awaiting_fee | length }})</h2>
+  <p class="hint">Until a fee is set, these people cannot invoice at all.</p>
+  {% if queue.awaiting_fee %}
+    <ul class="history">
+      {% for person in queue.awaiting_fee %}
+        <li>
+          <a href="/admin/people/{{ person.id }}">{{ person.display_name }}</a>
+          <span class="tag">{{ person.status.value }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">Nobody.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Bank changes waiting on their owner ({{ queue.pending_bank | length }})</h2>
+  <p class="hint">
+    You proposed these. Only the person themselves can make one payable.
+  </p>
+  {% if queue.pending_bank %}
+    <ul class="history">
+      {% for bank in queue.pending_bank %}
+        <li>
+          <a href="/admin/people/{{ bank.person_id }}">{{ bank.account_name }}</a>
+          <time>{{ bank.created_at.strftime("%d %b") }}</time>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">None.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Never confirmed ({{ queue.unconfirmed_bank | length }})</h2>
+  <p class="hint">
+    Imported from the spreadsheet and not yet checked by the person. They
+    cannot invoice until they confirm.
+  </p>
+  {% if queue.unconfirmed_bank %}
+    <ul class="history">
+      {% for bank in queue.unconfirmed_bank %}
+        <li>
+          <a href="/admin/people/{{ bank.person_id }}">
+            {{ bank.account_name or "no name on the account" }}
+          </a>
+          <span class="tag">{{ bank.source.value }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">None.</p>
+  {% endif %}
+</section>
+{% endblock %}
