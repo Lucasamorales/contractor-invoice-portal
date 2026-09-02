@@ -5,14 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Invoices{% endblock %}</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
   <header class="bar">
-    <span class="brand">Your Company</span>
-    {% if is_finance %}<a class="admin-link" href="/admin">Admin</a>{% endif %}
+    <a class="brand" href="/">Invoices</a>
+    <nav>
+      <a href="/me">My details</a>
+      {% if is_finance %}<a href="/admin">Admin</a>{% endif %}
+    </nav>
   </header>
+
   <main>
+    {% block steps %}{% endblock %}
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="foot">
+    Something wrong? Tell Leo.
+  </footer>
 </body>
 </html>

@@ -606,3 +606,75 @@ def void(
         before=before,
         after={"status": "void", "reason": reason},
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Readiness:
+    """What the wizard needs to know to render, without refusing anything.
+
+    ``prepare`` raises on the first problem, which is right at submit time and
+    wrong on a screen whose job is to tell someone what is outstanding. This
+    reports the whole picture at once (R-WIZ-01, R-WIZ-09).
+    """
+
+    fee_pence: int | None
+    kudos_count: int | None  # None means the sheet could not be read (R-KUD-06)
+    kudos_rate_pence: int
+    bank: BankDetail | None
+    bank_confirmed: bool
+    profile_complete: bool
+    existing_invoice: Invoice | None
+    blocks: tuple[tuple[str, str], ...]
+
+    @property
+    def can_submit(self) -> bool:
+        return not self.blocks and self.existing_invoice is None
+
+    @property
+    def kudos_pence(self) -> int:
+        return (self.kudos_count or 0) * self.kudos_rate_pence
+
+    @property
+    def running_total_pence(self) -> int:
+        """Fee plus kudos. Expenses are added on the Additional step."""
+        return (self.fee_pence or 0) + self.kudos_pence
+
+
+def readiness(
+    session: Session,
+    *,
+    person: Person,
+    period: Period,
+    now: datetime,
+    settings: Settings,
+) -> Readiness:
+    """Everything the welcome screen shows, and every reason submit is blocked."""
+    fee = repo.fee_for(session, person.id, on=now.date())
+    bank = repo.active_bank_detail(session, person.id)
+    bank_confirmed = bank is not None and bank.verified_at is not None
+    profile_complete = profile_is_complete(person)
+    snapshot = session.get(KudosSnapshot, (person.id, period.key))
+    existing = repo.live_invoice_for_period(session, person.id, period.key)
+
+    blocks: list[tuple[str, str]] = []
+    if fee is None:
+        blocks.append(("no_fee", "Robin hasn't set your fee yet — he's been notified."))
+    if not bank_confirmed:
+        blocks.append(("bank_unconfirmed", "Confirm your bank details first."))
+    if not profile_complete:
+        blocks.append(
+            ("profile_incomplete", "We need a few details for your invoice letterhead.")
+        )
+
+    return Readiness(
+        fee_pence=fee.fee_pence if fee else None,
+        kudos_count=snapshot.kudos_count if snapshot else None,
+        kudos_rate_pence=(
+            snapshot.rate_pence if snapshot else settings.kudos_rate_pence
+        ),
+        bank=bank,
+        bank_confirmed=bank_confirmed,
+        profile_complete=profile_complete,
+        existing_invoice=existing,
+        blocks=tuple(blocks),
+    )

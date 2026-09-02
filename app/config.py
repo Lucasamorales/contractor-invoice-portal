@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # every ciphertext so the key can be rotated without a mass re-encrypt.
     bank_encryption_key: SecretStr = SecretStr("")
     bank_encryption_key_id: str = "v1"
+    # Signing key for CSRF tokens (R-SEC-11). Separate from the bank key:
+    # a token signer and a payload cipher should not share a secret.
+    csrf_secret: SecretStr = SecretStr("")
 
     # --- External services -----------------------------------------------------
     gcs_bucket: str = ""
@@ -147,6 +150,7 @@ def assert_production_ready(settings: Settings) -> None:
         "iap_audience": settings.iap_audience,
         "database_url": settings.database_url.get_secret_value(),
         "bank_encryption_key": settings.bank_encryption_key.get_secret_value(),
+        "csrf_secret": settings.csrf_secret.get_secret_value(),
         "gcs_bucket": settings.gcs_bucket,
         "finance_emails": settings.finance_emails,
     }

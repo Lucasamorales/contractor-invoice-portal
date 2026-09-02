@@ -1,0 +1,11 @@
+{# The wizard's progress. `active` is set by each step. #}
+<ol class="steps">
+  {% for key, label in [
+      ('details', 'Your details'),
+      ('bank', 'Bank details'),
+      ('additional', 'Additional'),
+      ('preview', 'Preview'),
+      ('done', 'Sent')] %}
+    <li class="{{ 'on' if key == active else '' }}">{{ label }}</li>
+  {% endfor %}
+</ol>

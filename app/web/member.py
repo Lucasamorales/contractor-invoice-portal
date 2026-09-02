@@ -1,41 +1,90 @@
-"""Member routes.
+"""The member wizard (R-WIZ-01 .. R-WIZ-09).
 
-Build order step 1 is deliberately small: someone logs in through IAP and sees
-their own name. The wizard (R-WIZ-01..09) is built on top of this once the
-invoice itself is right.
+Server-rendered Jinja with HTMX, one form per step. No SPA, no build step.
+
+Expenses are carried through the wizard in the form itself rather than saved as
+a server-side draft. That is not a shortcut: ``expenses.invoice_id`` is NOT
+NULL (R-DATA-05), so an expense cannot exist before the invoice does, and an
+abandoned wizard leaves nothing behind to clean up.
 """
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth import CurrentIdentity
+from app.config import Settings, get_settings
 from app.db import repo
-from app.db.session import get_session
+from app.db.models import BankState, Counter, Invoice, Person
+from app.db.session import get_session, get_sessionmaker
+from app.domain.iban import mask
+from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period, can_submit, closed_message
+from app.services.crypto import Cipher
+from app.services.invoicing import (
+    ExpenseInput,
+    Readiness,
+    SubmissionBlocked,
+    decrypt_bank_block,
+    prepare,
+    readiness,
+    submit,
+)
+from app.services.pdf import Letterhead, build_context, render_html, render_pdf
+from app.services.storage import LocalObjectStore, ObjectStore
+from app.web import csrf
 from app.web.templates import templates
 
 router = APIRouter()
 
 DbSession = Annotated[Session, Depends(get_session)]
+Config = Annotated[Settings, Depends(get_settings)]
+Factory = Annotated["sessionmaker[Session]", Depends(get_sessionmaker)]
+
+MAX_ITEMS = 10  # R-WIZ-04 caps receipts at ten; the items they attach to match.
 
 
-@router.get("/", response_class=HTMLResponse)
-async def home(
-    request: Request,
-    identity: CurrentIdentity,
-    session: DbSession,
-) -> HTMLResponse:
-    """The landing page for a member.
+def _now() -> datetime:
+    return datetime.now(UTC)
 
-    A verified caller with no ``people`` row is created as pending rather than
-    turned away (R-ACC-03): they appear in Robin's queue and are told what is
-    missing, which is the whole point of replacing the phone call.
+
+def get_store() -> ObjectStore:
+    """The object store.
+
+    Local for now. R-STO-01's private bucket replaces this in build order step
+    6; ``assert_production_ready`` already refuses to start a production
+    service without ``gcs_bucket`` set, so this cannot quietly ship.
+    """
+    return LocalObjectStore(Path("out/objects"))
+
+
+def get_cipher(settings: Config) -> Cipher:
+    return Cipher.from_settings(settings)
+
+
+def get_renderer() -> Callable[[dict], bytes]:
+    """The PDF renderer.
+
+    Injected rather than called directly so a test can drive the whole submit
+    route without WeasyPrint's native Pango and Cairo libraries present. The
+    template those libraries render is covered by tests/test_invoice_render.py.
+    """
+    return render_pdf
+
+
+def current_person(identity: CurrentIdentity, session: DbSession) -> Person:
+    """The caller's own row, created on first login (R-ACC-03).
+
+    Derived from the verified IAP email and nothing else (R-ACC-05, R-SEC-06).
+    No route takes a person id from the client.
     """
     person = repo.get_or_create_person(
         session,
@@ -43,18 +92,514 @@ async def home(
         display_name=identity.email.partition("@")[0],
     )
     session.commit()
+    return person
 
-    now = datetime.now(UTC)
+
+CurrentPerson = Annotated[Person, Depends(current_person)]
+
+
+def _base_context(
+    request: Request,
+    person: Person,
+    identity: CurrentIdentity,
+    settings: Settings,
+) -> dict[str, object]:
+    now = _now()
+    return {
+        "request": request,
+        "person": person,
+        "period": Period.containing(now),
+        "is_finance": identity.is_finance,
+        "csrf_token": csrf.issue(settings, identity.email),
+        "window_open": can_submit(now),
+        "window_message": None if can_submit(now) else closed_message(now),
+    }
+
+
+def _read_state(
+    session: Session, person: Person, settings: Settings
+) -> tuple[Period, Readiness]:
+    now = _now()
     period = Period.containing(now)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="home.html",
-        context={
-            "person": person,
-            "period": period,
-            "can_submit": can_submit(now),
-            "window_message": None if can_submit(now) else closed_message(now),
-            "is_finance": identity.is_finance,
-        },
+    return period, readiness(
+        session, person=person, period=period, now=now, settings=settings
     )
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-01 Welcome
+# --------------------------------------------------------------------------
+
+
+@router.get("/", response_class=HTMLResponse)
+async def welcome(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+) -> HTMLResponse:
+    """Greeting, the period, the fee, the kudos and the running total.
+
+    Every figure is read-only here. The only thing a person can do from this
+    screen is start, or fix whatever is blocking them.
+    """
+    period, state = _read_state(session, person, settings)
+    context = _base_context(request, person, identity, settings)
+    context.update({"state": state, "period": period})
+    return templates.TemplateResponse(
+        request=request, name="welcome.html", context=context
+    )
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-02 Your details
+# --------------------------------------------------------------------------
+
+
+@router.get("/details", response_class=HTMLResponse)
+async def details_form(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    settings: Config,
+) -> HTMLResponse:
+    context = _base_context(request, person, identity, settings)
+    context["errors"] = {}
+    return templates.TemplateResponse(
+        request=request, name="details.html", context=context
+    )
+
+
+# response_model=None: the handler returns a rendered form on validation
+# failure and a redirect on success, and FastAPI cannot model that union.
+@router.post("/details", response_model=None)
+async def save_details(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    legal_name: Annotated[str, Form()] = "",
+    role: Annotated[str, Form()] = "",
+    address: Annotated[str, Form()] = "",
+    phone: Annotated[str, Form()] = "",
+    contact_email: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """All five are required because all five print on the invoice (R-PDF-02)."""
+    csrf.require(settings, identity.email, csrf_token)
+
+    fields = {
+        "legal_name": legal_name.strip(),
+        "role": role.strip(),
+        "address": address.strip(),
+        "phone": phone.strip(),
+        "contact_email": contact_email.strip(),
+    }
+    errors = {
+        name: "This appears on your invoice, so we need it."
+        for name, value in fields.items()
+        if not value
+    }
+    if "@" not in fields["contact_email"] and not errors.get("contact_email"):
+        errors["contact_email"] = "That doesn't look like an email address."
+
+    if errors:
+        context = _base_context(request, person, identity, settings)
+        context.update({"errors": errors, "submitted": fields})
+        return templates.TemplateResponse(
+            request=request,
+            name="details.html",
+            context=context,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    for name, value in fields.items():
+        setattr(person, name, value)
+    person.profile_confirmed_at = _now()
+    session.commit()
+
+    return RedirectResponse("/bank", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-05 / R-WIZ-08 Bank details
+# --------------------------------------------------------------------------
+
+
+def _masked_bank(person: Person, session: Session, cipher: Cipher) -> dict[str, str]:
+    """The current row, account number and IBAN masked to last four (R-WIZ-05)."""
+    detail = repo.active_bank_detail(session, person.id)
+    if detail is None:
+        detail = next((row for row in repo.bank_history(session, person.id)), None)
+    if detail is None:
+        return {}
+
+    block = decrypt_bank_block(
+        {
+            "account_name": detail.account_name,
+            "bank_name": detail.bank_name,
+            "account_number_enc": detail.account_number_enc,
+            "sort_code_enc": detail.sort_code_enc,
+            "iban_enc": detail.iban_enc,
+            "swift_bic_enc": detail.swift_bic_enc,
+        },
+        person_id=person.id,
+        cipher=cipher,
+    )
+    return {
+        "id": str(detail.id),
+        "state": detail.state.value,
+        "source": detail.source.value,
+        "account_name": block.account_name,
+        "bank_name": block.bank_name,
+        "sort_code": block.sort_code or "",
+        # Never the full number on a screen someone might be sharing.
+        "account_number": mask(block.account_number or ""),
+        "iban": mask(block.iban or ""),
+        "swift_bic": block.swift_bic or "",
+        "confirmed": "yes" if detail.verified_at else "no",
+    }
+
+
+@router.get("/bank", response_class=HTMLResponse)
+async def bank_form(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+) -> HTMLResponse:
+    context = _base_context(request, person, identity, settings)
+    context["bank"] = _masked_bank(person, session, cipher)
+    return templates.TemplateResponse(
+        request=request, name="bank.html", context=context
+    )
+
+
+@router.post("/bank/confirm")
+async def confirm_bank(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    csrf_token: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    """The owner confirms their own row (R-WIZ-05, R-BANK-07).
+
+    Only the owner can do this. There is no admin route that reaches it: an
+    admin may propose a change, never make one payable.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+
+    detail = next((row for row in repo.bank_history(session, person.id)), None)
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="There are no bank details on file to confirm.",
+        )
+
+    before = {"state": detail.state.value, "verified": bool(detail.verified_at)}
+    detail.state = BankState.ACTIVE
+    detail.verified_at = _now()
+    detail.verified_by = identity.email
+    repo.record_audit(
+        session,
+        actor_email=identity.email,
+        action="bank.confirm",
+        entity="bank_details",
+        entity_id=str(detail.id),
+        before=before,
+        after={"state": "active", "verified": True},
+    )
+    session.commit()
+    return RedirectResponse("/additional", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/me", response_class=HTMLResponse)
+async def my_details(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+) -> HTMLResponse:
+    """Permanent, not a one-time step (R-WIZ-08).
+
+    Shows the current row and the history of changes to it, as last-four pairs.
+    This is how a person notices a change they did not make.
+    """
+    history = []
+    previous: str | None = None
+    for row in reversed(repo.bank_history(session, person.id)):
+        current = mask(
+            decrypt_bank_block(
+                {
+                    "account_number_enc": row.account_number_enc,
+                    "account_name": row.account_name,
+                    "bank_name": row.bank_name,
+                },
+                person_id=person.id,
+                cipher=cipher,
+            ).account_number
+            or ""
+        )
+        history.append(
+            {
+                "at": row.created_at,
+                "from": previous,
+                "to": current,
+                "source": row.source.value,
+                "state": row.state.value,
+            }
+        )
+        previous = current
+    history.reverse()
+
+    context = _base_context(request, person, identity, settings)
+    context.update(
+        {
+            "bank": _masked_bank(person, session, cipher),
+            "history": history,
+            "invoices": repo.invoice_history(session, person.id),
+        }
+    )
+    return templates.TemplateResponse(request=request, name="me.html", context=context)
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-03 Additional
+# --------------------------------------------------------------------------
+
+
+@router.get("/additional", response_class=HTMLResponse)
+async def additional_form(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+) -> HTMLResponse:
+    """Kudos read-only; the person adds any number of items. Empty means £0."""
+    period, state = _read_state(session, person, settings)
+    context = _base_context(request, person, identity, settings)
+    context.update({"state": state, "period": period, "items": [], "errors": []})
+    return templates.TemplateResponse(
+        request=request, name="additional.html", context=context
+    )
+
+
+async def _parse_items(request: Request) -> tuple[list[ExpenseInput], list[str]]:
+    """Read the repeated description/amount pairs off the form."""
+    form = await request.form()
+    descriptions = [str(value) for value in form.getlist("description")]
+    amounts = [str(value) for value in form.getlist("amount")]
+
+    items: list[ExpenseInput] = []
+    errors: list[str] = []
+    for description, amount in zip(descriptions, amounts, strict=False):
+        description = description.strip()
+        amount = amount.strip()
+        if not description and not amount:
+            continue  # an untouched blank row
+        if not description:
+            errors.append(f"An amount of {amount} has no description.")
+            continue
+        try:
+            pence = parse_gbp_to_pence(amount)
+        except MoneyError:
+            errors.append(f"{description}: {amount!r} is not an amount.")
+            continue
+        if pence < 0:
+            errors.append(f"{description}: an amount cannot be negative.")
+            continue
+        items.append(ExpenseInput(description=description, amount_pence=pence))
+
+    if len(items) > MAX_ITEMS:
+        errors.append(f"That is more than {MAX_ITEMS} items.")
+    return items, errors
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-06 Preview
+# --------------------------------------------------------------------------
+
+
+@router.post("/preview", response_class=HTMLResponse)
+async def preview(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+) -> HTMLResponse:
+    """The invoice rendered from the same template that produces the PDF.
+
+    What they approve here is what Robin receives (R-PDF-01).
+    """
+    form = await request.form()
+    csrf.require(settings, identity.email, str(form.get(csrf.FIELD_NAME) or ""))
+
+    items, errors = await _parse_items(request)
+    period, state = _read_state(session, person, settings)
+    context = _base_context(request, person, identity, settings)
+
+    if errors:
+        context.update(
+            {"state": state, "period": period, "items": items, "errors": errors}
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="additional.html",
+            context=context,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    try:
+        prepared = prepare(
+            session,
+            person=person,
+            period=period,
+            now=_now(),
+            settings=settings,
+            expenses=items,
+            kudos_zero_acknowledged=bool(form.get("kudos_zero_acknowledged")),
+        )
+    except SubmissionBlocked as blocked:
+        context.update({"state": state, "period": period, "blocked": blocked.message})
+        return templates.TemplateResponse(
+            request=request, name="blocked.html", context=context
+        )
+
+    bank_block = decrypt_bank_block(
+        {
+            "account_name": prepared.bank.account_name,
+            "bank_name": prepared.bank.bank_name,
+            "account_number_enc": prepared.bank.account_number_enc,
+            "sort_code_enc": prepared.bank.sort_code_enc,
+            "iban_enc": prepared.bank.iban_enc,
+            "swift_bic_enc": prepared.bank.swift_bic_enc,
+        },
+        person_id=person.id,
+        cipher=cipher,
+    )
+
+    # The number this invoice would take, shown so the preview is honest.
+    counter = session.get(Counter, person.id)
+
+    invoice_context = build_context(
+        number=counter.next_number if counter else 1,
+        period=period,
+        issued_at=_now(),
+        letterhead=Letterhead(
+            legal_name=person.legal_name or "",
+            role=person.role or "",
+            address_lines=tuple(
+                line.strip()
+                for line in (person.address or "").splitlines()
+                if line.strip()
+            ),
+            phone=person.phone or "",
+            contact_email=person.contact_email or "",
+        ),
+        bill_to_lines=settings.bill_to.as_lines(),
+        bank=bank_block,
+        payout_region=(person.payout_region.value if person.payout_region else "UK"),
+        totals=prepared.totals,
+    )
+
+    context.update(
+        {
+            "state": state,
+            "period": period,
+            "items": items,
+            "invoice": invoice_context,
+            # The real invoice, rendered by the template that produces the PDF
+            # (R-WIZ-06, R-PDF-01). It goes into an isolated iframe so the app's
+            # own stylesheet cannot change how the invoice looks.
+            "invoice_html": render_html(invoice_context),
+            # R-SUB-01: the key is generated when the preview is rendered.
+            "idempotency_key": str(uuid.uuid4()),
+            "kudos_zero_acknowledged": bool(form.get("kudos_zero_acknowledged")),
+        }
+    )
+    return templates.TemplateResponse(
+        request=request, name="preview.html", context=context
+    )
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-07 Submit
+# --------------------------------------------------------------------------
+
+
+@router.post("/submit", response_class=HTMLResponse)
+async def do_submit(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+    store: Annotated[ObjectStore, Depends(get_store)],
+    render: Annotated[Callable[[dict], bytes], Depends(get_renderer)],
+    factory: Factory,
+) -> HTMLResponse:
+    """One button, one idempotency key, no second number (R-SUB-01, R-SUB-02)."""
+    form = await request.form()
+    csrf.require(settings, identity.email, str(form.get(csrf.FIELD_NAME) or ""))
+
+    idempotency_key = str(
+        form.get("idempotency_key") or request.headers.get("Idempotency-Key") or ""
+    )
+    if not idempotency_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing idempotency key. Go back and preview again.",
+        )
+
+    items, errors = await _parse_items(request)
+    now = _now()
+    period = Period.containing(now)
+    context = _base_context(request, person, identity, settings)
+
+    if errors:
+        context["blocked"] = " ".join(errors)
+        return templates.TemplateResponse(
+            request=request, name="blocked.html", context=context
+        )
+
+    person_id = person.id
+    session.close()  # submit runs its own short transactions (R-SUB-03..05)
+
+    try:
+        invoice_id = submit(
+            factory,
+            person_id=person_id,
+            period=period,
+            idempotency_key=idempotency_key,
+            now=now,
+            settings=settings,
+            cipher=cipher,
+            store=store,
+            expenses=items,
+            kudos_zero_acknowledged=bool(form.get("kudos_zero_acknowledged")),
+            render=render,
+        )
+    except SubmissionBlocked as blocked:
+        context["blocked"] = blocked.message
+        return templates.TemplateResponse(
+            request=request, name="blocked.html", context=context
+        )
+
+    with factory() as fresh:
+        invoice = fresh.get(Invoice, invoice_id)
+        context.update({"invoice": invoice, "period": period})
+        return templates.TemplateResponse(
+            request=request, name="submitted.html", context=context
+        )

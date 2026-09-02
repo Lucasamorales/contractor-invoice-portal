@@ -42,3 +42,160 @@ h1 { font-size: 1.5rem; margin: 0 0 12px; }
 }
 
 .notice.open { border-left-color: var(--accent); }
+
+/* ---- Wizard ---------------------------------------------------------- */
+
+.bar nav { display: flex; gap: 18px; }
+.bar nav a { color: var(--accent); text-decoration: none; font-size: 0.94rem; }
+a.brand { color: inherit; text-decoration: none; }
+
+.foot {
+  max-width: 720px;
+  margin: 40px auto 60px;
+  padding: 0 24px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.lead { color: var(--muted); margin: 0 0 22px; }
+.hint { color: var(--muted); font-size: 0.88rem; margin: 8px 0 0; }
+.missing { color: #a0522d; }
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.steps li::after { content: "›"; margin-left: 6px; opacity: 0.5; }
+.steps li:last-child::after { content: ""; }
+.steps li.on { color: var(--ink); font-weight: 600; }
+
+h2 { font-size: 1.05rem; margin: 28px 0 10px; }
+section + section { border-top: 1px solid var(--line); margin-top: 8px; }
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 16px 18px;
+  margin: 0 0 20px;
+}
+.panel.ok { border-left: 3px solid #2e7d54; }
+.panel.blocks { border-left: 3px solid #a0522d; }
+.panel ul { margin: 8px 0 0; padding-left: 18px; }
+.panel li { margin-bottom: 6px; }
+
+.notice.ok { border-left-color: #2e7d54; }
+.notice.warn { border-left-color: #a0522d; }
+
+table.figures, table.kv {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+table.figures th, table.kv th,
+table.figures td, table.kv td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+  vertical-align: top;
+}
+table.figures th, table.kv th { color: var(--muted); width: 42%; }
+table.figures tr:last-child td, table.kv tr:last-child td,
+table.figures tr:last-child th, table.kv tr:last-child th { border-bottom: 0; }
+table.figures tr.total th, table.figures tr.total td {
+  font-weight: 650;
+  color: var(--ink);
+}
+table.kv.wide th { width: auto; font-weight: 600; color: var(--ink); }
+
+.form { margin-top: 20px; }
+.field { display: block; margin-bottom: 18px; }
+.field .label { display: block; font-weight: 600; margin-bottom: 2px; }
+.field .hint { display: block; margin: 0 0 6px; }
+.field input, .field textarea, .item input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: inherit;
+  background: #fff;
+}
+.field.bad input, .field.bad textarea { border-color: #a0522d; }
+.field .error { display: block; color: #a0522d; font-size: 0.86rem; margin-top: 5px; }
+
+.item { display: flex; gap: 10px; margin-bottom: 10px; }
+.item input:first-child { flex: 3; }
+.item input:last-child { flex: 1; }
+
+.check { display: block; margin: 16px 0; font-size: 0.92rem; }
+.check input { margin-right: 8px; }
+
+.button {
+  display: inline-block;
+  padding: 10px 18px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+.button.ghost { background: #fff; color: var(--accent); }
+
+.actions { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+
+/* An A4 sheet is 794px at 96dpi, wider than the reading column. Render it
+   full size and scale the whole thing down, rather than letting it crop:
+   a preview that hides the right-hand edge of the invoice is worse than
+   no preview. 672 / 794 = 0.846. */
+.paper-frame {
+  width: 100%;
+  /* 1171 * 0.846. The iframe is sized to the sheet plus the 24px of body
+     padding above and below it, so no scrollbar appears; a scrollbar would
+     narrow the viewport and reintroduce horizontal overflow. */
+  height: 991px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  margin-bottom: 8px;
+}
+
+iframe.paper {
+  width: 794px;
+  height: 1171px;
+  border: 0;
+  transform: scale(0.846);
+  transform-origin: top left;
+}
+
+.figure-large { font-size: 1.6rem; font-weight: 650; margin: 10px 0; }
+
+ul.history { list-style: none; padding: 0; margin: 0; }
+ul.history li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.94rem;
+}
+ul.history time { color: var(--muted); margin-right: 10px; }
+
+.tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #eeeef2;
+  color: var(--muted);
+  font-size: 0.78rem;
+}

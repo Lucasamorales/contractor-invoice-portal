@@ -142,6 +142,9 @@ body { margin: 0; }
     padding: 24px 0;
   }
   .sheet {
+    /* Padding inside the page, not added to it: without this the sheet
+       computes to 1005px rather than A4's 794px and the preview crops. */
+    box-sizing: border-box;
     width: 210mm;
     min-height: 297mm;
     margin: 0 auto;

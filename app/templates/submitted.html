@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sent{% endblock %}
+{% block steps %}{% set active = 'done' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Sent</h1>
+<div class="panel ok">
+  <p>
+    Invoice <strong>{{ invoice.number }}</strong> for {{ period.label }}
+    has gone to Robin.
+  </p>
+  <p class="figure-large">{{ invoice.total_pence | gbp }}</p>
+  {% if invoice.is_late %}
+    <p class="hint">It was after the 28th, so it is marked late. It still counts.</p>
+  {% endif %}
+  <p class="hint">A copy is on its way to you as well.</p>
+</div>
+<a class="button ghost" href="/me">See your invoices</a>
+{% endblock %}

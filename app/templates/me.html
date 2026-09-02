@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}My details{% endblock %}
+{% block content %}
+<h1>My details</h1>
+
+<section>
+  <h2>Bank account</h2>
+  {% if bank %}
+    <table class="kv">
+      <tr><th>Name on the account</th><td>{{ bank.account_name or '—' }}</td></tr>
+      <tr><th>Bank</th><td>{{ bank.bank_name or '—' }}</td></tr>
+      {% if bank.sort_code %}
+        <tr><th>Sort code</th><td>{{ bank.sort_code | sort_code }}</td></tr>
+      {% endif %}
+      {% if bank.account_number %}
+        <tr><th>Account number</th><td>{{ bank.account_number }}</td></tr>
+      {% endif %}
+      {% if bank.iban %}<tr><th>IBAN</th><td>{{ bank.iban }}</td></tr>{% endif %}
+      <tr><th>Confirmed by you</th><td>{{ 'yes' if bank.confirmed == 'yes' else 'not yet' }}</td></tr>
+    </table>
+  {% else %}
+    <p class="notice warn">We have no bank details for you.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Changes to it</h2>
+  <p class="hint">
+    If you see a change here you did not make, tell Leo straight away.
+  </p>
+  {% if history %}
+    <ul class="history">
+      {% for row in history %}
+        <li>
+          <time>{{ row.at.strftime('%d %b') }}</time>
+          {% if row['from'] %}{{ row['from'] }} &rarr; {% endif %}{{ row.to }}
+          <span class="tag">{{ row.source }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">Nothing recorded.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Your invoices</h2>
+  {% if invoices %}
+    <table class="kv wide">
+      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th></tr>
+      {% for invoice in invoices %}
+        <tr>
+          <td>{{ invoice.number }}</td>
+          <td>{{ invoice.period }}</td>
+          <td>{{ invoice.total_pence | gbp }}</td>
+          <td>
+            {{ invoice.status.value }}{% if invoice.is_late %} <span class="tag">late</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="hint">You have not invoiced through this system yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

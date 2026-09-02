@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Bank details{% endblock %}
+{% block steps %}{% set active = 'bank' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Bank details</h1>
+
+{% if not bank %}
+  <p class="notice warn">
+    We have no bank details for you. Tell Robin and he will get them added.
+  </p>
+{% else %}
+  <p class="lead">
+    This is the account Robin pays. Only the last four digits are shown.
+  </p>
+
+  <table class="kv">
+    <tr><th>Name on the account</th><td>{{ bank.account_name or '—' }}</td></tr>
+    <tr><th>Bank</th><td>{{ bank.bank_name or '—' }}</td></tr>
+    {% if bank.sort_code %}
+      <tr><th>Sort code</th><td>{{ bank.sort_code | sort_code }}</td></tr>
+    {% endif %}
+    {% if bank.account_number %}
+      <tr><th>Account number</th><td>{{ bank.account_number }}</td></tr>
+    {% endif %}
+    {% if bank.iban %}<tr><th>IBAN</th><td>{{ bank.iban }}</td></tr>{% endif %}
+    {% if bank.swift_bic %}
+      <tr><th>Swift/BIC</th><td>{{ bank.swift_bic }}</td></tr>
+    {% endif %}
+  </table>
+
+  {% if bank.confirmed == 'yes' %}
+    <p class="notice ok">You have confirmed these details.</p>
+    <a class="button" href="/additional">Continue</a>
+  {% else %}
+    <p class="notice warn">
+      These came from the old spreadsheet and nobody has checked them.
+      You have to confirm them before you can invoice.
+    </p>
+    <form method="post" action="/bank/confirm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="button" type="submit">These are correct</button>
+    </form>
+    <p class="hint">
+      Wrong? Tell Robin. He can propose a correction, but only you can approve
+      it &mdash; that is deliberate.
+    </p>
+  {% endif %}
+{% endif %}
+{% endblock %}

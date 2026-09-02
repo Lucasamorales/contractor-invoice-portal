@@ -57,6 +57,12 @@ def get_engine() -> Engine:
 
 
 def get_sessionmaker() -> sessionmaker[Session]:
+    """The session factory.
+
+    A FastAPI dependency as well as a plain function, so a route that needs
+    to run its own transactions — the submit path in R-SUB-03..05 — can be
+    pointed at a different database in a test without reaching for a global.
+    """
     return sessionmaker(bind=get_engine(), expire_on_commit=False, future=True)
 
 

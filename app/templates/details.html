@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Your details{% endblock %}
+{% block steps %}{% set active = 'details' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Your details</h1>
+<p class="lead">These print at the top of your invoice, so all five are needed.</p>
+
+<form method="post" action="/details" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  {% macro field(name, label, hint, value, type='text') %}
+    <label class="field {{ 'bad' if errors.get(name) }}">
+      <span class="label">{{ label }}</span>
+      {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
+      {% if type == 'textarea' %}
+        <textarea name="{{ name }}" rows="3">{{ value or '' }}</textarea>
+      {% else %}
+        <input type="{{ type }}" name="{{ name }}" value="{{ value or '' }}">
+      {% endif %}
+      {% if errors.get(name) %}<span class="error">{{ errors[name] }}</span>{% endif %}
+    </label>
+  {% endmacro %}
+
+  {{ field('legal_name', 'Legal name',
+           'As it appears on your bank account, not a nickname.',
+           (submitted.legal_name if submitted else person.legal_name)) }}
+  {{ field('role', 'Role',
+           'Your job title, e.g. Creative Director.',
+           (submitted.role if submitted else person.role)) }}
+  {{ field('address', 'Address', 'One line per line.',
+           (submitted.address if submitted else person.address), 'textarea') }}
+  {{ field('phone', 'Phone number', '',
+           (submitted.phone if submitted else person.phone)) }}
+  {{ field('contact_email', 'Email address', 'Where Robin replies to you.',
+           (submitted.contact_email if submitted else person.contact_email)) }}
+
+  <button class="button" type="submit">Save and continue</button>
+</form>
+{% endblock %}

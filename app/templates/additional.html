@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Additional{% endblock %}
+{% block steps %}{% set active = 'additional' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Anything to add?</h1>
+<p class="lead">Expenses, or anything else for this month. Leaving it empty is fine.</p>
+
+{% if errors %}
+  <div class="panel blocks">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+<table class="kv">
+  <tr>
+    <th>Kudos</th>
+    <td>
+      {% if state.kudos_count is not none %}
+        {{ state.kudos_count }} × {{ state.kudos_rate_pence | gbp }}
+        = {{ state.kudos_pence | gbp }}
+      {% else %}
+        <span class="missing">unavailable &mdash; Leo has been notified</span>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+<p class="hint">Kudos come from the sheet, so you cannot change them here.</p>
+
+<form method="post" action="/preview" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div id="items">
+    {% for item in items %}
+      <div class="item">
+        <input type="text" name="description" value="{{ item.description }}"
+               placeholder="What was it for?">
+        <input type="text" name="amount"
+               value="{{ '%.2f' % (item.amount_pence / 100) }}" placeholder="0.00">
+      </div>
+    {% endfor %}
+    {% for _ in range(3 - (items | length if items | length < 3 else 0)) %}
+      <div class="item">
+        <input type="text" name="description" placeholder="What was it for?">
+        <input type="text" name="amount" placeholder="0.00">
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if state.kudos_count is none %}
+    <label class="check">
+      <input type="checkbox" name="kudos_zero_acknowledged" value="1">
+      I understand my kudos could not be read, and want to invoice without them.
+    </label>
+  {% endif %}
+
+  <button class="button" type="submit">Preview my invoice</button>
+</form>
+{% endblock %}

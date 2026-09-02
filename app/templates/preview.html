@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Preview{% endblock %}
+{% block steps %}{% set active = 'preview' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Check it over</h1>
+<p class="lead">
+  This is exactly what Robin receives. Nothing has been sent yet.
+</p>
+
+{# The real invoice, isolated so the app's stylesheet cannot alter it.
+   The sheet is rendered at its true A4 width and scaled down to fit, so
+   the proportions a person approves are the proportions Robin receives. #}
+<div class="paper-frame">
+  <iframe class="paper" title="Invoice preview" srcdoc="{{ invoice_html }}"></iframe>
+</div>
+
+<form method="post" action="/submit" class="form send">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+  {% for item in items %}
+    <input type="hidden" name="description" value="{{ item.description }}">
+    <input type="hidden" name="amount" value="{{ '%.2f' % (item.amount_pence / 100) }}">
+  {% endfor %}
+  {% if kudos_zero_acknowledged %}
+    <input type="hidden" name="kudos_zero_acknowledged" value="1">
+  {% endif %}
+
+  <div class="actions">
+    <a class="button ghost" href="/additional">Go back</a>
+    {% if window_open %}
+      <button class="button" type="submit"
+              onclick="this.disabled=true;this.form.requestSubmit();">
+        Send to Robin
+      </button>
+    {% else %}
+      <button class="button" type="submit" disabled>Send to Robin</button>
+      <p class="hint">{{ window_message }}</p>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}
