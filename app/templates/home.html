@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Hello, {{ person.display_name }}</h1>
+<p class="period">Invoice period: <strong>{{ period.label }}</strong></p>
+
+{% if window_message %}
+  <p class="notice">{{ window_message }}</p>
+{% else %}
+  <p class="notice open">The window for {{ period.month_name }} is open.</p>
+{% endif %}
+
+{% if person.status.value == 'pending' %}
+  <p class="notice">
+    Robin hasn't set your fee yet &mdash; he's been notified.
+  </p>
+{% endif %}
+{% endblock %}
