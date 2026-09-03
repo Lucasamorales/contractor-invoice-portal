@@ -228,3 +228,6 @@ button.link {
   padding-left: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+.form.inline { margin-top: 12px; }
+.form.inline .field { margin-bottom: 8px; }

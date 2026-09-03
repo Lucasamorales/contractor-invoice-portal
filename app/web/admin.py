@@ -25,7 +25,7 @@ from app.db.models import BankDetail, Person
 from app.db.session import get_session
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period
-from app.services import admin
+from app.services import admin, bank_changes
 from app.services.crypto import Cipher, field_aad
 from app.web import csrf
 from app.web.member import get_cipher
@@ -139,6 +139,37 @@ async def reveal_fee(
 # --------------------------------------------------------------------------
 
 
+def _person_page(
+    request: Request,
+    identity: FinanceIdentity,
+    session: Session,
+    settings: Settings,
+    cipher: Cipher,
+    person: Person,
+    *,
+    errors: list[str] | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    """The person page. Shared so every handler that renders it agrees."""
+    context = _context(request, identity, settings)
+    context.update(
+        {
+            "person": person,
+            "fees": repo.fee_history(session, person.id),
+            "banks": admin.masked_bank_summary(session, person, cipher),
+            "invoices": repo.invoice_history(session, person.id),
+            "today": _now().date(),
+            "errors": errors or [],
+        }
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/person.html",
+        context=context,
+        status_code=status_code,
+    )
+
+
 @router.get("/people/{person_id}", response_class=HTMLResponse)
 async def person_detail(
     request: Request,
@@ -149,19 +180,7 @@ async def person_detail(
     cipher: Box,
 ) -> HTMLResponse:
     person = _get_person(session, person_id)
-    context = _context(request, identity, settings)
-    context.update(
-        {
-            "person": person,
-            "fees": repo.fee_history(session, person_id),
-            "banks": admin.masked_bank_summary(session, person, cipher),
-            "invoices": repo.invoice_history(session, person_id),
-            "today": _now().date(),
-        }
-    )
-    return templates.TemplateResponse(
-        request=request, name="admin/person.html", context=context
-    )
+    return _person_page(request, identity, session, settings, cipher, person)
 
 
 # response_model=None: the handler re-renders the page on a validation
@@ -213,21 +232,14 @@ async def set_fee(
             session.rollback()
             errors.append(str(exc))
 
-    context = _context(request, identity, settings)
-    context.update(
-        {
-            "person": person,
-            "fees": repo.fee_history(session, person_id),
-            "banks": admin.masked_bank_summary(session, person, cipher),
-            "invoices": repo.invoice_history(session, person_id),
-            "today": _now().date(),
-            "errors": errors,
-        }
-    )
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/person.html",
-        context=context,
+    return _person_page(
+        request,
+        identity,
+        session,
+        settings,
+        cipher,
+        person,
+        errors=errors,
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
     )
 
@@ -420,4 +432,121 @@ async def queue(
     context["queue"] = admin.queue(session, on=_now().date())
     return templates.TemplateResponse(
         request=request, name="admin/queue.html", context=context
+    )
+
+
+# --------------------------------------------------------------------------
+# R-BANK-07 / R-BANK-08 Propose and flag back
+# --------------------------------------------------------------------------
+
+
+# response_model=None: re-renders the person page on a validation failure.
+@router.post("/people/{person_id}/bank/propose", response_model=None)
+async def propose_bank_change(
+    request: Request,
+    person_id: uuid.UUID,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    cipher: Box,
+    account_name: Annotated[str, Form()] = "",
+    bank_name: Annotated[str, Form()] = "",
+    sort_code: Annotated[str, Form()] = "",
+    account_number: Annotated[str, Form()] = "",
+    account_number_again: Annotated[str, Form()] = "",
+    iban: Annotated[str, Form()] = "",
+    swift_bic: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """Propose a correction (R-BANK-07).
+
+    Lands ``pending``. It does not touch what is payable and it never can:
+    only the owner can confirm it. This route is the reason a taken-over admin
+    account cannot redirect the payroll.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    person = _get_person(session, person_id)
+
+    entry = bank_changes.Entry(
+        account_name=account_name,
+        bank_name=bank_name,
+        sort_code=sort_code,
+        account_number=account_number,
+        account_number_again=account_number_again,
+        iban=iban,
+        swift_bic=swift_bic,
+    )
+    try:
+        bank_changes.propose_change(
+            session,
+            person=person,
+            entry=entry,
+            cipher=cipher,
+            now=_now(),
+            actor_email=identity.email,
+        )
+    except bank_changes.BankChangeError as exc:
+        session.rollback()
+        return _person_page(
+            request,
+            identity,
+            session,
+            settings,
+            cipher,
+            person,
+            errors=[exc.message, *exc.errors],
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    session.commit()
+    return RedirectResponse(
+        f"/admin/people/{person_id}", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.post("/bank/{bank_id}/flag", response_model=None)
+async def flag_bank_row(
+    request: Request,
+    bank_id: uuid.UUID,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    cipher: Box,
+    reason: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """Flag a row back to its owner with what needs fixing (R-BANK-08).
+
+    Sends them an email. Changes nothing about what is payable: flagging is a
+    request, not an edit.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    detail = session.get(BankDetail, bank_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="No such bank row.")
+    person = _get_person(session, detail.person_id)
+
+    try:
+        bank_changes.flag_back(
+            session,
+            detail_id=bank_id,
+            reason=reason,
+            actor_email=identity.email,
+        )
+    except bank_changes.BankChangeError as exc:
+        session.rollback()
+        return _person_page(
+            request,
+            identity,
+            session,
+            settings,
+            cipher,
+            person,
+            errors=[exc.message],
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    session.commit()
+    return RedirectResponse(
+        f"/admin/people/{person.id}", status_code=status.HTTP_303_SEE_OTHER
     )

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Change your bank details{% endblock %}
+{% block steps %}{% set active = 'bank' %}{% include "_steps.html" %}{% endblock %}
+{% block content %}
+<h1>Change your bank details</h1>
+<p class="lead">
+  This is where Robin sends your money. Take a moment over it.
+</p>
+
+{% if errors %}
+  <div class="panel blocks">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+{% if bank %}
+  <div class="panel">
+    <strong>What we have now</strong>
+    <table class="kv">
+      <tr><th>Name on the account</th><td>{{ bank.account_name or "not given" }}</td></tr>
+      <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
+      {% if bank.sort_code %}
+        <tr><th>Sort code</th><td>{{ bank.sort_code | sort_code }}</td></tr>
+      {% endif %}
+      {% if bank.account_number %}
+        <tr><th>Account number</th><td>{{ bank.account_number }}</td></tr>
+      {% endif %}
+      {% if bank.iban %}<tr><th>IBAN</th><td>{{ bank.iban }}</td></tr>{% endif %}
+    </table>
+  </div>
+{% endif %}
+
+<form method="post" action="/bank/change" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <label class="field">
+    <span class="label">Name on the account</span>
+    <span class="hint">As your bank has it, not a nickname.</span>
+    <input type="text" name="account_name" value="{{ entry.account_name or '' }}">
+  </label>
+
+  <label class="field">
+    <span class="label">Bank</span>
+    <input type="text" name="bank_name" value="{{ entry.bank_name or '' }}">
+  </label>
+
+  {% if person.payout_region and person.payout_region.value == 'INTL' %}
+    <label class="field">
+      <span class="label">IBAN</span>
+      <input type="text" name="iban" value="">
+    </label>
+    <label class="field">
+      <span class="label">Swift/BIC</span>
+      <input type="text" name="swift_bic" value="{{ entry.swift_bic or '' }}">
+    </label>
+  {% else %}
+    <label class="field">
+      <span class="label">Sort code</span>
+      <span class="hint">Six digits. Dashes are fine.</span>
+      <input type="text" name="sort_code" value="{{ entry.sort_code or '' }}"
+             inputmode="numeric">
+    </label>
+    <label class="field">
+      <span class="label">Account number</span>
+      <span class="hint">Eight digits.</span>
+      <input type="text" name="account_number" value="" inputmode="numeric"
+             autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="label">Account number again</span>
+      <span class="hint">
+        Typed twice on purpose. 12345678 and 12435678 are both valid account
+        numbers, and only one of them is yours.
+      </span>
+      <input type="text" name="account_number_again" value="" inputmode="numeric"
+             autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="label">IBAN <em>(optional)</em></span>
+      <span class="hint">
+        If your bank gives you one &mdash; Wise does &mdash; we check it against
+        the sort code and account number above.
+      </span>
+      <input type="text" name="iban" value="">
+    </label>
+    <label class="field">
+      <span class="label">Swift/BIC <em>(optional)</em></span>
+      <input type="text" name="swift_bic" value="{{ entry.swift_bic or '' }}">
+    </label>
+  {% endif %}
+
+  <div class="actions">
+    <a class="button ghost" href="/bank">Cancel</a>
+    <button class="button" type="submit">Save these details</button>
+  </div>
+  <p class="hint">
+    Both you and Robin get an email showing the last four digits of the old and
+    new accounts, so a change nobody asked for cannot go unnoticed.
+  </p>
+</form>
+{% endblock %}

@@ -104,10 +104,74 @@
           Reveal full details
         </button>
       </div>
+      <form method="post" action="/admin/bank/{{ bank.id }}/flag" class="form inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="field">
+          <span class="label">Flag this back to them</span>
+          <span class="hint">
+            Emails them what needs fixing. Changes nothing about what is paid.
+          </span>
+          <input type="text" name="reason" placeholder="What needs fixing?">
+        </label>
+        <button class="button ghost" type="submit">Send</button>
+      </form>
     </div>
   {% else %}
     <p class="hint">No bank details on file.</p>
   {% endfor %}
+
+  <h2>Propose a correction</h2>
+  <p class="hint">
+    This is queued for them to approve. It does not change what gets paid, and
+    you cannot make it do so &mdash; that is deliberate, and it is what stops a
+    stolen admin account redirecting the payroll.
+  </p>
+  <form method="post" action="/admin/people/{{ person.id }}/bank/propose"
+        class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field">
+      <span class="label">Name on the account</span>
+      <input type="text" name="account_name">
+    </label>
+    <label class="field">
+      <span class="label">Bank</span>
+      <input type="text" name="bank_name">
+    </label>
+    {% if person.payout_region and person.payout_region.value == 'INTL' %}
+      <label class="field">
+        <span class="label">IBAN</span>
+        <input type="text" name="iban">
+      </label>
+      <label class="field">
+        <span class="label">Swift/BIC</span>
+        <input type="text" name="swift_bic">
+      </label>
+    {% else %}
+      <label class="field">
+        <span class="label">Sort code</span>
+        <input type="text" name="sort_code" inputmode="numeric">
+      </label>
+      <label class="field">
+        <span class="label">Account number</span>
+        <input type="text" name="account_number" inputmode="numeric"
+               autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="label">Account number again</span>
+        <input type="text" name="account_number_again" inputmode="numeric"
+               autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="label">IBAN <em>(optional)</em></span>
+        <input type="text" name="iban">
+      </label>
+      <label class="field">
+        <span class="label">Swift/BIC <em>(optional)</em></span>
+        <input type="text" name="swift_bic">
+      </label>
+    {% endif %}
+    <button class="button ghost" type="submit">Propose for them to approve</button>
+  </form>
 </section>
 
 <section>

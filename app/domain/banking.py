@@ -230,3 +230,45 @@ def validate_bank(parsed: ParsedBank, region: PayoutRegion) -> list[str]:
         errors.append("swift/bic is not a valid 8 or 11 character BIC")
 
     return errors
+
+
+def parse_bank_fields(
+    *,
+    account_name: str = "",
+    bank_name: str = "",
+    sort_code: str = "",
+    account_number: str = "",
+    iban: str = "",
+    swift_bic: str = "",
+) -> ParsedBank:
+    """Normalise individually typed fields (R-BANK-04).
+
+    The wizard collects one field per input rather than a pasted blob, but the
+    normalisation has to be identical to the seed's: the same sort code typed
+    into a form and imported from a spreadsheet must end up as the same six
+    digits, or a person confirming their details would appear to be changing
+    them.
+    """
+    parsed = ParsedBank()
+    for field_name, raw in (
+        ("account_name", account_name),
+        ("bank_name", bank_name),
+        ("sort_code", sort_code),
+        ("account_number", account_number),
+        ("iban", iban),
+        ("swift_bic", swift_bic),
+    ):
+        value = collapse(raw or "")
+        if value:
+            _assign(parsed, field_name, value)
+    return parsed
+
+
+def same_account(left: ParsedBank, right: ParsedBank) -> bool:
+    """Whether two records point at the same account.
+
+    Used to tell a real change from a re-typed confirmation: only the fields
+    that identify where money lands count, not the display names around them.
+    """
+    keys = ("sort_code", "account_number", "iban", "swift_bic")
+    return all(getattr(left, key) == getattr(right, key) for key in keys)

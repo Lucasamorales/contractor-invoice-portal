@@ -28,6 +28,7 @@ from app.db.session import get_session, get_sessionmaker
 from app.domain.iban import mask
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period, can_submit, closed_message
+from app.services import bank_changes
 from app.services.crypto import Cipher
 from app.services.invoicing import (
     ExpenseInput,
@@ -274,9 +275,50 @@ async def bank_form(
 ) -> HTMLResponse:
     context = _base_context(request, person, identity, settings)
     context["bank"] = _masked_bank(person, session, cipher)
+    context["pending"] = _pending_proposal(person, session, cipher)
     return templates.TemplateResponse(
         request=request, name="bank.html", context=context
     )
+
+
+def _pending_proposal(
+    person: Person, session: Session, cipher: Cipher
+) -> dict[str, str] | None:
+    """A correction Robin has proposed, waiting on this person (R-BANK-07).
+
+    It is shown alongside the current row rather than instead of it, so the
+    person can see exactly what they would be agreeing to change.
+    """
+    pending = next(
+        (
+            row
+            for row in repo.bank_history(session, person.id)
+            if row.state is BankState.PENDING
+        ),
+        None,
+    )
+    if pending is None:
+        return None
+    block = decrypt_bank_block(
+        {
+            "account_name": pending.account_name,
+            "bank_name": pending.bank_name,
+            "account_number_enc": pending.account_number_enc,
+            "sort_code_enc": pending.sort_code_enc,
+            "iban_enc": pending.iban_enc,
+            "swift_bic_enc": pending.swift_bic_enc,
+        },
+        person_id=person.id,
+        cipher=cipher,
+    )
+    return {
+        "id": str(pending.id),
+        "account_name": block.account_name,
+        "bank_name": block.bank_name,
+        "sort_code": block.sort_code or "",
+        "account_number": mask(block.account_number or ""),
+        "iban": mask(block.iban or ""),
+    }
 
 
 @router.post("/bank/confirm")
@@ -286,37 +328,138 @@ async def confirm_bank(
     person: CurrentPerson,
     session: DbSession,
     settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+    detail_id: Annotated[str, Form()] = "",
     csrf_token: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    """The owner confirms their own row (R-WIZ-05, R-BANK-07).
+    """The owner confirms their own row, making it payable (R-WIZ-05).
 
-    Only the owner can do this. There is no admin route that reaches it: an
-    admin may propose a change, never make one payable.
+    This and nothing else can put a row into ``active``. There is no admin
+    route that reaches it: an admin may propose a change, never confirm one
+    (CLAUDE.md §2.2, R-BANK-07).
     """
     csrf.require(settings, identity.email, csrf_token)
 
-    detail = next((row for row in repo.bank_history(session, person.id)), None)
-    if detail is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="There are no bank details on file to confirm.",
-        )
+    if detail_id:
+        target = uuid.UUID(detail_id)
+    else:
+        latest = next(iter(repo.bank_history(session, person.id)), None)
+        if latest is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="There are no bank details on file to confirm.",
+            )
+        target = latest.id
 
-    before = {"state": detail.state.value, "verified": bool(detail.verified_at)}
-    detail.state = BankState.ACTIVE
-    detail.verified_at = _now()
-    detail.verified_by = identity.email
-    repo.record_audit(
-        session,
-        actor_email=identity.email,
-        action="bank.confirm",
-        entity="bank_details",
-        entity_id=str(detail.id),
-        before=before,
-        after={"state": "active", "verified": True},
-    )
+    try:
+        bank_changes.confirm(
+            session,
+            person=person,
+            detail_id=target,
+            cipher=cipher,
+            now=_now(),
+            actor_email=identity.email,
+            finance_inbox=settings.finance_inbox,
+        )
+    except bank_changes.BankChangeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message
+        ) from exc
+
     session.commit()
     return RedirectResponse("/additional", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/bank/change", response_class=HTMLResponse)
+async def bank_change_form(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+) -> HTMLResponse:
+    context = _base_context(request, person, identity, settings)
+    context.update(
+        {"bank": _masked_bank(person, session, cipher), "errors": [], "entry": {}}
+    )
+    return templates.TemplateResponse(
+        request=request, name="bank_change.html", context=context
+    )
+
+
+# response_model=None: re-renders the form on a validation failure, redirects
+# on success.
+@router.post("/bank/change", response_model=None)
+async def submit_bank_change(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    cipher: Annotated[Cipher, Depends(get_cipher)],
+    account_name: Annotated[str, Form()] = "",
+    bank_name: Annotated[str, Form()] = "",
+    sort_code: Annotated[str, Form()] = "",
+    account_number: Annotated[str, Form()] = "",
+    account_number_again: Annotated[str, Form()] = "",
+    iban: Annotated[str, Form()] = "",
+    swift_bic: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """A person changes their own bank details (R-BANK-03, R-BANK-05).
+
+    Creates a new row and closes the old one. The account number is typed
+    twice, and both the person and Robin are emailed the last four digits of
+    what changed.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+
+    entry = bank_changes.Entry(
+        account_name=account_name,
+        bank_name=bank_name,
+        sort_code=sort_code,
+        account_number=account_number,
+        account_number_again=account_number_again,
+        iban=iban,
+        swift_bic=swift_bic,
+    )
+    try:
+        bank_changes.change_own_details(
+            session,
+            person=person,
+            entry=entry,
+            cipher=cipher,
+            now=_now(),
+            actor_email=identity.email,
+            finance_inbox=settings.finance_inbox,
+        )
+    except bank_changes.BankChangeError as exc:
+        session.rollback()
+        context = _base_context(request, person, identity, settings)
+        context.update(
+            {
+                "bank": _masked_bank(person, session, cipher),
+                "errors": [exc.message, *exc.errors],
+                # Never echo the account number back; the sort code and names
+                # are safe and save re-typing everything.
+                "entry": {
+                    "account_name": account_name,
+                    "bank_name": bank_name,
+                    "sort_code": sort_code,
+                    "swift_bic": swift_bic,
+                },
+            }
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="bank_change.html",
+            context=context,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    session.commit()
+    return RedirectResponse("/bank", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/me", response_class=HTMLResponse)

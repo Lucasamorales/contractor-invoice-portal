@@ -4,9 +4,40 @@
 {% block content %}
 <h1>Bank details</h1>
 
+{% if pending %}
+  {# A correction Robin has proposed. He cannot make it payable; only you can. #}
+  <div class="panel blocks">
+    <h2>Robin has suggested a change</h2>
+    <p>
+      He can suggest it, but he cannot make it happen &mdash; only you can.
+      Check it against your own records before you agree.
+    </p>
+    <table class="kv">
+      <tr><th>Name on the account</th><td>{{ pending.account_name or "not given" }}</td></tr>
+      <tr><th>Bank</th><td>{{ pending.bank_name or "not given" }}</td></tr>
+      {% if pending.sort_code %}
+        <tr><th>Sort code</th><td>{{ pending.sort_code | sort_code }}</td></tr>
+      {% endif %}
+      {% if pending.account_number %}
+        <tr><th>Account number</th><td>{{ pending.account_number }}</td></tr>
+      {% endif %}
+      {% if pending.iban %}<tr><th>IBAN</th><td>{{ pending.iban }}</td></tr>{% endif %}
+    </table>
+    <form method="post" action="/bank/confirm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="detail_id" value="{{ pending.id }}">
+      <div class="actions">
+        <button class="button" type="submit">Yes, that is right</button>
+        <a class="button ghost" href="/bank/change">No, let me type it</a>
+      </div>
+    </form>
+  </div>
+{% endif %}
+
 {% if not bank %}
   <p class="notice warn">
-    We have no bank details for you. Tell Robin and he will get them added.
+    We have no bank details for you.
+    <a href="/bank/change">Add them</a>, or tell Robin.
   </p>
 {% else %}
   <p class="lead">
@@ -14,8 +45,8 @@
   </p>
 
   <table class="kv">
-    <tr><th>Name on the account</th><td>{{ bank.account_name or '—' }}</td></tr>
-    <tr><th>Bank</th><td>{{ bank.bank_name or '—' }}</td></tr>
+    <tr><th>Name on the account</th><td>{{ bank.account_name or "not given" }}</td></tr>
+    <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
     {% if bank.sort_code %}
       <tr><th>Sort code</th><td>{{ bank.sort_code | sort_code }}</td></tr>
     {% endif %}
@@ -30,7 +61,10 @@
 
   {% if bank.confirmed == 'yes' %}
     <p class="notice ok">You have confirmed these details.</p>
-    <a class="button" href="/additional">Continue</a>
+    <div class="actions">
+      <a class="button" href="/additional">Continue</a>
+      <a class="button ghost" href="/bank/change">Change them</a>
+    </div>
   {% else %}
     <p class="notice warn">
       These came from the old spreadsheet and nobody has checked them.
@@ -38,12 +72,11 @@
     </p>
     <form method="post" action="/bank/confirm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button class="button" type="submit">These are correct</button>
+      <div class="actions">
+        <button class="button" type="submit">These are correct</button>
+        <a class="button ghost" href="/bank/change">They are wrong</a>
+      </div>
     </form>
-    <p class="hint">
-      Wrong? Tell Robin. He can propose a correction, but only you can approve
-      it &mdash; that is deliberate.
-    </p>
   {% endif %}
 {% endif %}
 {% endblock %}
