@@ -94,14 +94,13 @@ variable "window_always_open" {
 
 variable "iap_audience" {
   description = <<-EOT
-    The audience the IAP assertion carries, which app/auth.py checks.
+    Override for the audience IAP puts in the assertion. Normally empty:
+    it is computed as /projects/{number}/locations/{region}/services/{name},
+    which is what a real assertion was observed to carry.
 
-    Chicken and egg: it is derived from the service, which does not exist until
-    the first apply. So the first apply leaves it empty — nobody can log in
-    yet — and the second sets it to the service_url the first one printed.
-
-    If a login is refused after that, the logs say what audience the assertion
-    actually carried. Set it to that. A wrong value fails closed.
+    Set this only if Google changes the shape. A wrong value refuses every
+    login rather than letting anyone in, and app/auth.py logs the audience it
+    actually received so the right value is one log line away.
   EOT
   type        = string
   default     = ""

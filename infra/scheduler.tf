@@ -92,9 +92,9 @@ resource "google_cloud_scheduler_job" "jobs" {
 
     oidc_token {
       service_account_email = google_service_account.scheduler.email
-      # The app checks this matches, so a token minted for another service
-      # cannot be replayed here.
-      audience = local.service_url
+      # Must match PORTAL_SCHEDULER_AUDIENCE exactly. Both are the computed
+      # deterministic URL, so they cannot drift apart.
+      audience = local.service_audience
     }
   }
 

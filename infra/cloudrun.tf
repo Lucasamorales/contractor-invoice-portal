@@ -20,8 +20,28 @@
 # conversation to have deliberately, not a default to drift into.
 # ---------------------------------------------------------------------------
 
+locals {
+  service_name = "portal-invoices-${var.environment}"
+
+  # Cloud Run gives a service two URLs. This one is deterministic — name,
+  # project number, region — so it can be computed before the service exists.
+  # The other, with a random hash, cannot, and referencing it from the
+  # service's own environment is a dependency cycle.
+  service_audience = join("", [
+    "https://", local.service_name, "-", data.google_project.this.number,
+    ".", var.region, ".run.app",
+  ])
+
+  # What IAP actually signs into the assertion's aud claim.
+  iap_audience = var.iap_audience != "" ? var.iap_audience : join("", [
+    "/projects/", data.google_project.this.number,
+    "/locations/", var.region,
+    "/services/", local.service_name,
+  ])
+}
+
 resource "google_cloud_run_v2_service" "app" {
-  name     = "portal-invoices-${var.environment}"
+  name     = local.service_name
   project  = var.project_id
   location = var.region
 
@@ -87,17 +107,23 @@ resource "google_cloud_run_v2_service" "app" {
         value = google_service_account.scheduler.email
       }
 
-      # Both are the service's own URL, which does not exist until this
-      # resource does — hence a variable set on the second apply rather than a
-      # reference to the resource itself.
+      # The audience IAP puts in the assertion is a resource path, not the
+      # service URL — confirmed by reading it off a real rejected assertion:
+      #   /projects/{number}/locations/{region}/services/{name}
+      #
+      # Every part of that is known before the service exists, so it is
+      # computed rather than fed back in after the first apply. var.iap_audience
+      # overrides it if Google ever changes the shape.
       env {
         name  = "PORTAL_IAP_AUDIENCE"
-        value = var.iap_audience
+        value = local.iap_audience
       }
 
+      # Scheduler's OIDC tokens are minted with the service URL as their
+      # audience (see scheduler.tf), which is a different thing entirely.
       env {
         name  = "PORTAL_SCHEDULER_AUDIENCE"
-        value = var.iap_audience
+        value = var.iap_audience != "" ? var.iap_audience : local.service_audience
       }
 
       # R-PER-06 shuts submission before the 24th, which makes the thing
