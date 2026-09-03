@@ -1,0 +1,22 @@
+# Copy to staging.tfvars / production.tfvars. Not secrets — but not committed
+# either, because the member lists are people's addresses.
+
+project_id  = "your-gcp-project"
+environment = "staging"
+region      = "europe-west2"
+
+# Pin a tag or digest. Never :latest.
+image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal:0.1.0"
+
+# CLAUDE.md §2.1: the only people who may see fees.
+finance_emails = [
+  "robin@example.com",
+  "charlie@example.com",
+  "remy@example.com",
+]
+
+# Who may get through IAP at all. For staging this should be the developers
+# only (R-ENV-04); for production, everyone who invoices.
+iap_members = [
+  "user:leo@example.com",
+]

@@ -198,6 +198,16 @@ settled with Robin.
 
 - ~~**Dockerfile**~~ — **done.** Two stages, non-root, and it renders a
   one-page A4 invoice inside the image. CI builds it on every push.
+- ~~**Terraform**~~ — **written, not applied.** `infra/` now covers the bucket,
+  the service accounts, the per-secret grants, the Cloud Run service with IAP,
+  and all six Scheduler jobs. It has not been validated: there is no
+  `terraform` binary on this machine. Read the first plan properly.
+
+  Two cost decisions are in `infra/README.md`. The larger one: putting IAP
+  behind a load balancer, which is the widely documented arrangement, costs
+  roughly £15–18 a month for the forwarding rule alone and would miss R-ENV-06
+  on its own. `cloudrun.tf` puts IAP directly on the Cloud Run service, which
+  is free but serves from `*.run.app` rather than a custom domain.
 - **Cloud Run service** for each environment, scale to zero.
 - **Cloud IAP** in front of it, and the `iap_audience` value that only exists
   once the backend service does. Until then nobody can actually log in.

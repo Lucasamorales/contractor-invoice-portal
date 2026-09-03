@@ -2,9 +2,10 @@
 
 R-ENV-05: all infrastructure in Terraform, no console clicking.
 
-**Nothing here has been applied.** Applying it creates real resources, and one
-of them costs money — see "The one cost decision" below. That is a call for
-Leo, not for a build step.
+**Nothing here has been applied.** Applying it creates real resources, and two
+of them cost money — see "Two cost decisions" below. Those are calls for Leo,
+not for a build step. None of it has been through `terraform validate` either;
+see "Unvalidated".
 
 ## What this creates today
 
@@ -16,20 +17,43 @@ Leo, not for a build step.
 | Object admin on that bucket only | The application reads and writes its own files and nothing else |
 | Token creator on itself | Signing V4 URLs without a private key on disk (R-STO-03) |
 | Secret accessor, per secret | R-SEC-02, granted individually so staging cannot read production's credentials |
+| Cloud Run service | Scale to zero, secrets referenced not inlined, IAP in front |
+| Six Cloud Scheduler jobs | R-JOB-01..06, each with its own OIDC token |
+| A separate scheduler service account | A compromised scheduler must not be able to read the bank columns |
 
 ## What is not here yet
 
-- **Cloud Run and Cloud IAP.** These need decisions only you can make: the
-  OAuth consent screen, the IAP brand, and the finance IAM group. Until they
-  exist nobody can log in at all, and `PORTAL_IAP_AUDIENCE` cannot be filled in
-  because the value does not exist until the backend service does.
-- **Cloud Scheduler jobs.** The six endpoints exist and verify their tokens;
-  the jobs that call them need the service URL first.
 - **The Drive folder** (R-STO-05). Which Shared Drive has not been decided.
+- **Artifact Registry.** The image has to live somewhere before Cloud Run can
+  pull it.
 
-## The one cost decision
+## Two cost decisions
 
-R-ENV-06 targets £0/month, and this is the first thing that will not be zero.
+R-ENV-06 targets £0/month. Two things here are not zero, and both are yours
+to decide rather than mine to assume.
+
+### 1. The load balancer you do not need
+
+This is the biggest single cost decision in the project, and it is easy to get
+wrong by following the common documentation.
+
+IAP in front of Cloud Run can be arranged two ways:
+
+1. **IAP directly on the Cloud Run service.** No load balancer. Free.
+2. **A global external HTTPS load balancer** with a serverless NEG and IAP on
+   the backend service. This is the older and far more widely documented
+   arrangement, and the forwarding rule alone is roughly **£15–18 a month**
+   whether or not anybody uses it.
+
+`cloudrun.tf` uses (1). Option (2) would miss the £0 target of R-ENV-06 on its
+own, before a single invoice is stored, for sixteen people invoicing once a
+month.
+
+The trade: (1) serves from a `*.run.app` URL rather than
+`invoices.example.com`. If the custom domain matters more than the
+money, that is a decision to take deliberately rather than drift into.
+
+### 2. The bucket's region
 
 GCS's always-free allowance covers **US regions only**. The bucket defaults to
 `europe-west2` because the PDFs carry every person's full account number and
@@ -37,34 +61,69 @@ legal name, and keeping those in the EU is deliberate.
 
 The actual bill at this volume is tiny — sixteen invoices a month of roughly
 20KB, plus thirty compressed backups of about 3KB, is well under a penny a
-month in storage. But it is not zero, and R-ENV-06 says to raise that rather
-than provision it quietly.
+month. But it is not zero.
 
 If £0 matters more than EU residency, set `region = "us-east1"` and it falls
 inside the free tier. **Ask Robin before doing that** — it changes where
-sixteen people's bank details are stored.
+sixteen people's bank details are stored. My recommendation is to keep the EU
+and pay the pennies.
+
+## Unvalidated
+
+There is no `terraform` binary on the machine this was written on, so none of
+it has been through `terraform validate` or `plan`. Variable references are
+checked and the resource shapes are written from the documented schemas, but
+**read the first plan carefully** rather than trusting it. In particular:
+
+- `iap_enabled` on `google_cloud_run_v2_service` is comparatively new; if the
+  provider rejects it, that is the attribute to look up first.
+- The IAP audience for direct-on-Cloud-Run is the service URL, whereas behind a
+  load balancer it is `/projects/<number>/global/backendServices/<id>`. Check
+  the `aud` claim on the first real login. `app/auth.py` verifies the audience,
+  so a wrong value fails closed rather than letting anybody in.
 
 ## Running it
 
-```bash
-cd infra && terraform init
+Terraform is not installed on Leo's machine yet:
+
+```powershell
+winget install --id HashiCorp.Terraform -e
 ```
 
-```bash
-terraform plan -var project_id=your-gcp-project -var environment=staging
+Copy `terraform.tfvars.example` to `staging.tfvars` and fill it in. Then, in
+**PowerShell** — note `;` rather than `&&`, which Windows PowerShell 5.1 does
+not accept:
+
+```powershell
+cd infra; terraform init
 ```
 
-Read the plan. Then, if it is what you want:
-
-```bash
-terraform apply -var project_id=your-gcp-project -var environment=staging
+```powershell
+terraform plan -var-file=staging.tfvars
 ```
 
-Afterwards, set the two outputs it prints as `PORTAL_GCS_BUCKET` and
-`PORTAL_SERVICE_ACCOUNT_EMAIL`.
+Read the plan properly. Then, if it is what you want:
 
-Do staging first, use it for a cycle, and only then run the same commands with
-`-var environment=production`.
+```powershell
+terraform apply -var-file=staging.tfvars
+```
+
+Afterwards set the outputs it prints: `PORTAL_GCS_BUCKET`,
+`PORTAL_SERVICE_ACCOUNT_EMAIL`, `PORTAL_SCHEDULER_SERVICE_ACCOUNT`, and the service
+URL as both `PORTAL_IAP_AUDIENCE` and `PORTAL_SCHEDULER_AUDIENCE`.
+
+Do staging first, use it for a cycle, and only then the same with
+`production.tfvars`.
+
+### Before the first apply
+
+- Enable the APIs: `run.googleapis.com`, `iap.googleapis.com`,
+  `cloudscheduler.googleapis.com`, `artifactregistry.googleapis.com`.
+- Build and push the image somewhere Cloud Run can pull it, and put that
+  reference in `image`.
+- IAP needs an OAuth consent screen configured for the project. That is a
+  one-off in the console and cannot sensibly be Terraformed for an internal
+  app.
 
 ## State
 
