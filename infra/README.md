@@ -68,19 +68,33 @@ inside the free tier. **Ask Robin before doing that** — it changes where
 sixteen people's bank details are stored. My recommendation is to keep the EU
 and pay the pennies.
 
-## Unvalidated
+## Validated, not applied
 
-There is no `terraform` binary on the machine this was written on, so none of
-it has been through `terraform validate` or `plan`. Variable references are
-checked and the resource shapes are written from the documented schemas, but
-**read the first plan carefully** rather than trusting it. In particular:
+`terraform init`, `fmt` and `validate` all pass against provider v7.46.0.
+`plan` has **not** been run: it needs live GCP credentials and an image that
+does not exist yet.
 
-- `iap_enabled` on `google_cloud_run_v2_service` is comparatively new; if the
-  provider rejects it, that is the attribute to look up first.
-- The IAP audience for direct-on-Cloud-Run is the service URL, whereas behind a
-  load balancer it is `/projects/<number>/global/backendServices/<id>`. Check
-  the `aud` claim on the first real login. `app/auth.py` verifies the audience,
-  so a wrong value fails closed rather than letting anybody in.
+Validation found two real bugs that would each have cost an afternoon:
+
+1. **`iap_enabled` does not exist in provider 6.x.** `versions.tf` requires
+   `~> 7.0` for exactly this reason. On v6 the only way to get IAP is the load
+   balancer, with the bill described above.
+2. **The ingress setting was wrong.** It was
+   `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`, which is right when IAP sits
+   behind a load balancer and makes the service unreachable when it does not.
+   It is now `INGRESS_TRAFFIC_ALL`; what keeps people out is `iap_enabled`
+   plus the IAM, not the ingress setting.
+
+Two things still to confirm on the first real apply, because no amount of
+validation can check them:
+
+- **The IAP audience.** Direct-on-Cloud-Run it is the service URL; behind a load
+  balancer it is `/projects/<number>/global/backendServices/<id>`. Check the
+  `aud` claim on the first login. `app/auth.py` verifies the audience, so a
+  wrong value fails closed rather than letting anybody in.
+- **Whether `roles/run.invoker` is the right grant for end users** with direct
+  IAP, or whether they also need `roles/iap.httpsResourceAccessor`. If people
+  can sign in but then get a 403, that is the first thing to add.
 
 ## Running it
 

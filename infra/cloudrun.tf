@@ -25,8 +25,14 @@ resource "google_cloud_run_v2_service" "app" {
   project  = var.project_id
   location = var.region
 
-  # Only IAP may reach it. Not the internet, and not other services.
-  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  # Requests arrive through IAP's own frontend, so the ingress setting must
+  # allow them. Restricting to internal-load-balancer would be right if IAP sat
+  # behind one; with IAP directly on the service there is no load balancer, and
+  # that setting would make the service unreachable rather than secure.
+  #
+  # What actually keeps people out is iap_enabled plus the IAM below: an
+  # unauthenticated request never reaches the container.
+  ingress = "INGRESS_TRAFFIC_ALL"
 
   # IAP terminates authentication; the app writes no login code (R-ACC-01).
   iap_enabled = true
@@ -130,6 +136,25 @@ resource "google_cloud_run_v2_service" "app" {
     google_secret_manager_secret_iam_member.database_url,
     google_secret_manager_secret_iam_member.bank_encryption_key,
   ]
+}
+
+# IAP forwards requests as its own service agent, so that agent needs to be
+# allowed to invoke the service. Without this every request is refused after
+# the person has already signed in, which is a confusing way to be broken.
+data "google_project" "this" {
+  project_id = var.project_id
+}
+
+resource "google_cloud_run_v2_service_iam_member" "iap_service_agent" {
+  project  = var.project_id
+  location = google_cloud_run_v2_service.app.location
+  name     = google_cloud_run_v2_service.app.name
+  role     = "roles/run.invoker"
+  member = join("", [
+    "serviceAccount:service-",
+    data.google_project.this.number,
+    "@gcp-sa-iap.iam.gserviceaccount.com",
+  ])
 }
 
 # Who may get through IAP (R-ACC-01, R-ENV-04).

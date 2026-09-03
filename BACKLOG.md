@@ -198,10 +198,14 @@ settled with Robin.
 
 - ~~**Dockerfile**~~ — **done.** Two stages, non-root, and it renders a
   one-page A4 invoice inside the image. CI builds it on every push.
-- ~~**Terraform**~~ — **written, not applied.** `infra/` now covers the bucket,
-  the service accounts, the per-secret grants, the Cloud Run service with IAP,
-  and all six Scheduler jobs. It has not been validated: there is no
-  `terraform` binary on this machine. Read the first plan properly.
+- ~~**Terraform**~~ — **written and validated, not applied.** `infra/` covers
+  the bucket, the service accounts, the per-secret grants, the Cloud Run
+  service with IAP, and all six Scheduler jobs. `init`, `fmt` and `validate`
+  pass. `plan` needs live credentials and an image that does not exist yet.
+
+  Validating it found two bugs: `iap_enabled` does not exist before provider
+  v7, and the ingress was set to internal-load-balancer, which would have made
+  the service unreachable given there is no load balancer.
 
   Two cost decisions are in `infra/README.md`. The larger one: putting IAP
   behind a load balancer, which is the widely documented arrangement, costs
