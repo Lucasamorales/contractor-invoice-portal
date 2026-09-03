@@ -22,6 +22,11 @@ dependencies = [
     # Hand-rolling V4 signed URLs against the REST API is about a hundred
     # lines of signing code that must be exactly right (R-STO-03).
     "google-cloud-storage>=2.19",
+    # Receipts (R-WIZ-04, R-SEC-10): reads the magic bytes, strips EXIF so a
+    # phone photo does not carry the GPS coordinates of where it was taken,
+    # and converts HEIC to something Robin can actually open.
+    "pillow>=11.0",
+    "pillow-heif>=0.21",
 ]
 
 [dependency-groups]

@@ -31,6 +31,24 @@ resource "google_storage_bucket" "files" {
     }
   }
 
+  # A receipt is uploaded before its invoice exists, so it waits under
+  # pending-receipts/ and moves to receipts/ on submit (R-WIZ-04). Anything
+  # still here a week later belongs to a wizard somebody abandoned. Sweeping it
+  # here means no cleanup job to write, schedule or forget about.
+  #
+  # Its own top-level prefix on purpose. Lifecycle prefixes are literal with no
+  # wildcard, so a rule for receipts/{person}/pending/ would have to match
+  # "receipts/" — and would delete every attached receipt in the bucket.
+  lifecycle_rule {
+    condition {
+      age            = 7
+      matches_prefix = ["pending-receipts/"]
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
   # Old versions of a replaced object do not need keeping indefinitely.
   lifecycle_rule {
     condition {
