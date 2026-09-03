@@ -62,6 +62,16 @@ def verify_iap_assertion(assertion: str, settings: Settings) -> tuple[str, str]:
         )
     except (GoogleAuthError, ValueError) as exc:
         # The assertion itself is never logged: it is a bearer credential.
+        # The audience it carries is an identifier, and getting it wrong is the
+        # single most likely reason nobody can log in on a fresh deployment, so
+        # it is worth saying out loud rather than leaving as a mystery 401.
+        logger.warning(
+            "IAP assertion rejected (%s). It carried audience %r; this service "
+            "expects %r.",
+            type(exc).__name__,
+            _unverified_audience(assertion),
+            settings.iap_audience,
+        )
         raise IdentityError(f"IAP assertion rejected: {type(exc).__name__}") from exc
 
     if claims.get("iss") != IAP_ISSUER:
@@ -77,6 +87,23 @@ def verify_iap_assertion(assertion: str, settings: Settings) -> tuple[str, str]:
         raise IdentityError("caller is not on the Your Company workspace domain")
 
     return email, subject
+
+
+def _unverified_audience(assertion: str) -> str:
+    """Read the ``aud`` claim without verifying anything.
+
+    For diagnostics only, and used only on a path that has already decided to
+    refuse. Nothing is trusted from it.
+    """
+    import base64
+    import json
+
+    try:
+        payload = assertion.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return str(json.loads(base64.urlsafe_b64decode(payload)).get("aud", ""))
+    except (ValueError, IndexError, KeyError):
+        return "<unreadable>"
 
 
 async def current_identity(

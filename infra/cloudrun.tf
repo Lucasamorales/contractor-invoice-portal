@@ -87,6 +87,28 @@ resource "google_cloud_run_v2_service" "app" {
         value = google_service_account.scheduler.email
       }
 
+      # Both are the service's own URL, which does not exist until this
+      # resource does — hence a variable set on the second apply rather than a
+      # reference to the resource itself.
+      env {
+        name  = "PORTAL_IAP_AUDIENCE"
+        value = var.iap_audience
+      }
+
+      env {
+        name  = "PORTAL_SCHEDULER_AUDIENCE"
+        value = var.iap_audience
+      }
+
+      # R-PER-06 shuts submission before the 24th, which makes the thing
+      # untestable for three weeks in four. Staging can force it open;
+      # assert_production_ready refuses to let production start with it, so
+      # this cannot cross over even if someone sets the variable.
+      env {
+        name  = "PORTAL_WINDOW_ALWAYS_OPEN"
+        value = var.window_always_open ? "true" : "false"
+      }
+
       # Secrets are referenced, never inlined (R-SEC-02). Their values are not
       # in this file and not in the state.
       env {

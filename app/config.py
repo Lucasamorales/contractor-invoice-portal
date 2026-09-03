@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import BaseModel, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Environment(Enum):
@@ -65,7 +66,13 @@ class Settings(BaseSettings):
     iap_audience: str = ""
     workspace_domain: str = "example.com"
     # The finance group, checked in the app as well as at IAP (defence in depth).
-    finance_emails: tuple[str, ...] = ()
+    #
+    # NoDecode because pydantic-settings otherwise tries to JSON-parse any
+    # complex type coming from the environment, before field validators run.
+    # It arrives as a comma-separated list, which is not JSON, and the
+    # service refuses to start. Found by deploying, not by testing: no local
+    # .env sets this.
+    finance_emails: Annotated[tuple[str, ...], NoDecode] = ()
 
     # --- Data ------------------------------------------------------------------
     database_url: SecretStr = SecretStr("")
@@ -78,6 +85,11 @@ class Settings(BaseSettings):
     # 1 kudo = £20 (R-KUD-04). Config, never a literal in the code that uses it.
     kudos_rate_pence: int = 2000
     payment_terms_days: int = 14  # R-PDF-10
+    # Staging only. R-PER-06 shuts the submit action before the 24th, which
+    # is right in production and makes the thing untestable for three weeks
+    # of every month. Production refuses to start with this on — see
+    # assert_production_ready — so it cannot leak across.
+    window_always_open: bool = False
     # An expense above this is flagged in the admin period view (R-ADM-04).
     # A threshold, not a limit: it asks Robin to look, it does not refuse.
     expense_flag_threshold_pence: int = 20000
@@ -174,6 +186,15 @@ def assert_production_ready(settings: Settings) -> None:
     missing = sorted(name for name, value in required.items() if not value)
     if missing:
         raise ConfigError(f"missing required configuration: {', '.join(missing)}")
+
+    if settings.window_always_open:
+        # A staging convenience that would silently let somebody invoice for
+        # the wrong month in production. Refusing to start is the only way to
+        # be sure it never ships.
+        raise ConfigError(
+            "window_always_open is a staging-only setting and must not be set "
+            "in production"
+        )
 
 
 class MailMode(Enum):

@@ -231,3 +231,12 @@ button.link {
 
 .form.inline { margin-top: 12px; }
 .form.inline .field { margin-bottom: 8px; }
+
+.staging-banner {
+  margin: 0;
+  padding: 8px 24px;
+  background: #4a3b12;
+  color: #ffe9a8;
+  font-size: 0.86rem;
+  text-align: center;
+}

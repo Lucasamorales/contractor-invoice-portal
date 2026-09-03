@@ -20,3 +20,7 @@ finance_emails = [
 iap_members = [
   "user:leo@example.com",
 ]
+
+# Staging only. Forces the submission window open for testing; production
+# refuses to start with it set.
+window_always_open = false

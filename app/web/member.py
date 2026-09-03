@@ -107,14 +107,19 @@ def _base_context(
     settings: Settings,
 ) -> dict[str, object]:
     now = _now()
+    # R-PER-06 shuts submission before the 24th. Staging can override that, or
+    # the whole thing is untestable for three weeks in four; production refuses
+    # to start with the override on.
+    open_now = can_submit(now) or settings.window_always_open
     return {
         "request": request,
         "person": person,
         "period": Period.containing(now),
         "is_finance": identity.is_finance,
         "csrf_token": csrf.issue(settings, identity.email),
-        "window_open": can_submit(now),
-        "window_message": None if can_submit(now) else closed_message(now),
+        "window_open": open_now,
+        "window_message": None if open_now else closed_message(now),
+        "window_forced": settings.window_always_open and not can_submit(now),
     }
 
 

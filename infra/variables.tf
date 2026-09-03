@@ -73,3 +73,36 @@ variable "iap_members" {
   type        = list(string)
   default     = []
 }
+
+variable "window_always_open" {
+  description = <<-EOT
+    Staging only. Forces the submission window open so the wizard can be tested
+    on any day of the month rather than only the 24th to the 28th.
+
+    The application refuses to start in production with this set, so a stray
+    true here fails loudly rather than quietly letting somebody invoice for the
+    wrong month.
+  EOT
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !(var.window_always_open && var.environment == "production")
+    error_message = "window_always_open is staging only (R-PER-06)."
+  }
+}
+
+variable "iap_audience" {
+  description = <<-EOT
+    The audience the IAP assertion carries, which app/auth.py checks.
+
+    Chicken and egg: it is derived from the service, which does not exist until
+    the first apply. So the first apply leaves it empty — nobody can log in
+    yet — and the second sets it to the service_url the first one printed.
+
+    If a login is refused after that, the logs say what audience the assertion
+    actually carried. Set it to that. A wrong value fails closed.
+  EOT
+  type        = string
+  default     = ""
+}

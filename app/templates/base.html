@@ -16,6 +16,13 @@
     </nav>
   </header>
 
+  {% if window_forced %}
+    <p class="staging-banner">
+      Staging: the submission window is forced open. In production this would
+      be shut until the 24th.
+    </p>
+  {% endif %}
+
   <main>
     {% block steps %}{% endblock %}
     {% block content %}{% endblock %}
