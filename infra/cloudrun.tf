@@ -109,6 +109,18 @@ resource "google_cloud_run_v2_service" "app" {
         }
       }
 
+      # Without this every form is refused, so the service is unusable rather
+      # than insecure if it is missing (R-SEC-11).
+      env {
+        name = "PORTAL_CSRF_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = data.google_secret_manager_secret.csrf_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       resources {
         limits = {
           # WeasyPrint is the memory-hungry part; 512Mi renders an invoice
@@ -132,9 +144,11 @@ resource "google_cloud_run_v2_service" "app" {
     timeout = "60s"
   }
 
+  # The service must not start before it can read what it needs.
   depends_on = [
     google_secret_manager_secret_iam_member.database_url,
     google_secret_manager_secret_iam_member.bank_encryption_key,
+    google_secret_manager_secret_iam_member.csrf_secret,
   ]
 }
 

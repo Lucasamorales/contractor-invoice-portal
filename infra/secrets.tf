@@ -15,6 +15,13 @@ data "google_secret_manager_secret" "bank_encryption_key" {
   secret_id = "portal-bank-encryption-key-${var.environment}"
 }
 
+# Signs the CSRF token on every form (R-SEC-11). Separate from the bank key: a
+# token signer and a payload cipher should not share a secret.
+data "google_secret_manager_secret" "csrf_secret" {
+  project   = var.project_id
+  secret_id = "portal-csrf-secret-${var.environment}"
+}
+
 # Granted per secret, never project-wide. The staging service must not be able
 # to read the production database's credentials (R-ENV-01, R-ENV-04).
 resource "google_secret_manager_secret_iam_member" "database_url" {
@@ -27,6 +34,13 @@ resource "google_secret_manager_secret_iam_member" "database_url" {
 resource "google_secret_manager_secret_iam_member" "bank_encryption_key" {
   project   = var.project_id
   secret_id = data.google_secret_manager_secret.bank_encryption_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.app.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "csrf_secret" {
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.csrf_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.app.email}"
 }
