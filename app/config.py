@@ -104,6 +104,9 @@ class Settings(BaseSettings):
 
     # --- External services -----------------------------------------------------
     gcs_bucket: str = ""
+    # Cloud Run's attached identity. Needed to sign URLs through the IAM
+    # API rather than with a key file (CLAUDE.md §2.7).
+    service_account_email: str = ""
     kudos_sheet_id: str = ""
     postmark_token: SecretStr = SecretStr("")
     mail_from: str = ""

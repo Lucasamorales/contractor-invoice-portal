@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db.session import get_session
-from app.services import jobs, mailer
+from app.services import backup, jobs, mailer
 from app.services.storage import ObjectStore
 from app.transport import HttpxRequest
 from app.web.member import get_store
@@ -169,24 +169,34 @@ async def run_sync_kudos(
 
 
 @router.post("/backup")
-async def run_backup(caller: Scheduler, settings: Config) -> dict[str, object]:
-    """R-JOB-05. Nightly pg_dump to GCS, 30 days retained.
+async def run_backup(
+    caller: Scheduler,
+    settings: Config,
+    store: Annotated[ObjectStore, Depends(get_store)],
+) -> dict[str, object]:
+    """R-JOB-05. Nightly pg_dump to GCS, thirty days retained.
 
-    Not built: it needs the bucket. This is the backup we rely on rather than
-    Neon's history, so it should not be left long.
+    This is the backup we rely on, not Neon's history. It refuses rather than
+    reporting success when there is nowhere durable to write, because a backup
+    job that quietly writes to a container's filesystem is worse than none: it
+    looks like it is working.
     """
     del caller
     if not settings.gcs_bucket:
-        return {
-            "job": "backup",
-            "queued": 0,
-            "skipped": 0,
-            "detail": "no bucket configured; nothing backed up",
-        }
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="The backup job is not built yet.",
-    )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No bucket configured, so there is nowhere durable to back up to.",
+        )
+    try:
+        report = backup.run(settings=settings, store=store)
+    except backup.BackupError as exc:
+        # Always worth a human's attention: this is the only backup there is.
+        logger.error("backup failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The backup did not run.",
+        ) from exc
+    return report.as_dict()
 
 
 @router.post("/drive-mirror")

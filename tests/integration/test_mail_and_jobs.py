@@ -565,12 +565,18 @@ def test_a_verified_scheduler_can_run_the_jobs(
     try:
         with TestClient(app) as client:
             body = client.post("/tasks/outbox").json()
-            assert body["job" if "job" in body else "sent"] is not None
+            assert body["sent"] == 0  # nothing queued in this test
 
-            # The unbuilt jobs say so rather than reporting success.
-            for path in ("/tasks/sync-kudos", "/tasks/backup", "/tasks/drive-mirror"):
+            # The jobs that are not configured yet say so rather than
+            # reporting success.
+            for path in ("/tasks/sync-kudos", "/tasks/drive-mirror"):
                 body = client.post(path).json()
                 assert body["queued"] == 0
                 assert "no " in body["detail"]
+
+            # The backup refuses outright with nowhere durable to write. A
+            # backup job that quietly writes to a container filesystem is worse
+            # than none, because it looks like it is working (R-JOB-05).
+            assert client.post("/tasks/backup").status_code == 503
     finally:
         app.dependency_overrides.clear()

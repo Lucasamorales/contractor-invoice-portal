@@ -71,13 +71,20 @@ The largest remaining block. Roughly in dependency order.
 
 ### 3.1 Storage (R-STO-01 … R-STO-04)
 
-- Create the private GCS bucket in Terraform: uniform bucket-level access,
-  versioning on, no public objects.
-- Replace `LocalObjectStore` with a GCS implementation. The interface the
-  submit path uses already exists in `app/services/storage.py`, so this is one
-  class and a dependency override, not a refactor.
-- V4 signed URLs, TTL ≤ 15 minutes, never logged and never emailed.
-- **Not blocked.** Can start today.
+**The code is done.** `GcsObjectStore` reads, writes, lists, deletes and signs
+V4 URLs, capped at fifteen minutes where the URL is made. A URI naming a
+different bucket is refused. `build_store` falls back to local only when no
+bucket is configured, and production refuses to start without one.
+
+**The bucket is not created.** `infra/` has the Terraform for it —
+uniform access, versioning, public access prevention, lifecycle rules, and a
+service account with object access to that bucket alone plus per-secret
+accessor grants.
+
+**Waiting on you to run `terraform apply`**, because it provisions real
+resources and one costs money (see `infra/README.md` — an EU bucket is outside
+the always-free tier, which covers US regions only). Pennies a month, but
+R-ENV-06 says raise it rather than provision quietly.
 
 ### 3.2 Mail (R-SUB-06 … R-SUB-08, R-DATA-10)
 
@@ -112,11 +119,18 @@ What remains per job:
 | `remind` | 24th and 27th | done; delivery needs 1.2 |
 | `summary` | 29th | done; delivery needs 1.2 |
 | `outbox` | every 5 minutes | done; delivery needs 1.2 |
-| `backup` | nightly `pg_dump` to GCS | **the job body (3.1)** |
+| `backup` | nightly `pg_dump` to GCS | done; needs the bucket (3.1) |
 | `drive-mirror` | PDFs into the period folder | **the job body (1.3, 3.1)** |
 
-`backup` is the one to do next after the bucket exists. R-JOB-05 says this is
-the backup we rely on, not Neon's history, and there is currently none.
+`backup` is written and proven: it dumped the real staging database from
+inside the container over `verify-full` TLS — 17KB of SQL, all twelve tables,
+compressed to 2.9KB — and prunes anything older than thirty days, touching only
+objects whose names match the backup pattern exactly. It refuses rather than
+reporting success when there is no bucket, because a backup job that quietly
+writes to a container's filesystem is worse than none: it looks like it works.
+
+**There is still no backup running**, and there will not be until the bucket
+exists and a Scheduler job calls it.
 
 ### 3.5 The Drive mirror (R-STO-05)
 

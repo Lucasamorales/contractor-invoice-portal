@@ -32,6 +32,9 @@ FROM python:3.12-slim-bookworm AS runtime
 #   template is set in, so the PDF matches without shipping a licensed font.
 # tzdata: Europe/London, which the period window is evaluated in (R-PER-01).
 # ca-certificates: sslmode=verify-full needs a trust store (R-SEC-07).
+# postgresql-client-18: pg_dump for the nightly backup (R-JOB-05). It comes
+#   from PGDG rather than Debian, because bookworm ships 15 and pg_dump
+#   refuses to dump a server newer than itself — Neon runs 18.
 RUN apt-get update && apt-get install --no-install-recommends -y \
         libpango-1.0-0 \
         libpangoft2-1.0-0 \
@@ -41,6 +44,16 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         fonts-crosextra-carlito \
         tzdata \
         ca-certificates \
+        curl \
+        gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install --no-install-recommends -y postgresql-client-18 \
+    && apt-get purge -y curl gnupg \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Not root. Cloud Run does not require it, which is not a reason to run as root.
