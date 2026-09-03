@@ -198,6 +198,15 @@ resource "google_cloud_run_v2_service_iam_member" "iap_service_agent" {
 # Everyone on the Workspace domain: all sixteen invoice, including Robin, who
 # uses the member wizard for his own invoice like everybody else (R-ACC-08).
 # /admin is gated separately, by the app, against PORTAL_FINANCE_EMAILS.
+#
+# Two roles, and both are needed. They are not redundant:
+#
+#   run.invoker             lets the request reach the container at all.
+#   iap.httpsResourceAccessor  is what IAP itself checks for the human.
+#
+# With only the first, IAP refuses before the app ever sees the request and the
+# person gets "You don't have access" with no clue why. That is how this failed
+# the first time.
 resource "google_cloud_run_v2_service_iam_member" "iap_access" {
   for_each = toset(var.iap_members)
 
@@ -206,6 +215,19 @@ resource "google_cloud_run_v2_service_iam_member" "iap_access" {
   name     = google_cloud_run_v2_service.app.name
   role     = "roles/run.invoker"
   member   = each.value
+}
+
+# Granted on the IAP resource, not on the Cloud Run service: the run service
+# does not accept iap.httpsResourceAccessor at all, and trying it there gets a
+# flat "Role is not supported for this resource".
+resource "google_iap_web_cloud_run_service_iam_member" "iap_web_access" {
+  for_each = toset(var.iap_members)
+
+  project                = var.project_id
+  location               = google_cloud_run_v2_service.app.location
+  cloud_run_service_name = google_cloud_run_v2_service.app.name
+  role                   = "roles/iap.httpsResourceAccessor"
+  member                 = each.value
 }
 
 output "service_url" {
