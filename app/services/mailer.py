@@ -321,8 +321,21 @@ def _invoice_submitted(
     lines.append("The invoice is attached.")
 
     attachments: list[Attachment] = []
+    missing: list[str] = []
     if store is not None:
-        attachments.extend(_invoice_attachments(session, payload, store))
+        attachments, missing = _invoice_attachments(session, payload, store)
+
+    if missing:
+        # Said out loud rather than left to a log nobody reads. Robin can ask
+        # for a file; he cannot ask for an email he never got.
+        lines += [
+            "",
+            "Could not be attached:",
+            *(f"  {item}" for item in missing),
+            "",
+            "The figures above are complete and correct — only the files are",
+            "missing. Tell Leo.",
+        ]
 
     return Message(
         to=_recipients(payload.get("to_finance"), payload.get("to_person")),
@@ -334,24 +347,41 @@ def _invoice_submitted(
 
 def _invoice_attachments(
     session: Session, payload: dict, store: ObjectStore
-) -> list[Attachment]:
-    """The PDF and any receipts (R-SUB-07)."""
+) -> tuple[list[Attachment], list[str]]:
+    """The PDF and any receipts (R-SUB-07), plus what could not be fetched.
+
+    Nothing in here raises. An invoice that Postgres accepted must reach Robin
+    even if a file is missing: a missing attachment is a thing he can chase,
+    and an email that never arrives is not. What is missing goes in the body so
+    it is visible rather than merely logged.
+    """
     from app.db.models import Expense, Invoice
+
+    attachments: list[Attachment] = []
+    missing: list[str] = []
 
     invoice_id = payload.get("invoice_id")
     if not invoice_id:
-        return []
+        return attachments, missing
     invoice = session.get(Invoice, invoice_id)
-    if invoice is None or not invoice.pdf_uri:
-        return []
+    if invoice is None:
+        return attachments, missing
 
-    out = [
-        Attachment(
-            name=invoice.pdf_uri.rsplit("/", 1)[-1],
-            content=store.get(invoice.pdf_uri),
-            content_type="application/pdf",
-        )
-    ]
+    if invoice.pdf_uri:
+        try:
+            attachments.append(
+                Attachment(
+                    name=invoice.pdf_uri.rsplit("/", 1)[-1],
+                    content=store.get(invoice.pdf_uri),
+                    content_type="application/pdf",
+                )
+            )
+        except StorageError:
+            logger.error("invoice %s: the PDF could not be fetched", invoice.id)
+            missing.append("the invoice PDF")
+    else:
+        missing.append("the invoice PDF")
+
     receipts = session.scalars(
         select(Expense).where(
             Expense.invoice_id == invoice.id, Expense.receipt_uri.is_not(None)
@@ -359,7 +389,7 @@ def _invoice_attachments(
     )
     for expense in receipts:
         try:
-            out.append(
+            attachments.append(
                 Attachment(
                     name=str(expense.receipt_uri).rsplit("/", 1)[-1],
                     content=store.get(str(expense.receipt_uri)),
@@ -367,9 +397,10 @@ def _invoice_attachments(
                 )
             )
         except StorageError:
-            # A missing receipt must not hold up the invoice itself.
-            logger.warning("receipt missing for expense %s", expense.id)
-    return out
+            logger.warning("invoice %s: receipt missing for %s", invoice.id, expense.id)
+            missing.append(f"the receipt for {expense.description}")
+
+    return attachments, missing
 
 
 def _bank_changed(
@@ -486,7 +517,12 @@ def _summary(
         lines.append("Flagged:")
         lines += [f"  {item}" for item in flagged]
         lines.append("")
-    if not missing and not flagged:
+    broken = payload.get("broken") or []
+    if broken:
+        lines.append("NEEDS FIXING — these did not complete:")
+        lines += [f"  {item}" for item in broken]
+        lines.append("")
+    if not missing and not flagged and not broken:
         lines.append("Everyone is in and nothing is flagged.")
     return Message(
         to=_recipients(payload.get("to_finance")),

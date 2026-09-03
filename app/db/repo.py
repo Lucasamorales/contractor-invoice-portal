@@ -7,7 +7,7 @@ an id supplied by a caller (R-ACC-05, R-SEC-06).
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -23,6 +23,7 @@ from app.db.models import (
     InvoiceLine,
     InvoiceStatus,
     Outbox,
+    OutboxStatus,
     Person,
     PersonStatus,
 )
@@ -263,4 +264,38 @@ def expenses_for_invoices(session: Session, invoice_ids: list[uuid.UUID]) -> lis
         return []
     return list(
         session.scalars(select(Expense).where(Expense.invoice_id.in_(invoice_ids)))
+    )
+
+
+def stuck_drafts(session: Session, *, older_than: datetime) -> list[Invoice]:
+    """Invoices that took a number but never finished (R-SUB-09).
+
+    A draft is normal for a few seconds while the PDF renders. One that is
+    still a draft an hour later means the render or the upload failed and
+    nobody retried, and the person is very likely to assume it was sent.
+    """
+    return list(
+        session.scalars(
+            select(Invoice)
+            .where(
+                Invoice.status == InvoiceStatus.DRAFT,
+                Invoice.created_at < older_than,
+            )
+            .order_by(Invoice.created_at)
+        )
+    )
+
+
+def failed_outbox(session: Session) -> list[Outbox]:
+    """Mail that gave up (R-JOB-04).
+
+    Postgres accepted the invoice and Postmark never delivered it. Nothing
+    else in the system would notice.
+    """
+    return list(
+        session.scalars(
+            select(Outbox)
+            .where(Outbox.status == OutboxStatus.FAILED)
+            .order_by(Outbox.created_at)
+        )
     )

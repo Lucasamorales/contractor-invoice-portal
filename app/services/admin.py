@@ -497,3 +497,51 @@ def masked_bank_summary(session: Session, person: Person, cipher: Cipher) -> lis
             }
         )
     return out
+
+
+# --------------------------------------------------------------------------
+# Nothing fails silently
+# --------------------------------------------------------------------------
+
+# A draft is normal for the few seconds a render takes. Beyond this it is
+# stuck, not in progress.
+STUCK_DRAFT_MINUTES = 60
+
+
+@dataclass(frozen=True, slots=True)
+class Attention:
+    """Things that are broken and would otherwise go unnoticed.
+
+    The invoice table looking healthy is not the same as an invoice having
+    arrived. A stuck draft holds a number and was never sent; a failed outbox
+    row means Postgres accepted an invoice that Postmark never delivered.
+    Neither shows up anywhere else, and the period view would count both as
+    received.
+    """
+
+    stuck_drafts: list[Invoice]
+    failed_mail: list
+    unconfirmed_bank: list[BankDetail]
+
+    @property
+    def total(self) -> int:
+        return (
+            len(self.stuck_drafts) + len(self.failed_mail) + len(self.unconfirmed_bank)
+        )
+
+    @property
+    def is_clear(self) -> bool:
+        return self.total == 0
+
+
+def needs_attention(
+    session: Session, *, now: datetime, stuck_after_minutes: int = STUCK_DRAFT_MINUTES
+) -> Attention:
+    """Everything quietly broken, in one place."""
+    return Attention(
+        stuck_drafts=repo.stuck_drafts(
+            session, older_than=now - timedelta(minutes=stuck_after_minutes)
+        ),
+        failed_mail=repo.failed_outbox(session),
+        unconfirmed_bank=repo.unverified_bank_rows(session),
+    )

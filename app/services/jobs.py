@@ -139,6 +139,7 @@ def summary(
     moment = now or datetime.now(UTC)
     period = Period.containing(moment)
     view = admin.period_view(session, period, settings=settings)
+    attention = admin.needs_attention(session, now=moment)
 
     queued = _queue(
         session,
@@ -155,6 +156,18 @@ def summary(
                 f"{row.person.display_name}: "
                 + "; ".join(flag.detail for flag in row.flags)
                 for row in view.flagged
+            ],
+            # R-JOB-03 reconciles what came in. An invoice that is stuck or
+            # whose email never sent looks received from the table alone, so
+            # it is called out here or it is never noticed at all.
+            "broken": [
+                f"invoice {invoice.number} never finished sending "
+                f"(stuck since {invoice.created_at:%d %b %H:%M})"
+                for invoice in attention.stuck_drafts
+            ]
+            + [
+                f"an email gave up after {row.attempts} attempts: {row.kind}"
+                for row in attention.failed_mail
             ],
             "subject": f"Invoices for {period.label}",
         },

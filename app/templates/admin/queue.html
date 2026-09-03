@@ -4,6 +4,39 @@
 <h1>Queue</h1>
 <p class="lead">Anything waiting on somebody.</p>
 
+{% if not attention.is_clear %}
+  <div class="panel blocks">
+    <h2>Needs fixing ({{ attention.total }})</h2>
+    <p class="hint">
+      These do not show up anywhere else. An invoice that never finished, or
+      an email that gave up, still counts as received on the period screen.
+    </p>
+    <ul>
+      {% for invoice in attention.stuck_drafts %}
+        <li>
+          Invoice <strong>{{ invoice.number }}</strong> took a number on
+          {{ invoice.created_at.strftime("%d %b at %H:%M") }} and never
+          finished sending.
+        </li>
+      {% endfor %}
+      {% for row in attention.failed_mail %}
+        <li>
+          An email gave up after {{ row.attempts }} attempts
+          ({{ row.kind }}, queued {{ row.created_at.strftime("%d %b") }}).
+        </li>
+      {% endfor %}
+      {% for bank in attention.unconfirmed_bank %}
+        <li>
+          <a href="/admin/people/{{ bank.person_id }}">
+            {{ bank.account_name or "someone" }}
+          </a>
+          has never confirmed their bank details, so they cannot invoice.
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
 <section>
   <h2>Waiting for a fee ({{ queue.awaiting_fee | length }})</h2>
   <p class="hint">Until a fee is set, these people cannot invoice at all.</p>

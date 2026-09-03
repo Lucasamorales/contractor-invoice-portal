@@ -8,15 +8,32 @@
 {% endif %}
 
 {% if state.existing_invoice %}
-  <div class="panel">
-    <h2>Already sent</h2>
-    <p>
-      Invoice <strong>{{ state.existing_invoice.number }}</strong> for
-      {{ period.label }} has gone to Robin.
-      Total {{ state.existing_invoice.total_pence | gbp }}.
-    </p>
-    <a class="button ghost" href="/me">See your invoices</a>
-  </div>
+  {% if state.existing_invoice.status.value == 'draft' %}
+    {# It holds a number but never finished. Saying "sent" here would be a lie
+       the person only discovers when Robin chases them. #}
+    <div class="panel blocks">
+      <h2>Not quite sent</h2>
+      <p>
+        Invoice <strong>{{ state.existing_invoice.number }}</strong> for
+        {{ period.label }} was started but did not finish. Nothing has gone to
+        Robin yet.
+      </p>
+      <p class="hint">
+        Trying again picks up where it left off and keeps the same number.
+      </p>
+      <a class="button" href="/additional">Try again</a>
+    </div>
+  {% else %}
+    <div class="panel ok">
+      <h2>Already sent</h2>
+      <p>
+        Invoice <strong>{{ state.existing_invoice.number }}</strong> for
+        {{ period.label }} has gone to Robin.
+        Total {{ state.existing_invoice.total_pence | gbp }}.
+      </p>
+      <a class="button ghost" href="/me">See your invoices</a>
+    </div>
+  {% endif %}
 {% else %}
 
   <table class="figures">

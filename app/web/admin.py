@@ -430,6 +430,7 @@ async def queue(
 ) -> HTMLResponse:
     context = _context(request, identity, settings)
     context["queue"] = admin.queue(session, on=_now().date())
+    context["attention"] = admin.needs_attention(session, now=_now())
     return templates.TemplateResponse(
         request=request, name="admin/queue.html", context=context
     )
