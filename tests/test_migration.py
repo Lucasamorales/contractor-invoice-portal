@@ -40,7 +40,12 @@ def downgrade_sql() -> str:
 
 
 def created_tables(sql: str) -> dict[str, set[str]]:
-    """Map each created table to its column names."""
+    """Map each table to its columns, as the whole migration chain leaves it.
+
+    Follows ``ALTER TABLE ... ADD/DROP COLUMN`` as well as ``CREATE TABLE``:
+    the schema is built by a sequence of migrations, and only the end state has
+    to match the models.
+    """
     tables: dict[str, set[str]] = {}
     for match in re.finditer(r"CREATE TABLE (\w+) \((.*?)\n\)", sql, flags=re.DOTALL):
         name, body = match.group(1), match.group(2)
@@ -53,6 +58,12 @@ def created_tables(sql: str) -> dict[str, set[str]]:
                 continue
             columns.add(stripped.split()[0])
         tables[name] = columns
+
+    for name, column in re.findall(r"ALTER TABLE (\w+) ADD COLUMN (\w+)", sql):
+        tables.setdefault(name, set()).add(column)
+    for name, column in re.findall(r"ALTER TABLE (\w+) DROP COLUMN (\w+)", sql):
+        tables.get(name, set()).discard(column)
+
     return tables
 
 

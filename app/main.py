@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import Environment, assert_production_ready, get_settings
-from app.web import admin, member
+from app.web import admin, member, tasks
 from app.web.templates import templates
 
 logging.basicConfig(
@@ -68,6 +68,9 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Admin first: every one of its routes carries the finance check (R-ACC-04).
 app.include_router(admin.router)
 app.include_router(member.router)
+# Outside IAP by necessity: Cloud Scheduler is not a browser. Every route
+# verifies its own OIDC token instead (R-JOB-*).
+app.include_router(tasks.router)
 
 
 @app.middleware("http")

@@ -94,6 +94,14 @@ class Settings(BaseSettings):
     # a token signer and a payload cipher should not share a secret.
     csrf_secret: SecretStr = SecretStr("")
 
+    # --- Cloud Scheduler (R-JOB-*) ---------------------------------------------
+    # The OIDC audience the scheduler jobs are configured with, normally the
+    # service URL, and the service account expected to have signed the token.
+    # Both must be set or /tasks/* refuses: an unauthenticated endpoint that
+    # runs the payroll reminders is worse than one that is switched off.
+    scheduler_audience: str = ""
+    scheduler_service_account: str = ""
+
     # --- External services -----------------------------------------------------
     gcs_bucket: str = ""
     kudos_sheet_id: str = ""

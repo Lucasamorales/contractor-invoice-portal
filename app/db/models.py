@@ -402,7 +402,10 @@ class Outbox(Base):
     """
 
     __tablename__ = "outbox"
-    __table_args__ = (Index("ix_outbox_status_created", "status", "created_at"),)
+    __table_args__ = (
+        Index("ix_outbox_status_created", "status", "created_at"),
+        Index("ix_outbox_due", "status", "next_attempt_at"),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     kind: Mapped[str] = mapped_column(String(60), nullable=False)
@@ -414,6 +417,9 @@ class Outbox(Base):
     )
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(Text)
+    # When the dispatcher may next try this row. R-JOB-04 wants exponential
+    # backoff, and backoff needs somewhere to say "not before". NULL means now.
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=_now
     )
