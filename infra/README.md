@@ -2,10 +2,9 @@
 
 R-ENV-05: all infrastructure in Terraform, no console clicking.
 
-**Nothing here has been applied.** Applying it creates real resources, and two
-of them cost money — see "Two cost decisions" below. Those are calls for Leo,
-not for a build step. None of it has been through `terraform validate` either;
-see "Unvalidated".
+**Partly applied.** The APIs and the Artifact Registry repository exist; the
+image is pushed. The service, the bucket and the scheduler jobs are planned but
+not created — `terraform plan` shows 18 to add, cleanly.
 
 ## What this creates today
 
@@ -24,8 +23,26 @@ see "Unvalidated".
 ## What is not here yet
 
 - **The Drive folder** (R-STO-05). Which Shared Drive has not been decided.
-- **Artifact Registry.** The image has to live somewhere before Cloud Run can
-  pull it.
+
+## The chicken and egg
+
+Cloud Run cannot start without an image, and an image cannot be pushed without
+a repository. So the order is:
+
+```powershell
+terraform apply "-var-file=staging.tfvars" "-target=google_project_service.required"
+```
+
+```powershell
+terraform apply "-var-file=staging.tfvars" "-target=google_artifact_registry_repository.images"
+```
+
+Build and push, put the digest in `staging.tfvars`, then apply the rest. Both
+targeted applies have been run already; the repository exists and holds
+`invoice-portal:0.1.0` at about 139MB.
+
+Note `-target` is not for routine use. It is right here because the dependency
+genuinely runs outside Terraform.
 
 ## Two cost decisions
 
@@ -98,28 +115,26 @@ validation can check them:
 
 ## Running it
 
-Terraform is not installed on Leo's machine yet:
+Terraform is installed (v1.15.8). Two PowerShell quirks, both of which will
+waste your afternoon otherwise:
 
-```powershell
-winget install --id HashiCorp.Terraform -e
-```
+- `&&` is not a statement separator in Windows PowerShell 5.1. Use `;`.
+- `-var-file=x` gets split on the `=`. **Quote the whole argument.**
 
-Copy `terraform.tfvars.example` to `staging.tfvars` and fill it in. Then, in
-**PowerShell** — note `;` rather than `&&`, which Windows PowerShell 5.1 does
-not accept:
+`staging.tfvars` already exists and is filled in.
 
 ```powershell
 cd infra; terraform init
 ```
 
 ```powershell
-terraform plan -var-file=staging.tfvars
+terraform plan "-var-file=staging.tfvars"
 ```
 
 Read the plan properly. Then, if it is what you want:
 
 ```powershell
-terraform apply -var-file=staging.tfvars
+terraform apply "-var-file=staging.tfvars"
 ```
 
 Afterwards set the outputs it prints: `PORTAL_GCS_BUCKET`,
@@ -129,15 +144,13 @@ URL as both `PORTAL_IAP_AUDIENCE` and `PORTAL_SCHEDULER_AUDIENCE`.
 Do staging first, use it for a cycle, and only then the same with
 `production.tfvars`.
 
-### Before the first apply
+### Still to do before the full apply
 
-- Enable the APIs: `run.googleapis.com`, `iap.googleapis.com`,
-  `cloudscheduler.googleapis.com`, `artifactregistry.googleapis.com`.
-- Build and push the image somewhere Cloud Run can pull it, and put that
-  reference in `image`.
-- IAP needs an OAuth consent screen configured for the project. That is a
+- **IAP needs an OAuth consent screen** configured for the project. It is a
   one-off in the console and cannot sensibly be Terraformed for an internal
-  app.
+  app. Without it the apply will fail on the Cloud Run service.
+- `PORTAL_CSRF_SECRET` is not yet in Secret Manager, and the service needs it to
+  accept any form (R-SEC-11).
 
 ## State
 

@@ -10,9 +10,9 @@ image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal:0.1.
 
 # CLAUDE.md §2.1: the only people who may see fees.
 finance_emails = [
-  "robin@example.com",
-  "charlie@example.com",
-  "remy@example.com",
+  "julian@example.com",   # Robin
+  "charlie@example.com",  # Charlie
+  "remy@example.com",  # Remy
 ]
 
 # Who may get through IAP at all. For staging this should be the developers
