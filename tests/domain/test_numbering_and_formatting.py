@@ -102,5 +102,6 @@ def test_filename_strips_path_separators() -> None:
     assert name == "2026-09 — Jane .. Smith — 1.pdf"
 
 
-def test_month_heading() -> None:
-    assert month_heading(Period.parse("2026-09")) == "Your Company — September 2026"
+def test_month_heading_is_just_the_month() -> None:
+    # "Your Company" was redundant three lines under "Your ref: Your Company".
+    assert month_heading(Period.parse("2026-09")) == "September 2026"

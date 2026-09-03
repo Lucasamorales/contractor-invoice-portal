@@ -331,14 +331,26 @@ below are permitted.
 - **R-PDF-05** `Invoice No: {number}` — plain, unpadded (R-NUM-04).
 - **R-PDF-06** `Invoice Date: {issued_at}` in `DD/MM/YYYY`.
 - **R-PDF-07** `ROLE: {role}` (uppercase, bold) and beneath it
-  **`Your Company — {Month} {Year}`**. The month is an addition to the template,
-  agreed with Robin: the original says nothing about which period it covers.
+  **`{Month} {Year}`**. The period line is an addition to the template, agreed
+  with Robin: the original says nothing about which period it covers.
+  *Amended 3 September 2026 (Leo):* it read `Your Company — {Month} {Year}`.
+  The "Your Company" was redundant three lines under `Your ref: Your Company`, so it
+  is now the month and year alone.
 - **R-PDF-08** Right-aligned figures: `Remuneration: £X`, `Additional: £X`,
   then `Total Invoice: £X`.
-- **R-PDF-09** **New:** directly beneath `Additional`, an italic detail line,
-  smaller type, rendered **only when `additional_pence > 0`**:
-  `3 kudos × £20 · travel £34.50`. Kudos first, then each expense description
-  and amount, separated by `·`.
+- **R-PDF-09** **New:** directly beneath `Additional`, an italic breakdown in
+  smaller type, rendered **only when `additional_pence > 0`**. Kudos first,
+  then each expense description and amount, **one per line**:
+
+  ```
+  3 kudos × £20
+  travel £34.50
+  hotel £120
+  ```
+
+  *Amended 3 September 2026 (Leo):* these were originally one run-on line
+  separated by `·`. Three or four items that way is hard to read, and this is
+  the part of the invoice an expense claim gets checked against.
 - **R-PDF-10** `Please pay within 14 days of date of invoice` — constant, and
   `due_at = issued_at + 14 days`.
 - **R-PDF-11** Bank Details block, rendered **conditionally by `payout_region`**

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from app.domain.formatting import invoice_filename, month_heading
-from app.domain.invoice import InvoiceTotals, detail_line
+from app.domain.invoice import InvoiceTotals, detail_parts
 from app.domain.period import Period
 from app.web.templates import templates
 
@@ -90,7 +90,7 @@ def build_context(
         "remuneration_pence": totals.remuneration_pence,
         "additional_pence": totals.additional_pence,
         "total_pence": totals.total_pence,
-        "detail_line": detail_line(totals),
+        "detail_parts": list(detail_parts(totals)),
     }
 
 

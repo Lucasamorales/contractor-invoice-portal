@@ -43,7 +43,7 @@ from app.db.models import (
 from app.db.models import LineKind as DbLineKind
 from app.domain.formatting import month_heading
 from app.domain.invoice import InvoiceLine as DomainLine
-from app.domain.invoice import InvoiceTotals, LineKind, compose, detail_line
+from app.domain.invoice import InvoiceTotals, LineKind, compose, detail_note
 from app.domain.numbering import advance
 from app.domain.period import Period, is_late
 from app.services.crypto import Cipher, field_aad
@@ -270,7 +270,7 @@ def allocate_draft(
         remuneration_pence=prepared.totals.remuneration_pence,
         additional_pence=prepared.totals.additional_pence,
         total_pence=prepared.totals.total_pence,
-        detail_note=detail_line(prepared.totals) or None,
+        detail_note=detail_note(prepared.totals) or None,
         currency="GBP",
         idempotency_key=idempotency_key,
     )

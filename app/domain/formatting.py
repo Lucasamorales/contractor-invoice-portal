@@ -52,9 +52,11 @@ def invoice_filename(period: Period, legal_name: str, number: int) -> str:
 
 
 def month_heading(period: Period) -> str:
-    """``Your Company — September 2026`` (R-PDF-07).
+    """``September 2026`` (R-PDF-07).
 
-    The month is an addition to Robin's template, agreed with him: the original
-    says nothing about which period an invoice covers.
+    The period line is an addition to Robin's template, which says nothing
+    about which month an invoice covers. It used to read "Your Company — September
+    2026"; the "Your Company" was redundant next to "Your ref: Your Company" three
+    lines above, so it is just the month now.
     """
-    return f"Your Company — {period.label}"
+    return period.label

@@ -63,9 +63,15 @@
       <span class="label">Additional:</span>
       <span class="amount">{{ additional_pence|gbp }}</span>
     </div>
-    {# R-PDF-09: rendered only when there is something additional. #}
-    {% if detail_line %}
-      <div class="detail-line">{{ detail_line }}</div>
+    {# R-PDF-09: rendered only when there is something additional, one item
+       per line. Three or four items on one dotted line is hard to read, and
+       this is what Robin checks an expense claim against. #}
+    {% if detail_parts %}
+      <div class="detail-block">
+        {% for part in detail_parts %}
+          <div class="detail-line">{{ part }}</div>
+        {% endfor %}
+      </div>
     {% endif %}
     <div class="figure total">
       <span class="label">Total Invoice:</span>

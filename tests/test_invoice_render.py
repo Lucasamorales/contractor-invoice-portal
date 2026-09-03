@@ -123,7 +123,8 @@ def test_invoice_date_is_day_month_year(uk_html: str) -> None:
 def test_role_line_is_uppercase_and_the_month_follows(uk_html: str) -> None:
     # R-PDF-07. The month line is the one addition to Robin's template.
     assert "ROLE: CREATIVE DIRECTOR" in uk_html
-    assert "Your Company — September 2026" in uk_html
+    assert "September 2026" in uk_html
+    assert "Your Company — September" not in uk_html
 
 
 def test_figures_print_with_thousands_and_two_decimals(uk_html: str) -> None:
@@ -137,7 +138,9 @@ def test_detail_line_appears_when_there_is_something_additional(
     uk_html: str,
 ) -> None:
     # R-PDF-09, in the spec's own worked format.
-    assert "3 kudos × £20 · travel £34.50" in uk_html
+    assert "3 kudos × £20" in uk_html
+    assert "travel £34.50" in uk_html
+    assert " · " not in uk_html  # one item per line now
 
 
 def test_detail_line_is_absent_when_additional_is_zero() -> None:

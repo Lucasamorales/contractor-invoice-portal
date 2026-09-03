@@ -109,14 +109,18 @@ def format_gbp_compact(pence: int) -> str:
     return format_gbp(pence).removesuffix(".00")
 
 
-def detail_line(totals: InvoiceTotals) -> str:
-    """The italic line printed beneath ``Additional`` (R-PDF-09).
+def detail_parts(totals: InvoiceTotals) -> tuple[str, ...]:
+    """The breakdown printed beneath ``Additional`` (R-PDF-09), one per line.
 
-    Empty when there is nothing additional, which is the signal to the template
-    not to render the line at all.
+    Kudos first, then each expense. Empty when there is nothing additional,
+    which is the signal to the template not to render the block at all.
+
+    One entry per line rather than a single run-on line: three or four items
+    separated by dots is hard to read, and this is the part of the invoice
+    Robin checks an expense claim against.
     """
     if totals.additional_pence <= 0:
-        return ""
+        return ()
 
     parts: list[str] = []
     for line in totals.lines:
@@ -125,4 +129,13 @@ def detail_line(totals: InvoiceTotals) -> str:
             parts.append(f"{line.qty} {noun} × {format_gbp_compact(line.unit_pence)}")
         elif line.kind in (LineKind.EXPENSE, LineKind.OTHER):
             parts.append(f"{line.label} {format_gbp_compact(line.amount_pence)}")
-    return " · ".join(parts)
+    return tuple(parts)
+
+
+def detail_note(totals: InvoiceTotals) -> str:
+    """The same breakdown as one stored string, newline separated.
+
+    Frozen onto ``invoices.detail_note`` at issue time so the invoice can be
+    re-rendered and the email written from the row rather than recomputed.
+    """
+    return "\n".join(detail_parts(totals))

@@ -306,8 +306,11 @@ def _invoice_submitted(
         f"  Remuneration   {_money(payload.get('remuneration_pence'))}",
         f"  Additional     {_money(payload.get('additional_pence'))}",
     ]
-    if payload.get("detail"):
-        lines.append(f"                 {payload['detail']}")
+    # detail_note is newline separated, so it lays out under Additional here
+    # exactly as it does on the invoice.
+    for part in str(payload.get("detail") or "").splitlines():
+        if part.strip():
+            lines.append(f"                 {part}")
     lines += [
         f"  Total          {_money(payload.get('total_pence'))}",
         "",

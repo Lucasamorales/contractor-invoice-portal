@@ -103,11 +103,16 @@ body { margin: 0; }
 
 .figure.total { margin-top: 22pt; }
 
-/* R-PDF-09: the italic breakdown, smaller type, directly beneath Additional. */
+/* R-PDF-09: the italic breakdown, smaller type, directly beneath Additional,
+   one item per line. */
+.detail-block {
+  margin-top: 2pt;
+}
+
 .detail-line {
   font-size: 9pt;
   font-style: italic;
-  margin-top: 1pt;
+  line-height: 1.35;
 }
 
 /* ---- Terms (R-PDF-10) ------------------------------------------------ */

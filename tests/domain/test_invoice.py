@@ -7,7 +7,8 @@ import pytest
 from app.domain.invoice import (
     LineKind,
     compose,
-    detail_line,
+    detail_note,
+    detail_parts,
     format_gbp_compact,
     kudos_amount_pence,
 )
@@ -45,7 +46,7 @@ def test_empty_additional_is_valid_and_means_zero() -> None:
         fee_pence=250000, kudos_count=0, kudos_rate_pence=RATE, expenses=[]
     )
     assert totals.additional_pence == 0
-    assert detail_line(totals) == ""
+    assert detail_parts(totals) == ()
 
 
 def test_additional_sums_kudos_and_expenses() -> None:
@@ -60,14 +61,14 @@ def test_additional_sums_kudos_and_expenses() -> None:
 
 
 def test_detail_line_matches_the_spec_example() -> None:
-    # R-PDF-09 gives this exact worked example.
+    # R-PDF-09, one item per line.
     totals = compose(
         fee_pence=250000,
         kudos_count=3,
         kudos_rate_pence=RATE,
         expenses=[("travel", 3450)],
     )
-    assert detail_line(totals) == "3 kudos × £20 · travel £34.50"
+    assert detail_parts(totals) == ("3 kudos × £20", "travel £34.50")
 
 
 def test_detail_line_puts_kudos_first() -> None:
@@ -77,13 +78,13 @@ def test_detail_line_puts_kudos_first() -> None:
         kudos_rate_pence=RATE,
         expenses=[("travel", 500), ("hotel", 12000)],
     )
-    assert detail_line(totals) == "1 kudo × £20 · travel £5 · hotel £120"
+    assert detail_parts(totals) == ("1 kudo × £20", "travel £5", "hotel £120")
 
 
 def test_detail_line_is_empty_when_nothing_is_additional() -> None:
     # The template renders the line only when additional_pence > 0 (R-PDF-09).
     totals = compose(fee_pence=250000, kudos_count=0, kudos_rate_pence=RATE)
-    assert detail_line(totals) == ""
+    assert detail_parts(totals) == ()
 
 
 def test_other_items_appear_in_the_detail_line() -> None:
@@ -93,7 +94,7 @@ def test_other_items_appear_in_the_detail_line() -> None:
         kudos_rate_pence=RATE,
         other=[("equipment share", 7500)],
     )
-    assert detail_line(totals) == "equipment share £75"
+    assert detail_parts(totals) == ("equipment share £75",)
 
 
 def test_negative_expense_is_rejected() -> None:
@@ -121,3 +122,16 @@ def test_kudos_rate_is_frozen_per_invoice() -> None:
     new = compose(fee_pence=0, kudos_count=3, kudos_rate_pence=2500)
     assert old.additional_pence == 6000
     assert new.additional_pence == 7500
+
+
+def test_the_stored_note_is_the_same_items_newline_separated() -> None:
+    """detail_note is frozen onto the invoice row, so the email and a
+    re-render both read the same breakdown without recomputing it."""
+    totals = compose(
+        fee_pence=250000,
+        kudos_count=3,
+        kudos_rate_pence=RATE,
+        expenses=[("travel", 3450), ("hotel", 12000)],
+    )
+    assert detail_note(totals).splitlines() == list(detail_parts(totals))
+    assert detail_note(totals) == "3 kudos × £20\ntravel £34.50\nhotel £120"

@@ -121,7 +121,8 @@ def test_a_queued_invoice_is_sent_with_the_pdf_attached(
     assert "jane@example.com" in message.to
     # The body carries the breakdown regardless of the PDF (R-SUB-07).
     assert "£2,500.00" in message.text
-    assert "3 kudos × £20 · travel £34.50" in message.text
+    assert "3 kudos × £20" in message.text
+    assert "travel £34.50" in message.text
     assert "£2,594.50" in message.text
     assert len(message.attachments) == 1
     assert message.attachments[0].content_type == "application/pdf"

@@ -296,7 +296,8 @@ def test_preview_shows_the_real_invoice(wizard, factory) -> None:
     assert "srcdoc" in html
     assert "Invoice No: 8" in html
     assert "ROLE: CREATIVE DIRECTOR" in html
-    assert "3 kudos × £20 · travel £34.50" in html
+    assert "3 kudos × £20" in html
+    assert "travel £34.50" in html
     assert "£2,594.50" in html
 
 

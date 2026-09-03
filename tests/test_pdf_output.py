@@ -143,10 +143,12 @@ def test_the_uk_pdf_says_what_it_should(uk_pdf) -> None:
     assert "Invoice No: 213" in text  # plain and unpadded (R-NUM-04)
     assert "Invoice Date: 24/09/2026" in text  # R-PDF-06
     assert "ROLE: CREATIVE DIRECTOR" in text  # R-PDF-07
-    assert "Your Company — September 2026" in text
+    assert "September 2026" in text
+    assert "Your Company — September" not in text
     assert "Remuneration: £2,500.00" in text  # R-PDF-08, R-PDF-12
     assert "Additional: £214.50" in text
-    assert "3 kudos × £20 · travel £34.50 · hotel £120" in text  # R-PDF-09
+    for part in ("3 kudos × £20", "travel £34.50", "hotel £120"):
+        assert part in text  # R-PDF-09
     assert "Total Invoice: £2,714.50" in text
     assert "Please pay within 14 days of date of invoice" in text  # R-PDF-10
     assert "VAT" not in text  # R-PDF-14

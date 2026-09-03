@@ -104,7 +104,7 @@ def test_full_submit_path(
         assert invoice.remuneration_pence == 250000
         assert invoice.additional_pence == 6000 + 3450
         assert invoice.total_pence == 250000 + 9450
-        assert invoice.detail_note == "3 kudos × £20 · travel £34.50"
+        assert invoice.detail_note == "3 kudos × £20\ntravel £34.50"
 
         # R-PDF-10: due fourteen days after issue.
         assert (invoice.due_at - invoice.issued_at).days == 14
@@ -246,7 +246,7 @@ def test_the_email_is_queued_never_sent(
         assert payload["to_person"] == "jane@example.com"
         # The body carries the breakdown regardless of the PDF.
         assert payload["remuneration_pence"] == 250000
-        assert payload["detail"] == "3 kudos × £20 · travel £34.50"
+        assert payload["detail"] == "3 kudos × £20\ntravel £34.50"
 
 
 def test_no_bank_detail_reaches_the_outbox(
