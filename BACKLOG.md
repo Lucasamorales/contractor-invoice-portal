@@ -1,6 +1,9 @@
 # BACKLOG.md — what is left
 
-Written 2 September 2026, after build order steps 1–5.
+Written 2 September 2026 after build order steps 1–5.
+Updated 3 September 2026: the bank-change lifecycle, the mailer, the
+scheduler endpoints, rate limiting, the container and the PDF tests are
+done. What remains is listed below and is mostly waiting on section 1.
 
 Ordered by what blocks what. Requirement IDs refer to `SPEC.md`. Anything
 marked **blocked** needs something only a person can supply, and no amount of
@@ -19,12 +22,14 @@ work here moves it.
 | 3. The invoice | done |
 | 4. The wizard | done |
 | 5. Admin | done |
-| 6. Plumbing | **not started** |
+| 6. Plumbing | mail, jobs and the container done; storage, kudos, Drive outstanding |
 | 7. Dry run | **not started** |
 
-299 tests passing (238 with no database, 61 against Postgres). `ruff` clean.
-Both Neon databases are live and at `0001_initial`. Four secrets are in
-Secret Manager in project `your-gcp-project`.
+346 tests passing (238 with no database, 100 against Postgres, 8 rendering
+real PDFs). `ruff` clean. Both Neon databases are live and at
+`0002_outbox_backoff`. Four secrets are in Secret Manager in project
+`your-gcp-project`. The Cloud Run image builds and renders a
+one-page A4 invoice inside it.
 
 ---
 
@@ -76,12 +81,13 @@ The largest remaining block. Roughly in dependency order.
 
 ### 3.2 Mail (R-SUB-06 … R-SUB-08, R-DATA-10)
 
-- Postmark client and the outbox dispatcher.
-- The invoice email to Robin with the PDF and receipts attached, subject
-  `Invoice {number} — {legal_name} — {Month} {Year}`, no fee in the subject.
-- A copy to the person (R-SUB-08).
-- **Blocked on 1.2.** The outbox rows are already being written correctly, so
-  when Postmark exists the dispatcher has a queue waiting for it.
+**Built.** The dispatcher, the retry and backoff, the give-up-and-alert, and
+every email body. The client is a protocol: Postmark in production, a sandbox
+that records and discards in staging (R-ENV-03), a stand-in in tests.
+
+**Still blocked on 1.2 for the credentials only.** When the Postmark account
+exists, set `PORTAL_POSTMARK_TOKEN` and `PORTAL_MAIL_FROM` and it sends. Nothing
+else changes.
 
 ### 3.3 Kudos sync (R-KUD-01 … R-KUD-03)
 
@@ -92,20 +98,25 @@ The largest remaining block. Roughly in dependency order.
 
 ### 3.4 Scheduled jobs (R-JOB-01 … R-JOB-06)
 
-All are `POST /tasks/*` with an OIDC token verified by the app, and all must be
-idempotent — a double fire must not double-send.
+**The endpoint layer is built**: all six are `POST /tasks/*`, each verifying
+its own Cloud Scheduler OIDC token, and refusing with a 503 when that is not
+configured. `remind`, `summary` and `outbox` do their work and are idempotent.
+The other three report that they are not configured rather than pretending to
+have run, so the Scheduler jobs can be created now.
+
+What remains per job:
 
 | Job | When | Blocked on |
 |---|---|---|
-| `sync-kudos` | daily in the window | 1.1 |
-| `remind` | 24th to everyone, 27th to those still missing | 1.2 |
-| `summary` | 29th, reconciliation to the finance group | 1.2 |
-| `outbox` | every 5 minutes, exponential backoff, alert after 5 failures | 1.2 |
-| `backup` | nightly `pg_dump` to GCS, 30 days retained | 3.1 |
-| `drive-mirror` | copy submitted PDFs into the period's folder | 1.3, 3.1 |
+| `sync-kudos` | daily in the window | **the sheet reader (1.1)** |
+| `remind` | 24th and 27th | done; delivery needs 1.2 |
+| `summary` | 29th | done; delivery needs 1.2 |
+| `outbox` | every 5 minutes | done; delivery needs 1.2 |
+| `backup` | nightly `pg_dump` to GCS | **the job body (3.1)** |
+| `drive-mirror` | PDFs into the period folder | **the job body (1.3, 3.1)** |
 
-`backup` is worth doing early and is only blocked on the bucket. R-JOB-05 says
-this is the backup we rely on, not Neon's history.
+`backup` is the one to do next after the bucket exists. R-JOB-05 says this is
+the backup we rely on, not Neon's history, and there is currently none.
 
 ### 3.5 The Drive mirror (R-STO-05)
 
@@ -121,24 +132,14 @@ must set this explicitly and a test must assert it.
 
 These are gaps in what is already "done", not future phases.
 
-### 4.1 The bank-change lifecycle (R-BANK-01, 03, 04, 05, 07, 08)
+### 4.1 The bank-change lifecycle — **done**
 
-Today a person can **confirm** the bank row they already have. They cannot yet
-**change** it. Still to build:
+A person can change their own details, typing the account number twice. Robin
+can propose a correction and flag a row back. A proposal sits `pending` and
+only the owner can make it payable; a test has Robin attempt exactly that
+against somebody else's row and asserts nothing moved.
 
-- Changing details creates a new row and closes the old one (`superseded`),
-  never an update.
-- The account number typed twice and matched — double entry catches
-  transpositions no checksum can.
-- Validation on entry reusing the existing domain rules (already written and
-  tested — this is wiring, not new logic).
-- On a change, email to both the person and Robin showing old and new last four
-  only (**blocked on 1.2**).
-- Robin proposing a correction that sits `pending` until the owner confirms it,
-  and flagging a row back to the person with what needs fixing.
-
-The `pending` state, the queue screen and the admin views for all of this
-already exist and are tested; the write paths are what is missing.
+The emails are queued and will go out when 1.2 lands.
 
 ### 4.2 Receipts (R-WIZ-04, R-SEC-10)
 
@@ -149,29 +150,40 @@ already exist and are tested; the write paths are what is missing.
   uploaded file inline.
 - **Blocked on 3.1.** Expenses without receipts work today.
 
-### 4.3 Rate limiting (R-SEC-08)
+### 4.3 Rate limiting (R-SEC-08) — **done**
 
-`/submit` and the bank-change endpoint, per person. Not built.
+`/submit` and the bank-change endpoint, keyed by the IAP-verified email.
 
-### 4.4 The PDF regression test (R-PDF-13, R-TEST-03)
+One caveat worth knowing: the counter is per process, so on more than one
+Cloud Run instance the real ceiling is the limit times the instance count. For
+sixteen people on a service that scales to zero that is almost always one
+instance, and the failure mode of being wrong is that a few more requests get
+through. A shared counter would mean a table and a write per request, which is
+a worse trade here. `app/web/ratelimit.py` says so at the top.
 
-A rendered fixture compared against a committed reference, for one UK and one
-international person, asserting one page.
+### 4.4 The PDF regression test (R-PDF-13, R-TEST-03) — **done**
 
-Blocked locally by WeasyPrint's GTK libraries not being installed
-(`docs/setup.md` §2.2 has the command). Not blocked in CI, where a Debian image
-has them — this could be done CI-only first.
+`tests/test_pdf_output.py` renders the real template through WeasyPrint for a
+UK person and an international one and asserts one A4 page, the figures, the
+detail line and the right bank captions. There is also a long-address case,
+because that is the realistic way one page becomes two later.
+
+The tests skip themselves where WeasyPrint's native libraries are absent — a
+Windows machine without the GTK runtime — and CI fails the build if they skip,
+because silently not testing the invoice is the failure that job exists to
+prevent.
+
+Not done: a **pixel** comparison against a committed reference image. The
+assertions are on extracted text and page geometry, which catches content and
+overflow but not, say, a font falling back. Worth adding once the layout is
+settled with Robin.
 
 ---
 
 ## 5. Deployment (R-ENV-04, R-ENV-05)
 
-None of this exists yet.
-
-- **Dockerfile.** Needs `libpango-1.0-0`, `libpangoft2-1.0-0`, `libcairo2`,
-  `libgdk-pixbuf-2.0-0`, `tzdata` (for `Europe/London`) and
-  `fonts-crosextra-carlito` — Carlito is metric-compatible with the Calibri the
-  template is set in.
+- ~~**Dockerfile**~~ — **done.** Two stages, non-root, and it renders a
+  one-page A4 invoice inside the image. CI builds it on every push.
 - **Cloud Run service** for each environment, scale to zero.
 - **Cloud IAP** in front of it, and the `iap_audience` value that only exists
   once the backend service does. Until then nobody can actually log in.

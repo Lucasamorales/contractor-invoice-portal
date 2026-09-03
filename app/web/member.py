@@ -42,6 +42,7 @@ from app.services.invoicing import (
 from app.services.pdf import Letterhead, build_context, render_html, render_pdf
 from app.services.storage import LocalObjectStore, ObjectStore
 from app.web import csrf
+from app.web.ratelimit import bank_limiter, submit_limiter
 from app.web.templates import templates
 
 router = APIRouter()
@@ -414,6 +415,9 @@ async def submit_bank_change(
     what changed.
     """
     csrf.require(settings, identity.email, csrf_token)
+    # R-SEC-08, keyed by the verified identity rather than anything the client
+    # sends, so it cannot be sidestepped by varying a header.
+    bank_limiter.check(identity.email)
 
     entry = bank_changes.Entry(
         account_name=account_name,
@@ -696,6 +700,7 @@ async def do_submit(
     """One button, one idempotency key, no second number (R-SUB-01, R-SUB-02)."""
     form = await request.form()
     csrf.require(settings, identity.email, str(form.get(csrf.FIELD_NAME) or ""))
+    submit_limiter.check(identity.email)  # R-SEC-08
 
     idempotency_key = str(
         form.get("idempotency_key") or request.headers.get("Idempotency-Key") or ""

@@ -32,6 +32,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install WeasyPrint's native libraries
+        # R-PDF-13 and R-TEST-03 render a real PDF. Without these the tests
+        # skip, and a regression in the invoice would reach Robin unnoticed.
+        # fonts-crosextra-carlito is metric-compatible with Calibri, which the
+        # template is set in.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y             libpango-1.0-0 libpangoft2-1.0-0 libcairo2             libgdk-pixbuf-2.0-0 fonts-crosextra-carlito
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -50,3 +59,19 @@ jobs:
 
       - name: Tests
         run: uv run pytest
+
+      - name: The PDF tests must not have been skipped
+        # They skip themselves when WeasyPrint's native libraries are absent,
+        # which is right on a developer's Windows machine and wrong here.
+        # Silently not testing the invoice is the failure this job exists to
+        # prevent, so a skip is turned into a red build.
+        run: |
+          uv run pytest tests/test_pdf_output.py -q --no-header > pdf-tests.log 2>&1
+          cat pdf-tests.log
+          if grep -q "skipped" pdf-tests.log; then
+            echo "::error::The PDF tests skipped. WeasyPrint's libraries are missing."
+            exit 1
+          fi
+
+      - name: Build the Cloud Run image
+        run: docker build -t contractor-invoice-portal:ci .

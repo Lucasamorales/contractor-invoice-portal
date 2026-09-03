@@ -218,3 +218,16 @@ def ready_person(
         if kudos is not None:
             give_kudos(session, person, period, kudos)
         return person.id
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits() -> Iterator[None]:
+    """The limiters are process-global by design (R-SEC-08), so tests would
+    otherwise spend each other's budget."""
+    from app.web.ratelimit import bank_limiter, submit_limiter
+
+    bank_limiter.reset()
+    submit_limiter.reset()
+    yield
+    bank_limiter.reset()
+    submit_limiter.reset()

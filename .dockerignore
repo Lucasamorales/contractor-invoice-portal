@@ -1,0 +1,22 @@
+# The spreadsheet and anything else holding real bank details must never reach
+# an image (CLAUDE.md §2, R-ENV-02).
+data/
+*.xlsx
+.env
+.env.*
+!.env.example
+
+.git/
+.github/
+.venv/
+out/
+tests/
+docs/
+infra/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+Dockerfile
+.dockerignore
+*.md

@@ -559,3 +559,59 @@ def test_a_changed_account_is_immediately_the_one_that_would_be_invoiced(
         active = repo.active_bank_detail(session, person_id)
         assert plaintext(session, cipher, active, "account_number") == "87654321"
         assert active.verified_at is not None  # R-BANK-02: payable
+
+
+# --------------------------------------------------------------------------
+# Rate limiting (R-SEC-08)
+# --------------------------------------------------------------------------
+
+
+def test_hammering_the_bank_change_endpoint_is_throttled(wired, factory) -> None:
+    """R-SEC-08. This endpoint decrypts bank fields and queues mail to two
+    people, so it is not one to leave wide open."""
+    from app.web.ratelimit import bank_limiter
+
+    as_user, _, cipher = wired
+    seed(factory, cipher)
+
+    codes = []
+    with as_user(JANE, finance=False) as client:
+        page = client.get("/bank/change")
+        token = token_from(page.text)
+        for attempt in range(bank_limiter.limit + 2):
+            account = f"1000000{attempt}"
+            codes.append(
+                client.post(
+                    "/bank/change",
+                    data={
+                        "csrf_token": token,
+                        "account_name": "Jane Smith",
+                        "bank_name": "Starling",
+                        "sort_code": "608371",
+                        "account_number": account,
+                        "account_number_again": account,
+                    },
+                    follow_redirects=False,
+                ).status_code
+            )
+
+    assert 429 in codes, "the endpoint must throttle eventually"
+    assert codes.index(429) == bank_limiter.limit
+
+
+def test_the_limit_is_keyed_by_the_verified_identity(wired, factory) -> None:
+    """Not by anything the client sends, so it cannot be dodged by varying a
+    header."""
+    from app.web.ratelimit import RateLimiter
+
+    limiter = RateLimiter(limit=2, window_seconds=60)
+    limiter.check("jane@example.com", now=0.0)
+    limiter.check("jane@example.com", now=1.0)
+    # A different person is unaffected by Jane's usage.
+    limiter.check("sam@example.com", now=1.0)
+
+    with pytest.raises(Exception, match="attempts"):
+        limiter.check("jane@example.com", now=2.0)
+
+    # And the window rolls off.
+    limiter.check("jane@example.com", now=120.0)
