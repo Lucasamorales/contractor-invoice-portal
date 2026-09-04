@@ -853,6 +853,10 @@ async def preview(
             # (R-WIZ-06, R-PDF-01). It goes into an isolated iframe so the app's
             # own stylesheet cannot change how the invoice looks.
             "invoice_html": render_html(invoice_context),
+            # The rail beside the sheet shows the same two figures the sheet
+            # does, so a mismatch would be visible rather than plausible.
+            "number": counter.next_number if counter else 1,
+            "totals": prepared.totals,
             # R-SUB-01: the key is generated when the preview is rendered.
             "idempotency_key": str(uuid.uuid4()),
             "kudos_zero_acknowledged": bool(form.get("kudos_zero_acknowledged")),

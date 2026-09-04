@@ -170,7 +170,7 @@ def test_kudos_unavailable_is_said_out_loud(wizard, factory) -> None:
     # R-KUD-06: never quietly show zero.
     client, _, box = wizard
     seed_ready(factory, box, kudos=None)
-    assert "unavailable" in client.get("/").text
+    assert "Unavailable" in client.get("/").text
 
 
 # --------------------------------------------------------------------------
@@ -253,7 +253,8 @@ def test_the_owner_confirms_their_own_details(wizard, factory) -> None:
     client, _, box = wizard
     seed_ready(factory, box, bank={"state": BankState.UNVERIFIED, "verified": False})
     page = client.get("/bank")
-    assert "nobody has checked them" in page.text
+    # The screen must say the details are unverified, however it words it.
+    assert "Nothing has verified them" in page.text
 
     response = client.post(
         "/bank/confirm",
@@ -341,7 +342,7 @@ def test_submitting_from_the_preview_issues_the_invoice(wizard, factory) -> None
         },
     )
     assert response.status_code == 200
-    assert "has gone to accounts" in response.text
+    assert "is with accounts" in response.text
 
     with factory() as session:
         invoice = session.scalars(select(Invoice)).one()
@@ -400,7 +401,7 @@ def test_my_details_lists_issued_invoices(wizard, factory) -> None:
     client.post("/submit", data={"csrf_token": token, "idempotency_key": key})
 
     page = client.get("/me").text
-    assert "submitted" in page
+    assert "Submitted" in page
     assert "2026-09" in page
 
 

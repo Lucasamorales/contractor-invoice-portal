@@ -1,11 +1,3 @@
+{# Admin screens share the member shell. The nav lives in base.html and is
+   gated on is_finance, so there is nothing extra to render here. #}
 {% extends "base.html" %}
-{% block steps %}
-<nav class="admin-nav">
-  <a href="/admin">People</a>
-  <a href="/admin/period">Period</a>
-  <a href="/admin/payment-run">Payment run</a>
-  <a href="/admin/data-check">Data check</a>
-  <a href="/admin/queue">Queue</a>
-  <a href="/admin/kudos">Kudos</a>
-</nav>
-{% endblock %}

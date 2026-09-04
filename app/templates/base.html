@@ -1,5 +1,10 @@
 <!doctype html>
 <html lang="en">
+{# The shell. Nav membership is the only thing that differs between a
+   contractor and finance, and it is decided by is_finance from the verified
+   IAP identity — the finance links are absent from the markup, not disabled
+   (R-ACC-04). Nothing here grants access; /admin/* checks again. #}
+{% set path = request.url.path %}
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,27 +15,47 @@
 </head>
 <body{% if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
   <header class="bar">
-    <a class="brand" href="/">Invoices</a>
+    <a class="brand" href="/">
+      <span class="brand-mark">YOURCOMPANY</span>
+      <span class="brand-word{% if path.startswith('/admin') %} finance{% endif %}">
+        {{ "Finance" if path.startswith('/admin') else "Invoices" }}
+      </span>
+    </a>
     <nav>
-      <a href="/me">My details</a>
-      {% if is_finance %}<a href="/admin">Admin</a>{% endif %}
+      <a href="/"{% if path == '/' %} class="on"{% endif %}>This month</a>
+      <a href="/me"{% if path == '/me' %} class="on"{% endif %}>My details</a>
+      {% if is_finance %}
+        <span class="bar-div"></span>
+        <a href="/admin"{% if path == '/admin' %} class="on"{% endif %}>Overview</a>
+        <a href="/admin/people"{% if path.startswith('/admin/people') %} class="on"{% endif %}>People</a>
+        <a href="/admin/period"{% if path.startswith('/admin/period') %} class="on"{% endif %}>Period</a>
+        <a href="/admin/queue"{% if path.startswith('/admin/queue') %} class="on"{% endif %}>Queue</a>
+      {% endif %}
     </nav>
+    <button type="button" class="help-toggle" id="help-toggle"
+            aria-expanded="false" aria-label="Show the tutorial">?</button>
   </header>
 
   {% if window_forced %}
     <p class="staging-banner">
-      Staging: the submission window is forced open. In production this would
-      be shut until the 24th.
+      Staging: the submission window is forced open. In production this is shut
+      until the 24th.
     </p>
   {% endif %}
 
-  <main>
+  <main class="{% block width %}{% endblock %}">
     {% block steps %}{% endblock %}
     {% block content %}{% endblock %}
   </main>
 
   <footer class="foot">
-    Something wrong? Tell Leo.
+    Something wrong? Tell the IT department.
   </footer>
+
+  {# The steps for this screen. tutorial.js reads them, injects the pins and
+     owns the spotlight; the copy stays server-side where it can be reviewed. #}
+  {% set steps = tutorial_steps(path) %}
+  <script type="application/json" id="tutorial-steps">{{ steps | tojson }}</script>
+  <script src="/static/tutorial.js" defer></script>
 </body>
 </html>

@@ -1,94 +1,140 @@
 {% extends "base.html" %}
+{% block width %}{% endblock %}
+{% block steps %}{% set active = 'check' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
-<h1>Hello, {{ person.display_name }}</h1>
-<p class="lead">Your invoice for <strong>{{ period.label }}</strong>.</p>
 
-{% if window_message %}
-  <p class="notice warn">{{ window_message }}</p>
-{% endif %}
+<div class="page-head">
+  <p class="eyebrow">
+    <span class="dot"></span>
+    <span data-tut="member.month.window">
+      {{ period.label }}
+      {% if window_message %}
+        &middot; {{ window_message }}
+      {% else %}
+        &middot; window closes {{ period.closes_on().strftime('%-d %b') if period.closes_on().day else '' }}
+      {% endif %}
+    </span>
+  </p>
+  <h1>Hello, {{ person.display_name }}.</h1>
+</div>
 
-{% if state.existing_invoice %}
-  {% if state.existing_invoice.status.value == 'draft' %}
-    {# It holds a number but never finished. Saying "sent" here would be a lie
-       the person only discovers when Robin chases them. #}
-    <div class="panel blocks">
-      <h2>Not quite sent</h2>
-      <p>
-        Invoice <strong>{{ state.existing_invoice.number }}</strong> for
-        {{ period.label }} was started but did not finish. Nothing has gone to
-        accounts yet.
-      </p>
-      <p class="hint">
-        Trying again picks up where it left off and keeps the same number.
-      </p>
-      <a class="button" href="/additional">Try again</a>
-    </div>
-  {% else %}
-    <div class="panel ok">
-      <h2>Already sent</h2>
-      <p>
-        Invoice <strong>{{ state.existing_invoice.number }}</strong> for
-        {{ period.label }} has gone to accounts.
-        Total {{ state.existing_invoice.total_pence | gbp }}.
-      </p>
+{% if state.existing_invoice and state.existing_invoice.status.value == 'draft' %}
+  {# It holds a number but never finished. This must be impossible to misread
+     as success — saying "sent" here is a lie the person only discovers when
+     accounts chases them. #}
+  <div class="card alarm">
+    <p class="eyebrow"><span class="dot"></span>Not quite sent</p>
+    <h2>Nothing has reached accounts.</h2>
+    <p class="lead">
+      Invoice {{ state.existing_invoice.number }} took its number but did not
+      finish sending. The number stays yours &mdash; trying again picks up where
+      it stopped.
+    </p>
+    <p class="actions" style="margin-top:20px">
+      <a class="button" href="/additional">Try again{% include "_arrow.html" %}</a>
+    </p>
+  </div>
+
+{% elif state.existing_invoice %}
+  <div class="card dark hero">
+    <p class="eyebrow"><span class="dot"></span>Already sent</p>
+    <h2>Invoice {{ state.existing_invoice.number }} has gone to accounts.</h2>
+    <p class="hint" style="margin-top:10px">
+      {{ period.label }} &middot; {{ state.existing_invoice.total_pence | gbp }}
+    </p>
+    <p class="actions" style="margin-top:22px">
+      {% if state.existing_invoice.pdf_uri %}
+        <a class="button light" href="/invoices/{{ state.existing_invoice.id }}/pdf">
+          Download the PDF
+        </a>
+      {% endif %}
       <a class="button ghost" href="/me">See your invoices</a>
-    </div>
-  {% endif %}
-{% else %}
+    </p>
+  </div>
 
-  <table class="figures">
-    <tr>
-      <th>Remuneration</th>
-      <td>{% if state.fee_pence is not none %}{{ state.fee_pence | gbp }}{% else %}<span class="missing">not set</span>{% endif %}</td>
-    </tr>
-    <tr>
-      <th>Kudos</th>
-      <td>
+{% else %}
+  <div class="card hero">
+    <p class="label">This month</p>
+    <div class="card-row" data-tut="member.month.fee" style="margin-top:16px">
+      <span class="name">Remuneration</span>
+      <span class="figure">
+        {% if state.fee_pence is not none %}
+          {{ state.fee_pence | gbp }}
+        {% else %}
+          <span class="missing">Not set</span>
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="card-row" data-tut="member.month.kudos">
+      <span class="name">Kudos</span>
+      <span style="text-align:right">
         {% if not state.kudos_eligible %}
-          {# Leadership receives kudos and cannot cash them. Saying nothing at
-             all here would read as a fault rather than as the policy. #}
-          <span class="hint">not payable on your invoices</span>
+          <span class="hint">Not payable on your invoices</span>
         {% elif not state.kudos_due_this_period %}
-          <span class="hint">
-            paid quarterly &mdash; they appear on your March, June, September
-            and December invoice
+          <span class="figure">{{ 0 | gbp }}</span>
+          <span class="hint" style="display:block;margin-top:5px">
+            Paid quarterly &mdash; next on your
+            {% if period.month < 3 %}March{% elif period.month < 6 %}June
+            {% elif period.month < 9 %}September{% else %}December{% endif %}
+            invoice
           </span>
         {% elif state.kudos_count is not none %}
-          {{ state.kudos_count }} × {{ state.kudos_rate_pence | gbp }}
-          = {{ state.kudos_pence | gbp }}
+          <span class="figure">{{ state.kudos_pence | gbp }}</span>
         {% else %}
-          <span class="missing">unavailable &mdash; Leo has been notified</span>
+          <span class="missing">Unavailable &mdash; the IT department has been notified</span>
         {% endif %}
-      </td>
-    </tr>
+      </span>
+    </div>
+
     {% if state.awards_pence %}
-      <tr>
-        <th>Kudos prize</th>
-        <td>{{ state.awards_pence | gbp }}</td>
-      </tr>
+      <div class="card-row">
+        <span class="name">Kudos prize</span>
+        <span class="figure">{{ state.awards_pence | gbp }}</span>
+      </div>
     {% endif %}
-    <tr class="total">
-      <th>Running total</th>
-      <td>{{ state.running_total_pence | gbp }}</td>
-    </tr>
-  </table>
-  <p class="hint">Expenses and anything else you want to add come next.</p>
+
+    <div class="card-row total-row" data-tut="member.month.total">
+      <span class="name">Running total</span>
+      <span class="figure hero">{{ state.running_total_pence | gbp }}</span>
+    </div>
+  </div>
 
   {% if state.blocks %}
-    <div class="panel blocks">
-      <h2>Before you can invoice</h2>
-      <ul>
-        {% for reason, message in state.blocks %}
-          <li>
-            {{ message }}
-            {% if reason == 'profile_incomplete' %}<a href="/details">Add them</a>{% endif %}
-            {% if reason == 'bank_unconfirmed' %}<a href="/bank">Check them</a>{% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
+    {% for reason, message in state.blocks %}
+      <div class="card attention" {% if loop.first %}data-tut="member.month.blocks"{% endif %}>
+        <p class="eyebrow"><span class="dot"></span>One thing first</p>
+        <h2>
+          {% if reason == 'bank_unconfirmed' %}Confirm the account we pay
+          {% elif reason == 'profile_incomplete' %}Add your letterhead details
+          {% else %}Your fee is not set yet{% endif %}
+        </h2>
+        <p class="lead">{{ message }}</p>
+        {% if reason == 'bank_unconfirmed' %}
+          <p class="actions" style="margin-top:20px">
+            <a class="button" href="/bank">Check the account{% include "_arrow.html" %}</a>
+          </p>
+        {% elif reason == 'profile_incomplete' %}
+          <p class="actions" style="margin-top:20px">
+            <a class="button" href="/details">Add them{% include "_arrow.html" %}</a>
+          </p>
+        {% endif %}
+      </div>
+    {% endfor %}
   {% else %}
-    <a class="button" href="{{ '/additional' if person.profile_confirmed_at else '/details' }}">Start</a>
+    <div class="card" data-tut="member.month.blocks">
+      <h2>Nothing is in your way.</h2>
+      <p class="actions" style="margin-top:20px">
+        <a class="button" href="{{ '/additional' if person.profile_confirmed_at else '/details' }}">
+          Add expenses{% include "_arrow.html" %}
+        </a>
+      </p>
+    </div>
   {% endif %}
 {% endif %}
+
+<div class="page-foot" data-tut="member.month.steps">
+  <span class="hint"><strong style="color:var(--ink)">Check</strong> → Add → Send</span>
+  <a class="hint" href="/me" style="color:var(--muted)">Your details and bank account</a>
+</div>
 {% endblock %}

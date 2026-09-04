@@ -31,7 +31,7 @@ from app.db.models import BankDetail, Invoice, Person
 from app.db.session import get_session
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, parse_gbp_to_pence
-from app.domain.period import Period
+from app.domain.period import Period, window_state
 from app.services import admin, bank_changes, kudos_admin
 from app.services.crypto import Cipher, field_aad
 from app.services.storage import ObjectStore, StorageError
@@ -101,6 +101,47 @@ def _get_person(session: Session, person_id: uuid.UUID) -> Person:
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
+async def overview(
+    request: Request,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+) -> HTMLResponse:
+    """The landing screen: who has not invoiced, and what is stuck.
+
+    People used to be here, which is a directory rather than a task. Between
+    the 24th and the 29th those are the only two questions.
+
+    Introduces no new metric. Every figure comes from ``period_view`` (R-ADM-04)
+    or ``needs_attention``, so nothing on it can disagree with the screen it
+    links to.
+    """
+    now = _now()
+    period = Period.containing(now)
+    view = admin.period_view(session, period, settings=settings)
+    attention = admin.needs_attention(session, now=now)
+
+    context = _context(request, identity, settings)
+    context.update(
+        {
+            "view": view,
+            "attention": attention,
+            "period": period,
+            "window": window_state(now).value,
+            "received": [row for row in view.rows if row.invoice],
+            "received_pence": sum(
+                row.invoice.total_pence for row in view.rows if row.invoice
+            ),
+            "unfinished": attention.stuck_drafts,
+            "flagged": view.flagged,
+        }
+    )
+    return templates.TemplateResponse(
+        request=request, name="admin/overview.html", context=context
+    )
+
+
+@router.get("/people", response_class=HTMLResponse)
 async def people(
     request: Request,
     identity: FinanceIdentity,

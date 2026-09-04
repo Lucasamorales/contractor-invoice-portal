@@ -1,73 +1,100 @@
 {% extends "base.html" %}
 {% block title %}My details{% endblock %}
 {% block content %}
-<h1>My details</h1>
+<div class="page-head">
+  <h1>My details</h1>
+</div>
 
-<section>
-  <h2>Bank account</h2>
-  {% if bank %}
-    <table class="kv">
-      <tr><th>Name on the account</th><td>{{ bank.account_name or '—' }}</td></tr>
-      <tr><th>Bank</th><td>{{ bank.bank_name or '—' }}</td></tr>
-      {% if bank.sort_code %}
-        <tr><th>Sort code</th><td>{{ bank.sort_code | sort_code }}</td></tr>
-      {% endif %}
-      {% if bank.account_number %}
-        <tr><th>Account number</th><td>{{ bank.account_number }}</td></tr>
-      {% endif %}
-      {% if bank.iban %}<tr><th>IBAN</th><td>{{ bank.iban }}</td></tr>{% endif %}
-      <tr><th>Confirmed by you</th><td>{{ 'yes' if bank.confirmed == 'yes' else 'not yet' }}</td></tr>
+<div class="row-grid">
+  <div class="card">
+    <p class="label">Letterhead</p>
+    <table class="kv" style="margin-top:12px">
+      <tr><th>Name</th><td>{{ person.legal_name or '—' }}</td></tr>
+      <tr><th>Role</th><td>{{ person.role or '—' }}</td></tr>
+      <tr><th>Phone</th><td>{{ person.phone or '—' }}</td></tr>
+      <tr><th>Email</th><td>{{ person.contact_email or '—' }}</td></tr>
     </table>
-  {% else %}
-    <p class="notice warn">We have no bank details for you.</p>
-  {% endif %}
-</section>
+    <p style="margin:16px 0 0"><a class="quiet" href="/details">Edit</a></p>
+  </div>
 
-<section>
-  <h2>Changes to it</h2>
-  <p class="hint">
-    If you see a change here you did not make, tell Leo straight away.
+  <div class="card" data-tut="member.me.masked">
+    <p class="label">The account we pay</p>
+    {% if bank %}
+      <p class="figure" style="margin:12px 0 0">
+        {{ bank.bank_name or 'Account' }} {{ bank.account_number or '' }}
+      </p>
+      <p class="hint" style="margin-top:6px">
+        {{ bank.account_name or 'no name on the account' }}
+        {% if bank.sort_code %}&middot; {{ bank.sort_code | sort_code }}{% endif %}
+      </p>
+      <p class="hint" style="margin-top:12px">
+        {% if bank.confirmed == 'yes' %}
+          <span class="dot-good"></span>Confirmed by you
+        {% else %}
+          <span class="missing">Not confirmed &mdash; you cannot invoice yet</span>
+        {% endif %}
+      </p>
+      <p style="margin:16px 0 0"><a class="quiet" href="/bank">Change</a></p>
+    {% else %}
+      <p class="hint" style="margin-top:12px">
+        <span class="missing">We have no bank details for you.</span>
+      </p>
+      <p style="margin:16px 0 0"><a class="quiet" href="/bank/change">Add them</a></p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px" data-tut="member.me.history">
+  <p class="label">Changes to it</p>
+  <p class="hint" style="margin-top:8px">
+    If you see a change here you did not make, tell the IT department straight
+    away.
   </p>
   {% if history %}
-    <ul class="history">
+    <ul class="history" style="margin-top:14px">
       {% for row in history %}
         <li>
           <time>{{ row.at.strftime('%d %b') }}</time>
           {% if row['from'] %}{{ row['from'] }} &rarr; {% endif %}{{ row.to }}
-          <span class="tag">{{ row.source }}</span>
+          <span class="chip" style="margin-left:8px">{{ row.source }}</span>
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="hint">Nothing recorded.</p>
+    <p class="hint" style="margin-top:12px">Nothing recorded.</p>
   {% endif %}
-</section>
+</div>
 
-<section>
-  <h2>Your invoices</h2>
+<div class="card" style="margin-top:16px" data-tut="member.me.invoices">
+  <p class="label">Your invoices</p>
   {% if invoices %}
-    <table class="kv wide">
-      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>PDF</th></tr>
+    <ul class="history" style="margin-top:12px">
       {% for invoice in invoices %}
-        <tr>
-          <td>{{ invoice.number }}</td>
-          <td>{{ invoice.period }}</td>
-          <td>{{ invoice.total_pence | gbp }}</td>
-          <td>
-            {{ invoice.status.value }}{% if invoice.is_late %} <span class="tag">late</span>{% endif %}
-          </td>
-          <td>
-            {% if invoice.pdf_uri %}
-              <a href="/invoices/{{ invoice.id }}/pdf">Download</a>
+        <li style="display:flex;align-items:center;gap:16px">
+          <span class="figure" style="width:44px;font-size:16px">{{ invoice.number }}</span>
+          <span style="flex:1">{{ invoice.period }}</span>
+          <span class="figure" style="font-size:16px">{{ invoice.total_pence | gbp }}</span>
+          <span style="width:110px;text-align:right">
+            {% if invoice.status.value == 'submitted' %}
+              <span class="hint" style="color:var(--good)">Submitted</span>
+            {% elif invoice.status.value == 'draft' %}
+              <span class="missing">Not sent</span>
             {% else %}
-              <span class="hint">not sent</span>
+              <span class="hint">{{ invoice.status.value }}</span>
             {% endif %}
-          </td>
-        </tr>
+          </span>
+          <span style="width:70px;text-align:right">
+            {% if invoice.pdf_uri %}
+              <a class="quiet" href="/invoices/{{ invoice.id }}/pdf">Download</a>
+            {% endif %}
+          </span>
+        </li>
       {% endfor %}
-    </table>
+    </ul>
   {% else %}
-    <p class="hint">You have not invoiced through this system yet.</p>
+    <p class="hint" style="margin-top:12px">
+      You have not invoiced through this system yet.
+    </p>
   {% endif %}
-</section>
+</div>
 {% endblock %}

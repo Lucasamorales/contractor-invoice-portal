@@ -1,0 +1,25 @@
+{# One expense row. The receipt control is a label wrapping a hidden file
+   input so it can be styled and still be a real 44px tap target on a phone,
+   which is where the camera is. #}
+<div class="item">
+  <input type="text" name="description" class="desc"
+         value="{{ item.description if item else '' }}"
+         placeholder="What was it for?">
+  <input type="text" name="amount" class="amount" inputmode="decimal"
+         value="{{ value }}" placeholder="0.00">
+  <label class="receipt-drop">
+    <input type="file" data-receipt hidden
+           accept=".jpg,.jpeg,.png,.heic,.pdf">
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"
+         fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    <span>Receipt</span>
+  </label>
+  <input type="hidden" name="receipt_uri"
+         value="{{ item.receipt_uri if item and item.receipt_uri else '' }}">
+  <span class="receipt-status hint">
+    {% if item and item.receipt_uri %}Attached{% endif %}
+  </span>
+</div>

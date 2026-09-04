@@ -78,4 +78,25 @@
     var row = input.closest(".item");
     if (row) upload(row, input);
   });
+
+  // The running total, for feedback only. The server recomputes every figure
+  // on POST from integer pence; this never decides what anybody is paid.
+  function retotal() {
+    var el = document.getElementById("running-total");
+    if (!el) return;
+    var pence = parseInt(el.getAttribute("data-base") || "0", 10);
+    document.querySelectorAll(".item .amount").forEach(function (input) {
+      var value = parseFloat((input.value || "").replace(/[^0-9.-]/g, ""));
+      if (!isNaN(value) && value > 0) pence += Math.round(value * 100);
+    });
+    el.textContent =
+      "£" + (pence / 100).toLocaleString("en-GB", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+  }
+
+  document.addEventListener("input", function (event) {
+    if (event.target.matches && event.target.matches(".item .amount")) retotal();
+  });
 })();

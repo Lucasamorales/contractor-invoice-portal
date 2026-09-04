@@ -1,42 +1,63 @@
 {% extends "base.html" %}
 {% block title %}Preview{% endblock %}
-{% block steps %}{% set active = 'preview' %}{% include "_steps.html" %}{% endblock %}
+{% block width %}sheet-page{% endblock %}
+{% block steps %}{% set active = 'send' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
-<h1>Check it over</h1>
-<p class="lead">
-  This is exactly what accounts receives. Nothing has been sent yet.
-</p>
-
-{# The real invoice, isolated so the app's stylesheet cannot alter it.
-   The sheet is rendered at its true A4 width and scaled down to fit, so
-   the proportions a person approves are the proportions Robin receives. #}
-<div class="paper-frame">
-  <iframe class="paper" title="Invoice preview" srcdoc="{{ invoice_html }}"></iframe>
-</div>
-
-<form method="post" action="/submit" class="form send">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
-  {% for item in items %}
-    <input type="hidden" name="description" value="{{ item.description }}">
-    <input type="hidden" name="amount" value="{{ '%.2f' % (item.amount_pence / 100) }}">
-    <input type="hidden" name="receipt_uri" value="{{ item.receipt_uri or '' }}">
-  {% endfor %}
-  {% if kudos_zero_acknowledged %}
-    <input type="hidden" name="kudos_zero_acknowledged" value="1">
-  {% endif %}
-
-  <div class="actions">
-    <a class="button ghost" href="/additional">Go back</a>
-    {% if window_open %}
-      <button class="button" type="submit"
-              onclick="this.disabled=true;this.form.requestSubmit();">
-        Send to accounts
-      </button>
-    {% else %}
-      <button class="button" type="submit" disabled>Send to accounts</button>
-      <p class="hint">{{ window_message }}</p>
-    {% endif %}
+<div class="sheet-layout">
+  {# The invoice itself, at its natural width and scaled down. The frame and
+     the scale step together in the media queries below; move one without the
+     other and the sheet crops instead of shrinking. Nothing here restyles the
+     sheet — it matches the template accounts already use (R-PDF-01). #}
+  <div class="sheet-frame" data-tut="member.preview.real">
+    <iframe class="sheet-scale" title="Invoice preview" srcdoc="{{ invoice_html }}"></iframe>
   </div>
-</form>
+
+  <div class="sheet-rail">
+    <h1>Check it over.</h1>
+    <p class="lead">
+      This is the document itself, not a summary of it. Nothing has been sent.
+    </p>
+
+    <div class="card" style="margin-top:24px" data-tut="member.preview.fixed">
+      <div class="card-row"><span class="name">Invoice</span><span class="figure">{{ number }}</span></div>
+      <div class="card-row"><span class="name">Goes to</span><span class="figure">Accounts</span></div>
+      <div class="card-row total-row"><span class="name">Total</span><span class="figure mid">{{ totals.total_pence | gbp }}</span></div>
+    </div>
+
+    <form method="post" action="/submit" class="card dark" style="margin-top:16px"
+          data-tut="member.preview.send">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+      {% for item in items %}
+        <input type="hidden" name="description" value="{{ item.description }}">
+        <input type="hidden" name="amount" value="{{ '%.2f' % (item.amount_pence / 100) }}">
+        <input type="hidden" name="receipt_uri" value="{{ item.receipt_uri or '' }}">
+      {% endfor %}
+      {% if kudos_zero_acknowledged %}
+        <input type="hidden" name="kudos_zero_acknowledged" value="1">
+      {% endif %}
+
+      <p class="label">Send invoice {{ number }}</p>
+      {% if window_open %}
+        <button class="button block" type="submit" style="margin-top:14px"
+                onclick="this.disabled=true;this.form.requestSubmit();">
+          Send this document{% include "_arrow.html" %}
+        </button>
+      {% else %}
+        <button class="button block" type="submit" style="margin-top:14px" disabled>
+          Send this document
+        </button>
+        <p class="hint" style="margin-top:10px">{{ window_message }}</p>
+      {% endif %}
+      <p class="hint" style="margin-top:12px">
+        One press. It disables itself immediately, and pressing twice cannot
+        make two invoices.
+      </p>
+    </form>
+
+    <p class="actions" style="margin-top:16px">
+      <a class="button ghost" href="/additional">Go back and edit</a>
+    </p>
+  </div>
+</div>
 {% endblock %}

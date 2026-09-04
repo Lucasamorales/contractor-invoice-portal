@@ -1,87 +1,98 @@
 {% extends "base.html" %}
 {% block title %}Additional{% endblock %}
-{% block steps %}{% set active = 'additional' %}{% include "_steps.html" %}{% endblock %}
+{% block width %}reading{% endblock %}
+{% block steps %}{% set active = 'add' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
-<h1>Anything to add?</h1>
-<p class="lead">Expenses, or anything else for this month. Leaving it empty is fine.</p>
+
+<div class="page-head">
+  <h1>Anything to add?</h1>
+  <p class="lead">
+    Expenses, or anything else for {{ period.month_name }}. Leaving it empty is
+    fine and means zero.
+  </p>
+</div>
 
 {% if errors %}
-  <div class="panel blocks">
-    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  <div class="card attention">
+    <ul style="margin:0;padding-left:18px">
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
   </div>
 {% endif %}
 
-<table class="kv">
-  <tr>
-    <th>Kudos</th>
-    <td>
+<div class="card" data-tut="member.additional.kudos">
+  <p class="label">Kudos &mdash; read from the sheet</p>
+  <div class="card-row" style="margin-top:14px;border-top:0;padding-top:6px">
+    <span class="figure">
       {% if not state.kudos_eligible %}
-        <span class="hint">not payable on your invoices</span>
+        <span class="hint">Not payable on your invoices</span>
       {% elif not state.kudos_due_this_period %}
-        <span class="hint">
-          paid quarterly &mdash; next on your
-          {% if period.month < 3 %}March{% elif period.month < 6 %}June
-          {% elif period.month < 9 %}September{% else %}December{% endif %}
-          invoice
-        </span>
+        {{ 0 | gbp }}
       {% elif state.kudos_count is not none %}
-        {{ state.kudos_count }} × {{ state.kudos_rate_pence | gbp }}
+        {{ state.kudos_count }} &times; {{ state.kudos_rate_pence | gbp }}
         = {{ state.kudos_pence | gbp }}
       {% else %}
-        <span class="missing">unavailable &mdash; Leo has been notified</span>
+        <span class="missing">Unavailable</span>
       {% endif %}
-    </td>
-  </tr>
-  {% if state.awards_pence %}
-    <tr><th>Kudos prize</th><td>{{ state.awards_pence | gbp }}</td></tr>
-  {% endif %}
-</table>
-<p class="hint">
-  Kudos come from the sheet, so you cannot change them here. They are paid
-  quarterly, on your March, June, September and December invoice.
-</p>
+    </span>
+    <span class="hint" style="text-align:right;max-width:34ch">
+      {% if state.kudos_due_this_period %}
+        You cannot change them here.
+      {% else %}
+        Paid quarterly, on your March, June, September and December invoice.
+      {% endif %}
+    </span>
+  </div>
+</div>
 
 <form method="post" action="/preview" class="form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-  <div id="items">
-    {% for item in items %}
-      <div class="item">
-        <input type="text" name="description" value="{{ item.description }}"
-               placeholder="What was it for?">
-        <input type="text" name="amount"
-               value="{{ '%.2f' % (item.amount_pence / 100) }}" placeholder="0.00">
-        <input type="file" data-receipt accept=".jpg,.jpeg,.png,.heic,.pdf">
-        <input type="hidden" name="receipt_uri" value="{{ item.receipt_uri or '' }}">
-        <span class="receipt-status hint">
-          {% if item.receipt_uri %}Receipt attached{% endif %}
-        </span>
-      </div>
-    {% endfor %}
-    {% for _ in range(3 - (items | length if items | length < 3 else 0)) %}
-      <div class="item">
-        <input type="text" name="description" placeholder="What was it for?">
-        <input type="text" name="amount" placeholder="0.00">
-        <input type="file" data-receipt accept=".jpg,.jpeg,.png,.heic,.pdf">
-        <input type="hidden" name="receipt_uri" value="">
-        <span class="receipt-status hint"></span>
-      </div>
-    {% endfor %}
+  <div class="card" data-tut="member.additional.receipts">
+    <p class="label">Expenses</p>
+    <div id="items" style="margin-top:16px">
+      {% for item in items %}
+        {% set value = '%.2f' % (item.amount_pence / 100) %}
+        {% include "_expense_row.html" %}
+      {% endfor %}
+      {% for _ in range(3 - (items | length if items | length < 3 else 0)) %}
+        {% set item = none %}{% set value = '' %}
+        {% include "_expense_row.html" %}
+      {% endfor %}
+    </div>
+    <p class="hint" style="margin-top:14px">
+      A photo is fine. Location data is removed and an iPhone HEIC is converted,
+      so accounts can always open it.
+    </p>
   </div>
-  <p class="hint">
-    A receipt each, if you have one &mdash; a photo is fine. Phone photos have
-    their location data removed, and an iPhone HEIC is converted so accounts
-    can open it.
-  </p>
 
-  {% if state.kudos_count is none and state.kudos_due_this_period and state.kudos_eligible %}
-    <label class="check">
-      <input type="checkbox" name="kudos_zero_acknowledged" value="1">
-      I understand my kudos could not be read, and want to invoice without them.
-    </label>
+  {% if state.kudos_count is none and state.kudos_due_this_period
+        and state.kudos_eligible %}
+    <div class="card attention">
+      <label class="hint" style="display:flex;gap:10px;align-items:flex-start">
+        <input type="checkbox" name="kudos_zero_acknowledged" value="1"
+               style="width:auto;margin-top:2px">
+        <span>
+          I understand my kudos could not be read, and want to invoice without
+          them.
+        </span>
+      </label>
+    </div>
   {% endif %}
 
-  <button class="button" type="submit">Preview my invoice</button>
+  <div class="page-foot">
+    <span>
+      <span class="label">Invoice total</span>
+      <span class="figure hero" id="running-total"
+            data-base="{{ state.running_total_pence }}"
+            style="display:block;margin-top:6px">
+        {{ state.running_total_pence | gbp }}
+      </span>
+    </span>
+    <button class="button" type="submit">
+      Preview my invoice{% include "_arrow.html" %}
+    </button>
+  </div>
 </form>
 {% endblock %}
 {% block scripts %}<script src="/static/receipts.js" defer></script>{% endblock %}

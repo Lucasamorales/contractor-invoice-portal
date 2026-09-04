@@ -196,7 +196,7 @@ def test_every_admin_route_is_behind_the_finance_dependency() -> None:
 def test_fees_are_masked_on_the_people_list(admin_client, factory) -> None:
     client, _, cipher = admin_client
     seed_person(factory, cipher)
-    html = client.get("/admin").text
+    html = client.get("/admin/people").text
     assert "£2,500.00" not in html
     assert "&pound;&bull;&bull;&bull;" in html or "£•••" in html
 
@@ -204,7 +204,7 @@ def test_fees_are_masked_on_the_people_list(admin_client, factory) -> None:
 def test_revealing_a_fee_shows_it_and_records_the_reveal(admin_client, factory) -> None:
     client, _, cipher = admin_client
     person_id = seed_person(factory, cipher)
-    page = client.get("/admin")
+    page = client.get("/admin/people")
 
     response = client.post(
         f"/admin/people/{person_id}/reveal-fee",

@@ -1,18 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Bank details{% endblock %}
-{% block steps %}{% set active = 'bank' %}{% include "_steps.html" %}{% endblock %}
+{% block width %}reading{% endblock %}
 {% block content %}
-<h1>Bank details</h1>
+<a class="back" href="/">&larr; This month</a>
+
+<div class="page-head">
+  <p class="eyebrow"><span class="dot"></span>The one check nobody else can do</p>
+  <h1>Is this where your money should go?</h1>
+  <p class="lead" data-tut="member.bank.decision">
+    These details came across from the old spreadsheet. Nothing has verified
+    them &mdash; a person has to.
+  </p>
+</div>
 
 {% if pending %}
-  {# A correction Robin has proposed. He cannot make it payable; only you can. #}
-  <div class="panel blocks">
-    <h2>Accounts has suggested a change</h2>
-    <p>
-      He can suggest it, but he cannot make it happen &mdash; only you can.
-      Check it against your own records before you agree.
-    </p>
-    <table class="kv">
+  {# An admin proposed this. It changes nothing until the owner agrees
+     (R-BANK-07). #}
+  <div class="card attention">
+    <p class="eyebrow"><span class="dot"></span>Accounts has suggested a change</p>
+    <table class="kv" style="margin-top:14px">
       <tr><th>Name on the account</th><td>{{ pending.account_name or "not given" }}</td></tr>
       <tr><th>Bank</th><td>{{ pending.bank_name or "not given" }}</td></tr>
       {% if pending.sort_code %}
@@ -23,60 +29,81 @@
       {% endif %}
       {% if pending.iban %}<tr><th>IBAN</th><td>{{ pending.iban }}</td></tr>{% endif %}
     </table>
-    <form method="post" action="/bank/confirm">
+    <form method="post" action="/bank/confirm" class="actions" style="margin-top:20px">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="detail_id" value="{{ pending.id }}">
-      <div class="actions">
-        <button class="button" type="submit">Yes, that is right</button>
-        <a class="button ghost" href="/bank/change">No, let me type it</a>
-      </div>
+      <button class="button" type="submit">Yes, that is right{% include "_arrow.html" %}</button>
+      <a class="button ghost" href="/bank/change">No, let me type it</a>
     </form>
   </div>
 {% endif %}
 
 {% if not bank %}
-  <p class="notice warn">
-    We have no bank details for you.
-    <a href="/bank/change">Add them</a>, or tell accounts.
-  </p>
-{% else %}
-  <p class="lead">
-    This is the account accounts pays. Only the last four digits are shown.
-  </p>
-
-  <table class="kv">
-    <tr><th>Name on the account</th><td>{{ bank.account_name or "not given" }}</td></tr>
-    <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
-    {% if bank.sort_code %}
-      <tr><th>Sort code</th><td>{{ bank.sort_code | sort_code }}</td></tr>
-    {% endif %}
-    {% if bank.account_number %}
-      <tr><th>Account number</th><td>{{ bank.account_number }}</td></tr>
-    {% endif %}
-    {% if bank.iban %}<tr><th>IBAN</th><td>{{ bank.iban }}</td></tr>{% endif %}
-    {% if bank.swift_bic %}
-      <tr><th>Swift/BIC</th><td>{{ bank.swift_bic }}</td></tr>
-    {% endif %}
-  </table>
-
-  {% if bank.confirmed == 'yes' %}
-    <p class="notice ok">You have confirmed these details.</p>
-    <div class="actions">
-      <a class="button" href="/additional">Continue</a>
-      <a class="button ghost" href="/bank/change">Change them</a>
-    </div>
-  {% else %}
-    <p class="notice warn">
-      These came from the old spreadsheet and nobody has checked them.
-      You have to confirm them before you can invoice.
+  <div class="card attention">
+    <h2>We have no bank details for you.</h2>
+    <p class="actions" style="margin-top:20px">
+      <a class="button" href="/bank/change">Add them{% include "_arrow.html" %}</a>
     </p>
-    <form method="post" action="/bank/confirm">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <div class="actions">
-        <button class="button" type="submit">These are correct</button>
-        <a class="button ghost" href="/bank/change">They are wrong</a>
+  </div>
+{% else %}
+  <div class="card decision" data-tut="member.bank.masked">
+    <div class="card-body">
+      <p class="label">The account on file</p>
+      <div class="bank-grid">
+        <div>
+          <p class="label">Name on the account</p>
+          <p class="figure">{{ bank.account_name or "not given" }}</p>
+        </div>
+        <div>
+          <p class="label">Bank</p>
+          <p class="figure">{{ bank.bank_name or "not given" }}</p>
+        </div>
+        {% if bank.sort_code %}
+          <div>
+            <p class="label">Sort code</p>
+            <p class="figure">{{ bank.sort_code | sort_code }}</p>
+          </div>
+        {% endif %}
+        {% if bank.account_number %}
+          <div>
+            <p class="label">Account number</p>
+            <p class="figure">{{ bank.account_number }}</p>
+          </div>
+        {% endif %}
+        {% if bank.iban %}
+          <div><p class="label">IBAN</p><p class="figure">{{ bank.iban }}</p></div>
+        {% endif %}
+        {% if bank.swift_bic %}
+          <div><p class="label">Swift/BIC</p><p class="figure">{{ bank.swift_bic }}</p></div>
+        {% endif %}
       </div>
-    </form>
-  {% endif %}
+    </div>
+    <div class="card-foot">
+      {% if bank.confirmed == 'yes' %}
+        <span class="hint"><span class="dot-good"></span>Confirmed by you</span>
+        <a class="button ghost" href="/bank/change">Change it</a>
+      {% else %}
+        <form method="post" action="/bank/confirm" style="display:contents">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="button" type="submit">
+            Yes &mdash; this is my account{% include "_arrow.html" %}
+          </button>
+        </form>
+        <a class="button ghost" href="/bank/change">No &mdash; change it</a>
+        <span class="hint">
+          Confirming is what makes it payable. Until then you cannot invoice.
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card" data-tut="member.bank.owner">
+    <p class="label">If you change it</p>
+    <p class="hint" style="margin-top:8px">
+      Changing creates a new row rather than editing this one, and asks for the
+      account number twice. The old row is closed, and both you and accounts get
+      an email showing the old and new last four digits.
+    </p>
+  </div>
 {% endif %}
 {% endblock %}

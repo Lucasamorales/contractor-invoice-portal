@@ -1,20 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Change your bank details{% endblock %}
-{% block steps %}{% set active = 'bank' %}{% include "_steps.html" %}{% endblock %}
+{% block width %}narrow{% endblock %}
 {% block content %}
-<h1>Change your bank details</h1>
-<p class="lead">
-  This is where your money is sent. Take a moment over it.
-</p>
+<a class="back" href="/bank">&larr; Bank details</a>
+
+<div class="page-head">
+  <h1>Change your bank details</h1>
+  <p class="lead">
+    Type the account number twice &mdash; double entry catches transpositions
+    no checksum can.
+  </p>
+</div>
 
 {% if errors %}
-  <div class="panel blocks">
+  <div class="card attention">
     <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
   </div>
 {% endif %}
 
 {% if bank %}
-  <div class="panel">
+  <div class="card">
     <strong>What we have now</strong>
     <table class="kv">
       <tr><th>Name on the account</th><td>{{ bank.account_name or "not given" }}</td></tr>
@@ -30,7 +35,7 @@
   </div>
 {% endif %}
 
-<form method="post" action="/bank/change" class="form">
+<form method="post" action="/bank/change" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <label class="field">
@@ -91,7 +96,7 @@
 
   <div class="actions">
     <a class="button ghost" href="/bank">Cancel</a>
-    <button class="button" type="submit">Save these details</button>
+    <button class="button" type="submit">Save and make payable{% include "_arrow.html" %}</button>
   </div>
   <p class="hint">
     Both you and accounts get an email showing the last four digits of the old and

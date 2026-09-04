@@ -1,11 +1,18 @@
-{# The wizard's progress. `active` is set by each step. #}
+{# Three steps, not five. Your details and bank account are permanent pages
+   (R-WIZ-08), not stations you walk through every month. #}
 <ol class="steps">
-  {% for key, label in [
-      ('details', 'Your details'),
-      ('bank', 'Bank details'),
-      ('additional', 'Additional'),
-      ('preview', 'Preview'),
-      ('done', 'Sent')] %}
-    <li class="{{ 'on' if key == active else '' }}">{{ label }}</li>
+  {% for key, label, href in [
+      ('check', 'Check', '/'),
+      ('add', 'Add', '/additional'),
+      ('send', 'Send', none)] %}
+    <li>
+      {% if key == active %}
+        <span class="on">{{ label }}</span>
+      {% elif href %}
+        <a href="{{ href }}">{{ label }}</a>
+      {% else %}
+        <span>{{ label }}</span>
+      {% endif %}
+    </li>
   {% endfor %}
 </ol>
