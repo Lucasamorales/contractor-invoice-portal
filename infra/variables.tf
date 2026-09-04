@@ -105,3 +105,15 @@ variable "iap_audience" {
   type        = string
   default     = ""
 }
+
+variable "kudos_sheet_id" {
+  description = <<-EOT
+    The kudos spreadsheet's file id, from its URL between /d/ and /edit.
+
+    Share that sheet read-only with the service account in service_account_email
+    before setting this, and leave sheets.googleapis.com enabled: the sync
+    needs the file id, the sharing and the API, and a 403 mentions none of them.
+  EOT
+  type        = string
+  default     = ""
+}

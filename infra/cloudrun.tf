@@ -96,6 +96,15 @@ resource "google_cloud_run_v2_service" "app" {
         value = "example.com"
       }
 
+      # R-KUD-01. Not a secret — it is in the URL of a sheet the whole company
+      # can open. What keeps us to this one file is that the sheet is shared
+      # with the service account and nothing else is; there is no OAuth scope
+      # that means "one spreadsheet".
+      env {
+        name  = "PORTAL_KUDOS_SHEET_ID"
+        value = var.kudos_sheet_id
+      }
+
       # R-ACC-04: the app checks finance membership itself as well as IAP.
       env {
         name  = "PORTAL_FINANCE_EMAILS"
@@ -119,11 +128,13 @@ resource "google_cloud_run_v2_service" "app" {
         value = local.iap_audience
       }
 
-      # Scheduler's OIDC tokens are minted with the service URL as their
-      # audience (see scheduler.tf), which is a different thing entirely.
+      # Scheduler's OIDC tokens carry the IAP audience too (see scheduler.tf):
+      # IAP validates them before the container is reached, so they have to be
+      # minted for IAP. The app then checks the same token a second time,
+      # against this value and the scheduler's service account.
       env {
         name  = "PORTAL_SCHEDULER_AUDIENCE"
-        value = var.iap_audience != "" ? var.iap_audience : local.service_audience
+        value = local.iap_audience
       }
 
       # R-PER-06 shuts submission before the 24th, which makes the thing

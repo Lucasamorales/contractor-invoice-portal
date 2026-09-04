@@ -1,9 +1,12 @@
 # Cloud Scheduler (R-JOB-01 .. R-JOB-06).
 #
 # Each job calls its endpoint with an OIDC token. The app verifies the token's
-# audience and that this service account signed it — those endpoints sit
-# outside IAP, because Scheduler is not a browser, so the token is the only
-# thing between them and the internet.
+# audience and that this service account signed it.
+#
+# These endpoints do NOT sit outside IAP: IAP is enabled on the service, so it
+# is in front of every path including /tasks/*. The scheduler therefore needs
+# to be allowed through IAP as well (see scheduler_iap below), and the OIDC
+# token is checked twice — once by IAP, once by the app.
 
 resource "google_service_account" "scheduler" {
   account_id   = "portal-scheduler-${var.environment}"
@@ -19,6 +22,25 @@ resource "google_cloud_run_v2_service_iam_member" "scheduler_invoker" {
   name     = google_cloud_run_v2_service.app.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.scheduler.email}"
+}
+
+# IAP is in front of the whole service, so there is no "outside IAP" for these
+# endpoints to sit in — the comment at the top of this file used to claim there
+# was. Without this the scheduler's OIDC token is refused by IAP before the
+# container ever sees it, and the job fails as UNAUTHENTICATED with nothing in
+# the application log at all, which is a genuinely horrible way to be broken.
+#
+# run.invoker alone is not enough, exactly as it was not enough for a human:
+# that one lets the request reach Cloud Run, this one is what IAP itself
+# checks. The token is still verified a second time by the app against
+# PORTAL_SCHEDULER_AUDIENCE and this service account, so IAP is an added gate
+# rather than the only one.
+resource "google_iap_web_cloud_run_service_iam_member" "scheduler_iap" {
+  project                = var.project_id
+  location               = google_cloud_run_v2_service.app.location
+  cloud_run_service_name = google_cloud_run_v2_service.app.name
+  role                   = "roles/iap.httpsResourceAccessor"
+  member                 = "serviceAccount:${google_service_account.scheduler.email}"
 }
 
 locals {
@@ -92,9 +114,15 @@ resource "google_cloud_scheduler_job" "jobs" {
 
     oidc_token {
       service_account_email = google_service_account.scheduler.email
-      # Must match PORTAL_SCHEDULER_AUDIENCE exactly. Both are the computed
-      # deterministic URL, so they cannot drift apart.
-      audience = local.service_audience
+      # The IAP resource path, not the service URL. IAP is in front of these
+      # endpoints, and it validates this token itself before Cloud Run sees
+      # it — against the same audience it uses for a browser. With the service
+      # URL here IAP does not recognise the token as programmatic access at
+      # all: it answers with its own sign-in page, so Scheduler records a
+      # cheerful HTTP 200 and the container is never invoked.
+      #
+      # Must match PORTAL_SCHEDULER_AUDIENCE, which is set from the same local.
+      audience = local.iap_audience
     }
   }
 
