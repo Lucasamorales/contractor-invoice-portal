@@ -1,4 +1,4 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}Kudos {{ quarter.key }}{% endblock %}
 {% block content %}
 <h1>Kudos — {{ quarter.key }}</h1>
@@ -9,13 +9,13 @@
 </p>
 
 {% if errors %}
-  <div class="panel blocks">
+  <div class="card attention">
     <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
   </div>
 {% endif %}
 
 {% if unmapped %}
-  <div class="panel blocks">
+  <div class="card attention">
     <h2>{{ unmapped | length }} name{{ '' if unmapped | length == 1 else 's' }} in the sheet belong to nobody</h2>
     <p class="hint">
       Their kudos cannot be paid until somebody says who they are.
@@ -25,7 +25,7 @@
 {% endif %}
 
 {% if view.has_tie %}
-  <div class="panel blocks">
+  <div class="card attention">
     <h2>A tie needs settling</h2>
     <p>
       Two or more people are level on the podium. The policy's tiebreakers are
@@ -38,7 +38,7 @@
 <section>
   <h2>Standings</h2>
   {% if view.rows %}
-    <table class="kv wide">
+    <table class="kv">
       <tr>
         <th>Place</th><th>Name</th><th>Kudos</th><th>Prize</th><th></th>
       </tr>
@@ -47,7 +47,7 @@
           <td>
             {% if row.place %}
               {{ row.place }}{% if row.tied_with > 1 %}
-                <span class="tag">tied {{ row.tied_with }} ways</span>
+                <span class="chip">tied {{ row.tied_with }} ways</span>
               {% endif %}
             {% else %}&mdash;{% endif %}
           </td>
@@ -58,9 +58,9 @@
           <td>
             {% if row.awarded %}
               {{ row.awarded.amount_pence | gbp }}
-              <span class="tag">awarded</span>
+              <span class="chip">awarded</span>
               {% if row.awarded.claimed_by_invoice_id %}
-                <span class="tag">invoiced</span>
+                <span class="chip">invoiced</span>
               {% else %}
                 <span class="hint">on their next invoice</span>
               {% endif %}

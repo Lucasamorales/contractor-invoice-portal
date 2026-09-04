@@ -1,45 +1,57 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}People{% endblock %}
+{% block width %}wide{% endblock %}
 {% block content %}
-<h1>People</h1>
-<p class="lead">
-  {{ rows | length }} people. Fees are hidden until you ask for one, and every
-  reveal is recorded.
-</p>
+<div class="page-head">
+  <h1>People</h1>
+  <p class="lead" data-tut="admin.people.fees">
+    Fees stay hidden until you ask for one, so a screenshare of this page does
+    not leak the payroll. Every reveal writes your address to the audit log.
+  </p>
+</div>
 
-<table class="kv wide">
-  <tr>
-    <th>Name</th><th>Team</th><th>Status</th><th>Fee</th>
-    <th>{{ period.month_name }}</th>
-  </tr>
-  {% for row in rows %}
-    <tr>
-      <td>
-        <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
-      </td>
-      <td>{{ row.person.team or "&mdash;" | safe }}</td>
-      <td>
-        {{ row.person.status.value }}
-        {% if row.person.payout_region %}
-          <span class="tag">{{ row.person.payout_region.value }}</span>
-        {% endif %}
-      </td>
-      <td>
-        {% with person = row.person, fee_pence = row.fee_pence, revealed = False %}
-          {% include "admin/_fee_value.html" %}
-        {% endwith %}
-      </td>
-      <td>
-        {% if row.invoiced_this_period %}
-          no. {{ row.invoiced_this_period.number }}
-          {% if row.invoiced_this_period.is_late %}
-            <span class="tag">late</span>
-          {% endif %}
-        {% else %}
-          <span class="missing">not yet</span>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-</table>
+<div class="table">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Team</th><th>Region</th><th>Fee</th>
+        <th class="num">{{ period.month_name }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td class="name">
+            <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
+          </td>
+          <td>{{ row.person.team or "—" }}</td>
+          <td>
+            {% if row.person.payout_region and row.person.payout_region.value == 'INTL' %}
+              <span style="color:var(--red-text);font-weight:600">INTL</span>
+            {% elif row.person.payout_region %}
+              {{ row.person.payout_region.value }}
+            {% else %}
+              <span style="color:var(--faint)">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% with person = row.person, fee_pence = row.fee_pence, revealed = False %}
+              {% include "admin/_fee_value.html" %}
+            {% endwith %}
+          </td>
+          <td class="num">
+            {% if row.invoiced_this_period %}
+              {{ row.invoiced_this_period.number }}
+              {% if row.invoiced_this_period.is_late %}
+                <span class="chip alert">Late</span>
+              {% endif %}
+            {% else %}
+              <span class="missing">Not yet</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}Data check{% endblock %}
 {% block content %}
 {% set ready = rows | selectattr("ready") | list %}
@@ -9,7 +9,7 @@
   real cycle will work.
 </p>
 
-<table class="kv wide">
+<table class="kv">
   <tr>
     <th>Name</th><th>Fee set</th><th>Profile</th><th>Bank confirmed</th>
     <th>Number seeded</th>
@@ -37,7 +37,7 @@
   {% set flagged = rows | rejectattr("notes", "equalto", ()) | list %}
   {% if flagged %}
     {% for row in flagged %}
-      <div class="panel blocks">
+      <div class="card attention">
         <strong>
           <a href="/admin/people/{{ row.person.id }}">
             {{ row.person.display_name }}

@@ -1,11 +1,11 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}{{ person.display_name }}{% endblock %}
 {% block content %}
 <h1>{{ person.display_name }}</h1>
 <p class="lead">{{ person.email }} &middot; {{ person.status.value }}</p>
 
 {% if errors %}
-  <div class="panel blocks">
+  <div class="card attention">
     <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
   </div>
 {% endif %}
@@ -31,7 +31,7 @@
 <section>
   <h2>Fee history</h2>
   {% if fees %}
-    <table class="kv wide">
+    <table class="kv">
       <tr><th>From</th><th>To</th><th>Amount</th><th>Set by</th><th>Note</th></tr>
       {% for fee in fees %}
         <tr>
@@ -78,12 +78,12 @@
     reveal is recorded. You cannot make a row payable &mdash; only its owner can.
   </p>
   {% for bank in banks %}
-    <div class="panel">
+    <div class="card">
       <table class="kv">
         <tr><th>Added</th><td>{{ bank.created_at.strftime("%d %b %Y") }}</td></tr>
         <tr>
           <th>State</th>
-          <td>{{ bank.state }} <span class="tag">{{ bank.source }}</span></td>
+          <td>{{ bank.state }} <span class="chip">{{ bank.source }}</span></td>
         </tr>
         <tr><th>Account name</th><td>{{ bank.account_name or "not given" }}</td></tr>
         <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
@@ -98,7 +98,7 @@
         </tr>
       </table>
       <div id="bank-{{ bank.id }}">
-        <button class="link" type="button"
+        <button class="quiet" type="button"
                 hx-post="/admin/bank/{{ bank.id }}/reveal"
                 hx-target="#bank-{{ bank.id }}" hx-swap="innerHTML">
           Reveal full details
@@ -177,7 +177,7 @@
 <section>
   <h2>Invoices</h2>
   {% if invoices %}
-    <table class="kv wide">
+    <table class="kv">
       <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>Issued</th><th>PDF</th></tr>
       {% for invoice in invoices %}
         <tr>
@@ -186,7 +186,7 @@
           <td>{{ invoice.total_pence | gbp }}</td>
           <td>
             {{ invoice.status.value }}
-            {% if invoice.is_late %}<span class="tag">late</span>{% endif %}
+            {% if invoice.is_late %}<span class="chip">late</span>{% endif %}
           </td>
           <td>
             {{ invoice.issued_at.strftime("%d %b %Y") if invoice.issued_at

@@ -401,7 +401,10 @@ def test_period_view_counts_expected_against_received(admin_client, factory) -> 
     seed_person(factory, cipher, email="a@example.com")
     seed_person(factory, cipher, email="b@example.com")
     html = client.get("/admin/period?month=2026-09").text
-    assert "0</strong> of <strong>2" in html.replace("\n", "")
+    # Rendered as "0 of 2 received": assert the figures, not the
+    # markup, so a restyle cannot break a data assertion.
+    assert "of 2 received" in " ".join(html.split())
+    assert ">0</strong>" in html
 
 
 def test_period_view_flags_a_large_expense(admin_client, factory) -> None:
@@ -423,7 +426,8 @@ def test_period_view_flags_a_large_expense(admin_client, factory) -> None:
         render=lambda c: b"%PDF",
     )
     html = client.get("/admin/period?month=2026-09").text
-    assert "large_expense" in html
+    # The chip prints the flag kind with the underscore turned into a space.
+    assert "large expense" in html
     assert "a very expensive laptop" in html
 
 
@@ -534,7 +538,7 @@ def test_queue_lists_people_without_a_fee(admin_client, factory) -> None:
     client, _, cipher = admin_client
     seed_person(factory, cipher, fee=False)
     html = client.get("/admin/queue").text
-    assert "Waiting for a fee (1)" in html
+    assert "Waiting for a fee" in html and "&mdash; 1" in html
 
 
 def test_deactivating_preserves_history_and_audits(admin_client, factory) -> None:

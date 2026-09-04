@@ -1,85 +1,61 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}{{ period.label }}{% endblock %}
+{% block width %}wide{% endblock %}
 {% block content %}
-<h1>{{ period.label }}</h1>
-<p class="lead">
-  <strong>{{ view.received }}</strong> of <strong>{{ view.expected }}</strong>
-  invoices received. The window is the 24th to the 28th.
-</p>
+<div class="page-head">
+  <p class="eyebrow"><span class="dot"></span>The month in detail</p>
+  <div class="overview-head">
+    <h1>{{ period.label }}</h1>
+    <span class="hint">
+      <strong style="color:var(--ink)">{{ view.received }}</strong>
+      of {{ view.expected }} received
+    </span>
+  </div>
+</div>
 
-<section>
-  <h2>Not yet in ({{ view.missing | length }})</h2>
-  {% if view.missing %}
-    <ul class="history">
-      {% for row in view.missing %}
-        <li>
-          <a href="/admin/people/{{ row.person.id }}">
-            {{ row.person.display_name }}
-          </a>
-          <span class="tag">{{ row.person.team or "no team" }}</span>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="hint">Everyone active has invoiced.</p>
-  {% endif %}
-</section>
-
-<section>
-  <h2>Worth a look ({{ view.flagged | length }})</h2>
-  {% if view.flagged %}
-    {% for row in view.flagged %}
-      <div class="panel blocks">
-        <strong>
-          <a href="/admin/people/{{ row.person.id }}">
-            {{ row.person.display_name }}
-          </a>
-        </strong>
-        {% if row.invoice %}
-          &mdash; invoice {{ row.invoice.number }},
-          {{ row.invoice.total_pence | gbp }}
-        {% endif %}
-        <ul>
-          {% for flag in row.flags %}
-            <li><span class="tag">{{ flag.kind }}</span> {{ flag.detail }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endfor %}
-  {% else %}
-    <p class="hint">Nothing flagged.</p>
-  {% endif %}
-</section>
-
-<section>
-  <h2>Everyone</h2>
-  <table class="kv wide">
-    <tr><th>Name</th><th>Status</th><th>Invoice</th><th>Total</th><th>Flags</th></tr>
-    {% for row in view.rows %}
+<div class="table" data-tut="admin.period.table">
+  <table>
+    <thead>
       <tr>
-        <td>
-          <a href="/admin/people/{{ row.person.id }}">
-            {{ row.person.display_name }}
-          </a>
-        </td>
-        <td>{{ row.person.status.value }}</td>
-        <td>
-          {% if row.invoice and row.invoice.pdf_uri %}
-            <a href="/admin/invoices/{{ row.invoice.id }}/pdf">
-              {{ row.invoice.number }}
-            </a>
-          {% elif row.invoice %}
-            {{ row.invoice.number }} <span class="hint">no PDF</span>
-          {% else %}
-            <span class="missing">none</span>
-          {% endif %}
-        </td>
-        <td>{{ row.invoice.total_pence | gbp if row.invoice else "" }}</td>
-        <td>
-          {% for flag in row.flags %}<span class="tag">{{ flag.kind }}</span>{% endfor %}
-        </td>
+        <th>Name</th><th>Invoice</th><th class="num">Total</th><th class="num">Flags</th>
       </tr>
-    {% endfor %}
+    </thead>
+    <tbody>
+      {% for row in view.rows %}
+        <tr>
+          <td class="name">
+            <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
+          </td>
+          <td>
+            {% if row.invoice and row.invoice.pdf_uri %}
+              <a href="/admin/invoices/{{ row.invoice.id }}/pdf">{{ row.invoice.number }}</a>
+            {% elif row.invoice %}
+              {{ row.invoice.number }}
+            {% else %}
+              <span class="missing">None</span>
+            {% endif %}
+          </td>
+          <td class="num">
+            {% if row.invoice %}
+              <span class="figure" style="font-size:15px">{{ row.invoice.total_pence | gbp }}</span>
+            {% else %}
+              <span style="color:var(--faint)">&mdash;</span>
+            {% endif %}
+          </td>
+          <td class="num">
+            {% for flag in row.flags %}
+              <span class="chip{% if flag.kind == 'late' %} alert{% endif %}"
+                    title="{{ flag.detail }}">{{ flag.kind.replace('_', ' ') }}</span>
+            {% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
-</section>
+</div>
+
+<p class="hint" style="margin-top:14px">
+  Flags never block a payment. Late means after the 28th &mdash; still valid,
+  still paid, still next in that sequence.
+</p>
 {% endblock %}

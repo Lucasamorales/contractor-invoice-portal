@@ -1,22 +1,31 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}Queue{% endblock %}
+{% block width %}reading{% endblock %}
 {% block content %}
-<h1>Queue</h1>
-<p class="lead">Anything waiting on somebody.</p>
+<div class="page-head">
+  <h1>Queue</h1>
+  <p class="lead">Anything waiting on somebody. Check it during the window.</p>
+</div>
+
+{% if errors %}
+  <div class="card attention">
+    <ul style="margin:0;padding-left:18px">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
 
 {% if not attention.is_clear %}
-  <div class="panel blocks">
-    <h2>Needs fixing ({{ attention.total }})</h2>
-    <p class="hint">
-      These do not show up anywhere else. An invoice that never finished, or
-      an email that gave up, still counts as received on the period screen.
+  <div class="card alarm">
+    <p class="label">Needs fixing &mdash; {{ attention.total }}</p>
+    <p class="hint" style="margin-top:8px">
+      These appear nowhere else. An invoice that never finished, or an email
+      that gave up, still counts as received on Period.
     </p>
-    <ul>
+    <ul class="history" style="margin-top:14px">
       {% for invoice in attention.stuck_drafts %}
         <li>
-          Invoice <strong>{{ invoice.number }}</strong> took a number on
-          {{ invoice.created_at.strftime("%d %b at %H:%M") }} and never
-          finished sending.
+          Invoice <strong style="color:var(--ink)">{{ invoice.number }}</strong>
+          took a number on {{ invoice.created_at.strftime("%d %b at %H:%M") }}
+          and never finished sending.
         </li>
       {% endfor %}
       {% for row in attention.failed_mail %}
@@ -27,43 +36,33 @@
       {% endfor %}
       {% for bank in attention.unconfirmed_bank %}
         <li>
-          <a href="/admin/people/{{ bank.person_id }}">
-            {{ bank.account_name or "someone" }}
-          </a>
+          <a href="/admin/people/{{ bank.person_id }}">{{ bank.account_name or "Someone" }}</a>
           has never confirmed their bank details, so they cannot invoice.
         </li>
       {% endfor %}
       {% for name, count in attention.unmapped_kudos %}
         <li>
-          <strong>{{ name }}</strong> has {{ count }}
-          kudo{{ '' if count == 1 else 's' }} in the sheet and is not anybody
-          here, so none of it can be paid.
+          <strong style="color:var(--ink)">{{ name }}</strong> has {{ count }}
+          kudo{{ '' if count == 1 else 's' }} and is not anybody here.
         </li>
       {% endfor %}
     </ul>
   </div>
 {% endif %}
 
-{% if errors %}
-  <div class="panel blocks">
-    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
-  </div>
-{% endif %}
-
 {% if attention.unmapped_kudos %}
-  <section>
-    <h2>Who are these people? ({{ attention.unmapped_kudos | length }})</h2>
-    <p class="hint">
-      Names in the kudos sheet that nobody has matched to a person. Nothing is
+  <div class="card">
+    <p class="label">Who are these people? &mdash; {{ attention.unmapped_kudos | length }}</p>
+    <p class="hint" style="margin-top:8px">
+      Names in the kudos sheet nobody has matched to a person. Nothing is
       guessed: a near-miss would pay the wrong person. Choose somebody, or
-      choose nobody for a leaver or for staff who do not invoice here — their
-      kudos stay on the record either way.
+      choose nobody for a leaver.
     </p>
     {% for name, count in attention.unmapped_kudos %}
       <form method="post" action="/admin/kudos/map" class="form inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="sheet_name" value="{{ name }}">
-        <strong>{{ name }}</strong>
+        <strong style="color:var(--ink)">{{ name }}</strong>
         <span class="hint">{{ count }} kudo{{ '' if count == 1 else 's' }}</span>
         <select name="person_id">
           <option value="">Nobody &mdash; ignore this name</option>
@@ -71,68 +70,73 @@
             <option value="{{ person.id }}">{{ person.display_name }}</option>
           {% endfor %}
         </select>
-        <input type="text" name="note" placeholder="Why (optional)">
-        <button class="button" type="submit">Confirm</button>
+        <button class="button small" type="submit">Confirm</button>
       </form>
     {% endfor %}
-  </section>
+  </div>
 {% endif %}
 
-<section>
-  <h2>Waiting for a fee ({{ queue.awaiting_fee | length }})</h2>
-  <p class="hint">Until a fee is set, these people cannot invoice at all.</p>
+<div class="card" data-tut="admin.queue.fee">
+  <p class="label">Waiting for a fee &mdash; {{ queue.awaiting_fee | length }}</p>
+  <p class="hint" style="margin-top:8px">
+    They cannot invoice at all until a fee exists, and they can see it is with
+    you.
+  </p>
   {% if queue.awaiting_fee %}
-    <ul class="history">
+    <ul class="history" style="margin-top:12px">
       {% for person in queue.awaiting_fee %}
-        <li>
+        <li style="display:flex;justify-content:space-between;gap:14px">
           <a href="/admin/people/{{ person.id }}">{{ person.display_name }}</a>
-          <span class="tag">{{ person.status.value }}</span>
+          <span class="chip">{{ person.status.value }}</span>
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="hint">Nobody.</p>
+    <p class="hint" style="margin-top:12px">Nobody.</p>
   {% endif %}
-</section>
+</div>
 
-<section>
-  <h2>Bank changes waiting on their owner ({{ queue.pending_bank | length }})</h2>
-  <p class="hint">
+<div class="card" data-tut="admin.queue.pending">
+  <p class="label">Bank changes waiting on their owner &mdash; {{ queue.pending_bank | length }}</p>
+  <p class="hint" style="margin-top:8px">
     You proposed these. Only the person themselves can make one payable.
   </p>
   {% if queue.pending_bank %}
-    <ul class="history">
+    <ul class="history" style="margin-top:12px">
       {% for bank in queue.pending_bank %}
-        <li>
+        <li style="display:flex;justify-content:space-between;gap:14px">
           <a href="/admin/people/{{ bank.person_id }}">{{ bank.account_name }}</a>
-          <time>{{ bank.created_at.strftime("%d %b") }}</time>
+          <span>
+            <span class="chip alert">Pending</span>
+            <time>{{ bank.created_at.strftime("%d %b") }}</time>
+          </span>
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="hint">None.</p>
+    <p class="hint" style="margin-top:12px">None.</p>
   {% endif %}
-</section>
+</div>
 
-<section>
-  <h2>Never confirmed ({{ queue.unconfirmed_bank | length }})</h2>
-  <p class="hint">
-    Imported from the spreadsheet and not yet checked by the person. They
-    cannot invoice until they confirm.
+<div class="card" data-tut="admin.queue.unconfirmed">
+  <p class="label">Never confirmed &mdash; {{ queue.unconfirmed_bank | length }}</p>
+  <p class="hint" style="margin-top:8px">
+    Imported from the spreadsheet and never checked by the person. They cannot
+    invoice, and may not realise it.
   </p>
   {% if queue.unconfirmed_bank %}
-    <ul class="history">
+    <ul class="history" style="margin-top:12px">
       {% for bank in queue.unconfirmed_bank %}
-        <li>
+        <li style="display:flex;justify-content:space-between;gap:14px">
           <a href="/admin/people/{{ bank.person_id }}">
             {{ bank.account_name or "no name on the account" }}
           </a>
-          <span class="tag">{{ bank.source.value }}</span>
+          <span class="chip">{{ bank.source.value }}</span>
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="hint">None.</p>
+    <p class="hint" style="margin-top:12px">None.</p>
   {% endif %}
-</section>
+</div>
 {% endblock %}

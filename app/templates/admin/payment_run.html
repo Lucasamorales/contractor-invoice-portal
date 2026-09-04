@@ -1,4 +1,4 @@
-{% extends "admin/_base.html" %}
+{% extends "base.html" %}
 {% block title %}Payment run {{ period.key }}{% endblock %}
 {% block content %}
 <h1>Payment run &mdash; {{ period.label }}</h1>
@@ -17,7 +17,7 @@
   <section>
     <h2>{{ title }} &mdash; {{ lines | length }} payments, {{ total | gbp }}</h2>
     {% if lines %}
-      <table class="kv wide">
+      <table class="kv">
         <tr>
           <th>Payee</th><th>Legal name</th><th>Invoice</th><th>Amount</th>
           <th>Account</th>

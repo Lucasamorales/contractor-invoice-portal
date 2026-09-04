@@ -1,11 +1,12 @@
-{# One cell of the people table. Masked until revealed (R-ADM-01):
-   a screenshare of this page should not leak the payroll. #}
+{# One cell of the people table. Masked until asked for (R-ADM-01): a
+   screenshare of this page should not leak the payroll, and the masking has to
+   read as a deliberate decision rather than as something still loading. #}
 {% if fee_pence is none %}
-  <span class="missing">not set</span>
+  <span class="missing">Not set</span>
 {% elif revealed %}
-  <strong>{{ fee_pence | gbp }}</strong>
+  <span class="figure" style="font-size:15px">{{ fee_pence | gbp }}</span>
 {% else %}
-  <button class="link" type="button"
+  <button class="quiet" type="button"
           hx-post="/admin/people/{{ person.id }}/reveal-fee"
           hx-target="closest td" hx-swap="innerHTML">&pound;&bull;&bull;&bull;</button>
 {% endif %}
