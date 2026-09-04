@@ -522,11 +522,17 @@ class Attention:
     stuck_drafts: list[Invoice]
     failed_mail: list
     unconfirmed_bank: list[BankDetail]
+    # Kudos whose receiver nobody has mapped to a person (R-KUD-14). Money
+    # sitting in the sheet with nowhere to go, which nothing else reports.
+    unmapped_kudos: list[tuple[str, int]] = field(default_factory=list)
 
     @property
     def total(self) -> int:
         return (
-            len(self.stuck_drafts) + len(self.failed_mail) + len(self.unconfirmed_bank)
+            len(self.stuck_drafts)
+            + len(self.failed_mail)
+            + len(self.unconfirmed_bank)
+            + len(self.unmapped_kudos)
         )
 
     @property
@@ -544,4 +550,5 @@ def needs_attention(
         ),
         failed_mail=repo.failed_outbox(session),
         unconfirmed_bank=repo.unverified_bank_rows(session),
+        unmapped_kudos=repo.unresolved_kudos_names(session),
     )

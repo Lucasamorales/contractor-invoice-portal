@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db.session import get_session
-from app.services import backup, jobs, mailer
+from app.services import backup, jobs, kudos_sync, mailer
 from app.services.storage import ObjectStore
 from app.transport import HttpxRequest
 from app.web.member import get_store
@@ -147,25 +147,37 @@ async def run_summary(
 async def run_sync_kudos(
     caller: Scheduler, session: DbSession, settings: Config
 ) -> dict[str, object]:
-    """R-JOB-01.
+    """R-JOB-01. Read the sheet into the claim ledger.
 
-    Not built: the kudos sheet's file ID and column layout have not been
-    supplied (SPEC §19). The endpoint exists so the Scheduler job can be
-    created now and starts working when the sheet is configured, and it says
-    plainly that it did nothing rather than reporting success.
+    Reports what it did rather than a bare 200: an unmatched name or a kudo
+    that has left the sheet after being billed are things somebody has to act
+    on, and a job that returns "ok" hides both.
     """
-    del caller, session
+    del caller
     if not settings.kudos_sheet_id:
+        # Not an error. The job is scheduled before the sheet is configured,
+        # and saying so plainly beats a 500 every five minutes.
         return {
             "job": "sync-kudos",
-            "queued": 0,
-            "skipped": 0,
+            "events_new": 0,
             "detail": "no kudos sheet configured; nothing synced",
         }
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="The kudos sync is not built yet.",
-    )
+
+    try:
+        with session.begin():
+            report = kudos_sync.sync(session, settings=settings, now=_now())
+    except kudos_sync.KudosSyncError as exc:
+        # R-KUD-06 depends on this failing loudly: if the sheet cannot be read
+        # the wizard must say so, and it can only say so if nothing here
+        # pretends the sync succeeded.
+        logger.error("kudos sync failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+    if report.unmatched:
+        logger.warning("kudos sync: %d unmatched names", len(report.unmatched))
+    return report.as_dict()
 
 
 @router.post("/backup")

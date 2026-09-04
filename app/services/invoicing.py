@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import logging
 import uuid
+from calendar import monthrange
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,6 +29,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import Settings
 from app.db import repo
 from app.db.models import (
+    AwardKind,
     BankDetail,
     BankState,
     Counter,
@@ -36,6 +38,8 @@ from app.db.models import (
     Invoice,
     InvoiceLine,
     InvoiceStatus,
+    KudosAward,
+    KudosEvent,
     KudosSnapshot,
     Person,
     PrintSnapshot,
@@ -44,6 +48,7 @@ from app.db.models import LineKind as DbLineKind
 from app.domain.formatting import month_heading
 from app.domain.invoice import InvoiceLine as DomainLine
 from app.domain.invoice import InvoiceTotals, LineKind, compose, detail_note
+from app.domain.kudos import Quarter, is_quarter_end
 from app.domain.numbering import advance
 from app.domain.period import Period, is_late
 from app.services.crypto import Cipher, field_aad
@@ -91,6 +96,11 @@ class Prepared:
     kudos_rate_pence: int
     bank: BankDetail
     totals: InvoiceTotals
+    # The exact rows this invoice will bill. Carried through so that issuing
+    # stamps the same ones that were priced, rather than asking again and
+    # risking a different answer (R-KUD-11).
+    kudos_events: tuple[KudosEvent, ...] = ()
+    awards: tuple[KudosAward, ...] = ()
 
 
 def profile_is_complete(person: Person) -> bool:
@@ -115,6 +125,7 @@ def prepare(
     settings: Settings,
     expenses: Sequence[ExpenseInput] = (),
     kudos_zero_acknowledged: bool = False,
+    lock: bool = False,
 ) -> Prepared:
     """Gather the figures and refuse if anything is missing (R-WIZ-09).
 
@@ -139,22 +150,20 @@ def prepare(
         # invoice, however clean it looked in the spreadsheet (R-SEED-10).
         raise SubmissionBlocked("bank_unconfirmed", "Confirm your bank details first.")
 
-    snapshot = session.get(KudosSnapshot, (person.id, period.key))
-    if snapshot is None and not kudos_zero_acknowledged:
-        # R-KUD-06: never silently invoice £0 of kudos.
-        raise SubmissionBlocked(
-            "kudos_unavailable",
-            "We couldn't read your kudos count. Confirm you want to invoice "
-            "without it, or try again shortly.",
-        )
-
-    kudos_count = snapshot.kudos_count if snapshot else 0
-    kudos_rate = snapshot.rate_pence if snapshot else settings.kudos_rate_pence
+    events, awards, kudos_rate = gather_kudos(
+        session,
+        person=person,
+        period=period,
+        settings=settings,
+        kudos_zero_acknowledged=kudos_zero_acknowledged,
+        lock=lock,
+    )
 
     totals = compose(
         fee_pence=fee.fee_pence,
-        kudos_count=kudos_count,
+        kudos_count=len(events),
         kudos_rate_pence=kudos_rate,
+        awards=[(award_label(award), award.amount_pence) for award in awards],
         expenses=[
             (item.description, item.amount_pence)
             for item in expenses
@@ -171,11 +180,77 @@ def prepare(
         person=person,
         period=period,
         fee_pence=fee.fee_pence,
-        kudos_count=kudos_count,
+        kudos_count=len(events),
         kudos_rate_pence=kudos_rate,
         bank=bank,
         totals=totals,
+        kudos_events=events,
+        awards=awards,
     )
+
+
+AWARD_LABELS = {
+    AwardKind.QUARTER_1ST: "1st place",
+    AwardKind.QUARTER_2ND: "2nd place",
+    AwardKind.QUARTER_3RD: "3rd place",
+}
+
+
+def award_label(award: KudosAward) -> str:
+    """How a prize prints on the invoice: ``Kudos 2026-Q3 1st place``."""
+    return f"Kudos {award.quarter} {AWARD_LABELS[award.kind]}"
+
+
+def gather_kudos(
+    session: Session,
+    *,
+    person: Person,
+    period: Period,
+    settings: Settings,
+    kudos_zero_acknowledged: bool = False,
+    lock: bool = False,
+) -> tuple[tuple[KudosEvent, ...], tuple[KudosAward, ...], int]:
+    """The kudos and prizes this invoice bills, and the rate to bill them at.
+
+    Kudos are paid **quarterly** (KUDOS.md §4), so they appear on the March,
+    June, September and December invoice and on no other. In the other two
+    months of a quarter this returns nothing at all, which is not the same as
+    zero and is not shown as a zero.
+
+    Leadership receives kudos and cannot cash them (R-KUD-20), so an ineligible
+    person bills none however many they have.
+    """
+    if not is_quarter_end(period.year, period.month) or not person.kudos_eligible:
+        return (), (), settings.kudos_rate_pence
+
+    # R-KUD-06: a missing snapshot means the sheet could not be read. Zero and
+    # "we don't know" look identical on an invoice, so we refuse to guess
+    # between them unless the person says which they meant.
+    snapshot = session.get(KudosSnapshot, (person.id, period.key))
+    if snapshot is None and not kudos_zero_acknowledged:
+        raise SubmissionBlocked(
+            "kudos_unavailable",
+            "We couldn't read your kudos count. Confirm you want to invoice "
+            "without it, or try again shortly.",
+        )
+    if snapshot is None:
+        return (), (), settings.kudos_rate_pence
+
+    # Bounded at the quarter end so an invoice raised late does not sweep in
+    # kudos from the quarter after the one it is for. Anything past the bound
+    # stays unclaimed and lands on the next quarterly invoice.
+    quarter_end = _quarter_end(period)
+    fetch = repo.lock_unclaimed_kudos if lock else repo.unclaimed_kudos
+    fetch_awards = repo.lock_unclaimed_awards if lock else repo.unclaimed_awards
+    events = tuple(fetch(session, person.id, on_or_before=quarter_end))
+    awards = tuple(fetch_awards(session, person.id))
+    return events, awards, snapshot.rate_pence
+
+
+def _quarter_end(period: Period) -> date:
+    quarter = Quarter(period.year, (period.month - 1) // 3 + 1)
+    last = quarter.last_month
+    return date(period.year, last, monthrange(period.year, last)[1])
 
 
 def _letterhead(person: Person) -> Letterhead:
@@ -313,6 +388,14 @@ def allocate_draft(
             bank_block=_bank_block_ciphertext(prepared.bank),
         )
     )
+
+    # R-KUD-10, R-KUD-11. The stamp goes on in the transaction that allocated
+    # the number, so a kudo is billed at most once even if two submits race:
+    # the loser rolls back whole and its claim goes with it.
+    for event in prepared.kudos_events:
+        event.claimed_by_invoice_id = invoice.id
+    for award in prepared.awards:
+        award.claimed_by_invoice_id = invoice.id
 
     counter.next_number = advance(number)
     return invoice
@@ -532,6 +615,10 @@ def submit(
                     settings=settings,
                     expenses=expenses,
                     kudos_zero_acknowledged=kudos_zero_acknowledged,
+                    # The rows are locked here and stamped a few lines later,
+                    # in this same transaction, so two submits racing cannot
+                    # both bill the same kudo (R-KUD-11).
+                    lock=True,
                 )
                 invoice = allocate_draft(
                     session,
@@ -625,6 +712,13 @@ class Readiness:
     profile_complete: bool
     existing_invoice: Invoice | None
     blocks: tuple[tuple[str, str], ...]
+    # Kudos are paid quarterly (KUDOS.md §4). False for the two months in
+    # three that carry none, so the screen can say when they next appear
+    # instead of showing a zero, which reads like a fault.
+    kudos_due_this_period: bool = True
+    # Leadership receives kudos and cannot cash them (R-KUD-20).
+    kudos_eligible: bool = True
+    awards_pence: int = 0
 
     @property
     def can_submit(self) -> bool:
@@ -636,8 +730,8 @@ class Readiness:
 
     @property
     def running_total_pence(self) -> int:
-        """Fee plus kudos. Expenses are added on the Additional step."""
-        return (self.fee_pence or 0) + self.kudos_pence
+        """Fee, kudos and any quarterly prize. Expenses come after."""
+        return (self.fee_pence or 0) + self.kudos_pence + self.awards_pence
 
 
 def readiness(
@@ -653,8 +747,23 @@ def readiness(
     bank = repo.active_bank_detail(session, person.id)
     bank_confirmed = bank is not None and bank.verified_at is not None
     profile_complete = profile_is_complete(person)
-    snapshot = session.get(KudosSnapshot, (person.id, period.key))
     existing = repo.live_invoice_for_period(session, person.id, period.key)
+
+    # The ledger is the count, because only the ledger knows what has already
+    # been billed. The snapshot says whether the sheet could be read at all.
+    due = is_quarter_end(period.year, period.month) and person.kudos_eligible
+    snapshot = session.get(KudosSnapshot, (person.id, period.key)) if due else None
+    kudos_count: int | None = None
+    awards_pence = 0
+    if due and snapshot is not None:
+        kudos_count = len(
+            repo.unclaimed_kudos(session, person.id, on_or_before=_quarter_end(period))
+        )
+        awards_pence = sum(
+            award.amount_pence for award in repo.unclaimed_awards(session, person.id)
+        )
+    elif not due:
+        kudos_count = 0
 
     blocks: list[tuple[str, str]] = []
     if fee is None:
@@ -668,7 +777,7 @@ def readiness(
 
     return Readiness(
         fee_pence=fee.fee_pence if fee else None,
-        kudos_count=snapshot.kudos_count if snapshot else None,
+        kudos_count=kudos_count,
         kudos_rate_pence=(
             snapshot.rate_pence if snapshot else settings.kudos_rate_pence
         ),
@@ -677,4 +786,7 @@ def readiness(
         profile_complete=profile_complete,
         existing_invoice=existing,
         blocks=tuple(blocks),
+        kudos_due_this_period=is_quarter_end(period.year, period.month),
+        kudos_eligible=person.kudos_eligible,
+        awards_pence=awards_pence,
     )

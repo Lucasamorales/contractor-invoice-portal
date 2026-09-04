@@ -44,7 +44,16 @@
     <tr>
       <th>Kudos</th>
       <td>
-        {% if state.kudos_count is not none %}
+        {% if not state.kudos_eligible %}
+          {# Leadership receives kudos and cannot cash them. Saying nothing at
+             all here would read as a fault rather than as the policy. #}
+          <span class="hint">not payable on your invoices</span>
+        {% elif not state.kudos_due_this_period %}
+          <span class="hint">
+            paid quarterly &mdash; they appear on your March, June, September
+            and December invoice
+          </span>
+        {% elif state.kudos_count is not none %}
           {{ state.kudos_count }} × {{ state.kudos_rate_pence | gbp }}
           = {{ state.kudos_pence | gbp }}
         {% else %}
@@ -52,6 +61,12 @@
         {% endif %}
       </td>
     </tr>
+    {% if state.awards_pence %}
+      <tr>
+        <th>Kudos prize</th>
+        <td>{{ state.awards_pence | gbp }}</td>
+      </tr>
+    {% endif %}
     <tr class="total">
       <th>Running total</th>
       <td>{{ state.running_total_pence | gbp }}</td>

@@ -19,6 +19,10 @@ class LineKind(Enum):
     KUDOS = "kudos"
     EXPENSE = "expense"
     OTHER = "other"
+    # A quarterly prize (KUDOS.md §5). Deliberately not folded into KUDOS:
+    # "5 kudos × £20 = £100" and "Q3 1st place £100" come to the same money
+    # for different reasons, and Robin has to be able to tell them apart.
+    AWARD = "award"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +66,7 @@ def compose(
     kudos_rate_pence: int,
     expenses: list[tuple[str, int]] | None = None,
     other: list[tuple[str, int]] | None = None,
+    awards: list[tuple[str, int]] | None = None,
 ) -> InvoiceTotals:
     """Build the frozen breakdown and the two printed figures.
 
@@ -83,7 +88,13 @@ def compose(
         )
 
     additional_pence = kudos_pence
-    for kind, items in ((LineKind.EXPENSE, expenses), (LineKind.OTHER, other)):
+    # Awards before expenses: they belong with the kudos they came from, and
+    # the two together are the part Robin reconciles against the leaderboard.
+    for kind, items in (
+        (LineKind.AWARD, awards),
+        (LineKind.EXPENSE, expenses),
+        (LineKind.OTHER, other),
+    ):
         for label, amount_pence in items or []:
             if amount_pence < 0:
                 raise MoneyError(f"{kind.value} amount may not be negative: {label}")
@@ -127,7 +138,7 @@ def detail_parts(totals: InvoiceTotals) -> tuple[str, ...]:
         if line.kind is LineKind.KUDOS:
             noun = "kudo" if line.qty == 1 else "kudos"
             parts.append(f"{line.qty} {noun} × {format_gbp_compact(line.unit_pence)}")
-        elif line.kind in (LineKind.EXPENSE, LineKind.OTHER):
+        elif line.kind in (LineKind.AWARD, LineKind.EXPENSE, LineKind.OTHER):
             parts.append(f"{line.label} {format_gbp_compact(line.amount_pence)}")
     return tuple(parts)
 

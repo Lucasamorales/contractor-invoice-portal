@@ -33,8 +33,49 @@
           has never confirmed their bank details, so they cannot invoice.
         </li>
       {% endfor %}
+      {% for name, count in attention.unmapped_kudos %}
+        <li>
+          <strong>{{ name }}</strong> has {{ count }}
+          kudo{{ '' if count == 1 else 's' }} in the sheet and is not anybody
+          here, so none of it can be paid.
+        </li>
+      {% endfor %}
     </ul>
   </div>
+{% endif %}
+
+{% if errors %}
+  <div class="panel blocks">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+{% if attention.unmapped_kudos %}
+  <section>
+    <h2>Who are these people? ({{ attention.unmapped_kudos | length }})</h2>
+    <p class="hint">
+      Names in the kudos sheet that nobody has matched to a person. Nothing is
+      guessed: a near-miss would pay the wrong person. Choose somebody, or
+      choose nobody for a leaver or for staff who do not invoice here — their
+      kudos stay on the record either way.
+    </p>
+    {% for name, count in attention.unmapped_kudos %}
+      <form method="post" action="/admin/kudos/map" class="form inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="sheet_name" value="{{ name }}">
+        <strong>{{ name }}</strong>
+        <span class="hint">{{ count }} kudo{{ '' if count == 1 else 's' }}</span>
+        <select name="person_id">
+          <option value="">Nobody &mdash; ignore this name</option>
+          {% for person in people %}
+            <option value="{{ person.id }}">{{ person.display_name }}</option>
+          {% endfor %}
+        </select>
+        <input type="text" name="note" placeholder="Why (optional)">
+        <button class="button" type="submit">Confirm</button>
+      </form>
+    {% endfor %}
+  </section>
 {% endif %}
 
 <section>

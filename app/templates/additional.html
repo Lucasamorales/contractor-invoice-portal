@@ -15,7 +15,16 @@
   <tr>
     <th>Kudos</th>
     <td>
-      {% if state.kudos_count is not none %}
+      {% if not state.kudos_eligible %}
+        <span class="hint">not payable on your invoices</span>
+      {% elif not state.kudos_due_this_period %}
+        <span class="hint">
+          paid quarterly &mdash; next on your
+          {% if period.month < 3 %}March{% elif period.month < 6 %}June
+          {% elif period.month < 9 %}September{% else %}December{% endif %}
+          invoice
+        </span>
+      {% elif state.kudos_count is not none %}
         {{ state.kudos_count }} × {{ state.kudos_rate_pence | gbp }}
         = {{ state.kudos_pence | gbp }}
       {% else %}
@@ -23,8 +32,14 @@
       {% endif %}
     </td>
   </tr>
+  {% if state.awards_pence %}
+    <tr><th>Kudos prize</th><td>{{ state.awards_pence | gbp }}</td></tr>
+  {% endif %}
 </table>
-<p class="hint">Kudos come from the sheet, so you cannot change them here.</p>
+<p class="hint">
+  Kudos come from the sheet, so you cannot change them here. They are paid
+  quarterly, on your March, June, September and December invoice.
+</p>
 
 <form method="post" action="/preview" class="form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -46,7 +61,7 @@
     {% endfor %}
   </div>
 
-  {% if state.kudos_count is none %}
+  {% if state.kudos_count is none and state.kudos_due_this_period and state.kudos_eligible %}
     <label class="check">
       <input type="checkbox" name="kudos_zero_acknowledged" value="1">
       I understand my kudos could not be read, and want to invoice without them.

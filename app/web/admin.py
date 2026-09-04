@@ -23,9 +23,10 @@ from app.config import Settings, get_settings
 from app.db import repo
 from app.db.models import BankDetail, Person
 from app.db.session import get_session
+from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period
-from app.services import admin, bank_changes
+from app.services import admin, bank_changes, kudos_admin
 from app.services.crypto import Cipher, field_aad
 from app.web import csrf
 from app.web.member import get_cipher
@@ -59,6 +60,22 @@ def _period_from(query: str | None) -> Period:
     if not query:
         return Period.containing(_now())
     return Period.parse(query)
+
+
+def _quarter_from(query: str | None) -> Quarter:
+    """A quarter from the query string, defaulting to the one just finished.
+
+    Just finished, not the current one: a prize is awarded after the quarter
+    ends, so that is the page somebody opening this screen wants.
+    """
+    if query:
+        year, _, number = query.partition("-Q")
+        return Quarter(int(year), int(number))
+    now = _now().date()
+    current = Quarter.containing(now)
+    if current.number == 1:
+        return Quarter(current.year - 1, 4)
+    return Quarter(current.year, current.number - 1)
 
 
 def _get_person(session: Session, person_id: uuid.UUID) -> Person:
@@ -431,6 +448,8 @@ async def queue(
     context = _context(request, identity, settings)
     context["queue"] = admin.queue(session, on=_now().date())
     context["attention"] = admin.needs_attention(session, now=_now())
+    # For the "who is this?" form on an unmapped kudos name.
+    context["people"] = repo.all_people(session)
     return templates.TemplateResponse(
         request=request, name="admin/queue.html", context=context
     )
@@ -550,4 +569,132 @@ async def flag_bank_row(
     session.commit()
     return RedirectResponse(
         f"/admin/people/{person.id}", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+# --------------------------------------------------------------------------
+# R-KUD-13 / R-KUD-17 — the two kudos decisions a person has to make
+# --------------------------------------------------------------------------
+
+
+@router.get("/kudos", response_class=HTMLResponse)
+async def kudos_quarter(
+    request: Request,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    quarter: str | None = None,
+) -> HTMLResponse:
+    """A quarter's standings, and where the policy needs a human.
+
+    Shows the leaderboard and the cash each place carries. It awards nothing:
+    the tiebreakers are judgements, so the button is the decision.
+    """
+    period = _quarter_from(quarter)
+    context = _context(request, identity, settings)
+    context["view"] = kudos_admin.quarter_view(session, period, settings=settings)
+    context["quarter"] = period
+    context["unmapped"] = repo.unresolved_kudos_names(session)
+    context["kudos_rate_pence"] = settings.kudos_rate_pence
+    return templates.TemplateResponse(
+        request=request, name="admin/kudos.html", context=context
+    )
+
+
+@router.post("/kudos/{quarter}/award", response_model=None)
+async def award_quarter(
+    request: Request,
+    quarter: str,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    person_id: Annotated[str, Form()] = "",
+    place: Annotated[str, Form()] = "",
+    kudos_count: Annotated[str, Form()] = "",
+    note: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """Record one prize. Audited, and refused twice for the same person."""
+    csrf.require(settings, identity.email, csrf_token)
+    period = _quarter_from(quarter)
+
+    errors: list[str] = []
+    try:
+        person = _get_person(session, uuid.UUID(person_id))
+        kudos_admin.award(
+            session,
+            person=person,
+            quarter=period,
+            place=int(place),
+            kudos_count=int(kudos_count or 0),
+            settings=settings,
+            actor_email=identity.email,
+            note=note,
+        )
+        session.commit()
+        return RedirectResponse(
+            f"/admin/kudos?quarter={period.key}", status_code=status.HTTP_303_SEE_OTHER
+        )
+    except (ValueError, kudos_admin.KudosAdminError) as exc:
+        session.rollback()
+        errors.append(str(exc))
+
+    context = _context(request, identity, settings)
+    context["view"] = kudos_admin.quarter_view(session, period, settings=settings)
+    context["quarter"] = period
+    context["unmapped"] = repo.unresolved_kudos_names(session)
+    context["kudos_rate_pence"] = settings.kudos_rate_pence
+    context["errors"] = errors
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/kudos.html",
+        context=context,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+    )
+
+
+@router.post("/kudos/map", response_model=None)
+async def map_kudos_name(
+    request: Request,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    sheet_name: Annotated[str, Form()] = "",
+    person_id: Annotated[str, Form()] = "",
+    note: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """Say who a name in the sheet is, or that it is nobody (R-KUD-13).
+
+    An empty ``person_id`` means ignore: somebody who has left, or staff who do
+    not invoice here. Their kudos stay on the record either way.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+
+    errors: list[str] = []
+    try:
+        person = _get_person(session, uuid.UUID(person_id)) if person_id else None
+        kudos_admin.map_name(
+            session,
+            sheet_name=sheet_name,
+            person=person,
+            actor_email=identity.email,
+            note=note,
+        )
+        session.commit()
+        return RedirectResponse("/admin/queue", status_code=status.HTTP_303_SEE_OTHER)
+    except (ValueError, kudos_admin.KudosAdminError) as exc:
+        session.rollback()
+        errors.append(str(exc))
+
+    context = _context(request, identity, settings)
+    context["queue"] = admin.queue(session, on=_now().date())
+    context["attention"] = admin.needs_attention(session, now=_now())
+    context["people"] = repo.all_people(session)
+    context["errors"] = errors
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/queue.html",
+        context=context,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
     )

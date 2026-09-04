@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -22,11 +22,15 @@ from app.db.models import (
     Invoice,
     InvoiceLine,
     InvoiceStatus,
+    KudosAlias,
+    KudosAward,
+    KudosEvent,
     Outbox,
     OutboxStatus,
     Person,
     PersonStatus,
 )
+from app.domain.kudos import normalise_name
 
 
 def get_person_by_email(session: Session, email: str) -> Person | None:
@@ -146,6 +150,128 @@ def invoice_history(session: Session, person_id: uuid.UUID) -> list[Invoice]:
             .where(Invoice.person_id == person_id)
             .order_by(Invoice.number.desc())
         )
+    )
+
+
+def unclaimed_kudos(
+    session: Session, person_id: uuid.UUID, *, on_or_before: date | None = None
+) -> list[KudosEvent]:
+    """This person's kudos that no invoice has ever billed (R-KUD-10).
+
+    ``claimed_by_invoice_id IS NULL`` is the whole rule. Withdrawn rows are
+    excluded: a kudo that has left the sheet is not billed for the first time
+    after it has gone.
+
+    ``on_or_before`` bounds it to the end of a quarter, so that an invoice
+    raised in the window does not sweep up kudos from the quarter after it.
+    """
+    query = select(KudosEvent).where(
+        KudosEvent.person_id == person_id,
+        KudosEvent.claimable.is_(True),
+        KudosEvent.claimed_by_invoice_id.is_(None),
+        KudosEvent.withdrawn_at.is_(None),
+    )
+    if on_or_before is not None:
+        query = query.where(KudosEvent.awarded_on <= on_or_before)
+    return list(session.scalars(query.order_by(KudosEvent.awarded_on)))
+
+
+def lock_unclaimed_kudos(
+    session: Session, person_id: uuid.UUID, *, on_or_before: date | None = None
+) -> list[KudosEvent]:
+    """The same rows, locked ``FOR UPDATE``.
+
+    Used inside the submit transaction. Two submits racing must not both bill
+    the same kudo, and the lock is what makes "at most once" true rather than
+    merely likely (R-KUD-11).
+    """
+    query = (
+        select(KudosEvent)
+        .where(
+            KudosEvent.person_id == person_id,
+            KudosEvent.claimable.is_(True),
+            KudosEvent.claimed_by_invoice_id.is_(None),
+            KudosEvent.withdrawn_at.is_(None),
+        )
+        .order_by(KudosEvent.awarded_on)
+        .with_for_update()
+    )
+    if on_or_before is not None:
+        query = query.where(KudosEvent.awarded_on <= on_or_before)
+    return list(session.scalars(query))
+
+
+def unclaimed_awards(session: Session, person_id: uuid.UUID) -> list[KudosAward]:
+    """Quarterly prizes awarded to this person and not yet invoiced."""
+    return list(
+        session.scalars(
+            select(KudosAward)
+            .where(
+                KudosAward.person_id == person_id,
+                KudosAward.claimed_by_invoice_id.is_(None),
+            )
+            .order_by(KudosAward.quarter)
+        )
+    )
+
+
+def lock_unclaimed_awards(session: Session, person_id: uuid.UUID) -> list[KudosAward]:
+    """The same rows, locked. See ``lock_unclaimed_kudos``."""
+    return list(
+        session.scalars(
+            select(KudosAward)
+            .where(
+                KudosAward.person_id == person_id,
+                KudosAward.claimed_by_invoice_id.is_(None),
+            )
+            .order_by(KudosAward.quarter)
+            .with_for_update()
+        )
+    )
+
+
+def kudos_events_in(session: Session, *, since: date) -> list[KudosEvent]:
+    """Every live event from a date onwards, for the standings.
+
+    Not filtered by ``claimable``: a quarter's leaderboard covers the whole
+    quarter, including the part settled the old way (R-KUD-12).
+    """
+    return list(
+        session.scalars(
+            select(KudosEvent).where(
+                KudosEvent.awarded_on >= since,
+                KudosEvent.withdrawn_at.is_(None),
+            )
+        )
+    )
+
+
+def awards_for_quarter(session: Session, quarter: str) -> list[KudosAward]:
+    return list(
+        session.scalars(select(KudosAward).where(KudosAward.quarter == quarter))
+    )
+
+
+def unresolved_kudos_names(session: Session) -> list[tuple[str, int]]:
+    """Receiver names with no person and no alias, and how many kudos each has.
+
+    What reaches the admin queue (R-KUD-14). A name that has been explicitly
+    ignored has an alias row, so it does not appear here — which is the point:
+    the screen must not stay permanently red or it stops being read.
+    """
+    known = select(KudosAlias.normalised_name)
+    rows = session.execute(
+        select(KudosEvent.receiver_name, func.count())
+        .where(
+            KudosEvent.person_id.is_(None),
+            KudosEvent.withdrawn_at.is_(None),
+        )
+        .group_by(KudosEvent.receiver_name)
+    ).all()
+    ignored = {name for (name,) in session.execute(known).all()}
+    return sorted(
+        ((name, count) for name, count in rows if normalise_name(name) not in ignored),
+        key=lambda pair: (-pair[1], pair[0]),
     )
 
 

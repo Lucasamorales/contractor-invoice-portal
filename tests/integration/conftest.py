@@ -25,12 +25,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
 from app.db.models import (
+    AwardKind,
     BankDetail,
     BankSource,
     BankState,
     Base,
     Counter,
     Fee,
+    KudosAward,
+    KudosEvent,
     KudosSnapshot,
     PayoutRegion,
     Person,
@@ -192,12 +195,54 @@ def give_counter(session: Session, person: Person, next_number: int = 8) -> Coun
 def give_kudos(
     session: Session, person: Person, period: str, count: int, rate: int = 2000
 ) -> KudosSnapshot:
+    """A snapshot and the ledger rows behind it.
+
+    Both, because they answer different questions: the ledger is what gets
+    billed, and the snapshot is the evidence that the sheet was readable at all
+    (R-KUD-06). A helper that wrote only one of them would let a test pass
+    against a state the sync can never produce.
+    """
     snapshot = KudosSnapshot(
         person_id=person.id, period=period, kudos_count=count, rate_pence=rate
     )
     session.add(snapshot)
+    year, _, month = period.partition("-")
+    for index in range(count):
+        session.add(
+            KudosEvent(
+                event_key=f"test-{person.id}-{period}-{index}",
+                person_id=person.id,
+                receiver_name=person.display_name,
+                giver_name="Riley Garner",
+                value_text="Own it",
+                awarded_on=date(int(year), int(month), 1),
+                claimable=True,
+            )
+        )
     session.flush()
     return snapshot
+
+
+def give_award(
+    session: Session,
+    person: Person,
+    *,
+    quarter: str = "2026-Q3",
+    kind: AwardKind = AwardKind.QUARTER_1ST,
+    amount_pence: int = 10000,
+    kudos_count: int = 4,
+) -> KudosAward:
+    award = KudosAward(
+        person_id=person.id,
+        quarter=quarter,
+        kind=kind,
+        amount_pence=amount_pence,
+        kudos_count=kudos_count,
+        awarded_by="robin@example.com",
+    )
+    session.add(award)
+    session.flush()
+    return award
 
 
 def ready_person(

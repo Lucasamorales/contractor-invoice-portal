@@ -569,11 +569,15 @@ def test_a_verified_scheduler_can_run_the_jobs(
             assert body["sent"] == 0  # nothing queued in this test
 
             # The jobs that are not configured yet say so rather than
-            # reporting success.
-            for path in ("/tasks/sync-kudos", "/tasks/drive-mirror"):
-                body = client.post(path).json()
-                assert body["queued"] == 0
-                assert "no " in body["detail"]
+            # reporting success. They report it in their own terms: the kudos
+            # sync counts events, the mirror counts files queued.
+            body = client.post("/tasks/sync-kudos").json()
+            assert body["events_new"] == 0
+            assert "no kudos sheet configured" in body["detail"]
+
+            body = client.post("/tasks/drive-mirror").json()
+            assert body["queued"] == 0
+            assert "no " in body["detail"]
 
             # The backup refuses outright with nowhere durable to write. A
             # backup job that quietly writes to a container filesystem is worse

@@ -76,11 +76,22 @@ class LineKind(enum.Enum):
     KUDOS = "kudos"
     EXPENSE = "expense"
     OTHER = "other"
+    # A quarterly prize. Its own kind, not folded into KUDOS: "5 kudos x GBP 20"
+    # and "Q3 1st place" are different things and Robin has to tell them apart.
+    AWARD = "award"
 
 
 class ExpenseKind(enum.Enum):
     EXPENSE = "expense"
     OTHER = "other"
+
+
+class AwardKind(enum.Enum):
+    """The quarterly cash prizes (KUDOS.md §5). Cash carries no threshold."""
+
+    QUARTER_1ST = "quarter_1st"
+    QUARTER_2ND = "quarter_2nd"
+    QUARTER_3RD = "quarter_3rd"
 
 
 class OutboxStatus(enum.Enum):
@@ -135,6 +146,13 @@ class Person(Base):
     )
     profile_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
+    )
+    # R-KUD-20. Leadership may be given kudos and may appear on a leaderboard;
+    # they cannot convert them to money and cannot win a prize. A flag rather
+    # than a list of names, because "everything about this person is special"
+    # is wrong the first time somebody else is promoted.
+    kudos_eligible: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"), default=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=_now
@@ -225,6 +243,125 @@ class BankDetail(Base):
     )
 
     person: Mapped[Person] = relationship(back_populates="bank_details")
+
+
+class KudosAlias(Base):
+    """A sheet name mapped to a person, by a human (R-KUD-13).
+
+    The sheet says ``Toni Grant`` where the payroll says ``Mitchell Grant``, and
+    spellings drift between its tabs. Fuzzy matching is forbidden: a near-miss
+    that resolves itself pays the wrong person. So every mapping is confirmed
+    once, by somebody, and recorded here with who confirmed it.
+
+    ``person_id`` NULL means "resolve this name to nobody, and stop reporting
+    it" — someone who has left, or staff who do not invoice here (R-KUD-14).
+    Ignoring is never deleting: their events stay, to explain history.
+    """
+
+    __tablename__ = "kudos_aliases"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    # Accent-folded, lower-cased, quotes removed. app.domain.kudos.normalise_name
+    # is the only thing that produces this, so the two cannot drift.
+    normalised_name: Mapped[str] = mapped_column(
+        String(200), unique=True, nullable=False
+    )
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    person_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("people.id", ondelete="RESTRICT")
+    )
+    ignored: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"), default=False
+    )
+    note: Mapped[str | None] = mapped_column(Text)
+    confirmed_by: Mapped[str] = mapped_column(String(320), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=_now
+    )
+
+
+class KudosEvent(Base):
+    """One kudo from the sheet (R-KUD-09, R-KUD-10).
+
+    The claim ledger. ``claimed_by_invoice_id`` is the whole point: an event is
+    billed at most once, ever, and the stamp goes on in the same transaction
+    that allocates the invoice number.
+
+    Rows are never deleted. A kudo that leaves the sheet is marked
+    ``withdrawn_at`` and reported (R-KUD-15) — somebody tidying the spreadsheet
+    must not destroy the record of what was paid.
+    """
+
+    __tablename__ = "kudos_events"
+    __table_args__ = (
+        Index("ix_kudos_events_person", "person_id", "claimed_by_invoice_id"),
+        Index("ix_kudos_events_awarded", "awarded_on"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    # Hash of date, giver, receiver and values. Not the row number, which any
+    # insertion shifts, and not the message, so fixing a typo in the wording of
+    # a kudo does not conjure a second one.
+    event_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    person_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("people.id", ondelete="RESTRICT")
+    )
+    receiver_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    giver_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    value_text: Mapped[str | None] = mapped_column(String(400))
+    awarded_on: Mapped[date] = mapped_column(Date, nullable=False)
+    # False for everything before the cut-over: counted for the standings,
+    # never billed, because it was settled the old way (R-KUD-12).
+    claimable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"), default=True
+    )
+    claimed_by_invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("invoices.id", ondelete="RESTRICT")
+    )
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=_now
+    )
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class KudosAward(Base):
+    """A quarterly cash prize (R-KUD-17, R-KUD-18).
+
+    Computed by us, awarded by a person. The policy's tiebreakers — year to
+    date, consistency, kudos from other teams, longevity — are all judgements,
+    so nothing here is ever created automatically.
+
+    Claimed exactly like a kudo, and printed as its own line.
+    """
+
+    __tablename__ = "kudos_awards"
+    __table_args__ = (
+        # One prize of one kind per quarter per person. The backstop for a
+        # double-click on the award button.
+        UniqueConstraint(
+            "person_id", "quarter", "kind", name="uq_kudos_awards_person_quarter_kind"
+        ),
+        CheckConstraint("amount_pence > 0", name="ck_kudos_awards_amount"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="RESTRICT"), nullable=False
+    )
+    quarter: Mapped[str] = mapped_column(String(7), nullable=False)  # 2026-Q3
+    kind: Mapped[AwardKind] = mapped_column(
+        _enum(AwardKind, "award_kind"), nullable=False
+    )
+    amount_pence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    kudos_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    awarded_by: Mapped[str] = mapped_column(String(320), nullable=False)
+    awarded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=_now
+    )
+    claimed_by_invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("invoices.id", ondelete="RESTRICT")
+    )
 
 
 class KudosSnapshot(Base):

@@ -1,0 +1,118 @@
+{% extends "admin/_base.html" %}
+{% block title %}Kudos {{ quarter.key }}{% endblock %}
+{% block content %}
+<h1>Kudos — {{ quarter.key }}</h1>
+<p class="lead">
+  The quarter's leaderboard. Each kudo is worth {{ kudos_rate_pence | gbp }} and
+  is paid on the quarter-end invoice; the prizes below are separate money on
+  top of that.
+</p>
+
+{% if errors %}
+  <div class="panel blocks">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+{% if unmapped %}
+  <div class="panel blocks">
+    <h2>{{ unmapped | length }} name{{ '' if unmapped | length == 1 else 's' }} in the sheet belong to nobody</h2>
+    <p class="hint">
+      Their kudos cannot be paid until somebody says who they are.
+      <a href="/admin/queue">Map them on the queue</a>.
+    </p>
+  </div>
+{% endif %}
+
+{% if view.has_tie %}
+  <div class="panel blocks">
+    <h2>A tie needs settling</h2>
+    <p>
+      Two or more people are level on the podium. The policy's tiebreakers are
+      year-to-date total, consistency, kudos from other teams, and longevity —
+      all judgements, so the portal will not pick for you.
+    </p>
+  </div>
+{% endif %}
+
+<section>
+  <h2>Standings</h2>
+  {% if view.rows %}
+    <table class="kv wide">
+      <tr>
+        <th>Place</th><th>Name</th><th>Kudos</th><th>Prize</th><th></th>
+      </tr>
+      {% for row in view.rows %}
+        <tr>
+          <td>
+            {% if row.place %}
+              {{ row.place }}{% if row.tied_with > 1 %}
+                <span class="tag">tied {{ row.tied_with }} ways</span>
+              {% endif %}
+            {% else %}&mdash;{% endif %}
+          </td>
+          <td>
+            <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
+          </td>
+          <td>{{ row.kudos_count }}</td>
+          <td>
+            {% if row.awarded %}
+              {{ row.awarded.amount_pence | gbp }}
+              <span class="tag">awarded</span>
+              {% if row.awarded.claimed_by_invoice_id %}
+                <span class="tag">invoiced</span>
+              {% else %}
+                <span class="hint">on their next invoice</span>
+              {% endif %}
+            {% elif row.place %}
+              {{ row.cash_pence | gbp }}
+            {% endif %}
+          </td>
+          <td>
+            {% if row.place and not row.awarded %}
+              <form method="post" action="/admin/kudos/{{ quarter.key }}/award">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="person_id" value="{{ row.person.id }}">
+                <input type="hidden" name="kudos_count" value="{{ row.kudos_count }}">
+                <select name="place">
+                  {% for place in [1, 2, 3] %}
+                    <option value="{{ place }}"{% if place == row.place %} selected{% endif %}>
+                      {{ place }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <input type="text" name="note" placeholder="Why (tiebreaker, etc.)">
+                <button class="button" type="submit">Award</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="hint">Nobody eligible has a kudo this quarter.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>This quarter</h2>
+  <table class="kv">
+    <tr>
+      <th>Kudos not yet invoiced</th>
+      <td>{{ view.unbilled_kudos }}</td>
+    </tr>
+    <tr>
+      <th>Prizes awarded</th>
+      <td>{{ view.awarded_pence | gbp }}</td>
+    </tr>
+  </table>
+  <p class="hint">
+    Leadership and anyone deactivated are not in these standings: neither can be
+    paid a prize. They still receive kudos and still appear in the sheet.
+  </p>
+</section>
+
+<p class="hint">
+  Another quarter: add <code>?quarter=2026-Q2</code> to the address.
+</p>
+{% endblock %}

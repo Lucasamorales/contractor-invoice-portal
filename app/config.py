@@ -7,6 +7,7 @@ held as ``SecretStr`` so they cannot be printed by accident.
 
 from __future__ import annotations
 
+from datetime import date
 from enum import Enum
 from functools import lru_cache
 from typing import Annotated
@@ -84,6 +85,17 @@ class Settings(BaseSettings):
     # --- Money -----------------------------------------------------------------
     # 1 kudo = £20 (R-KUD-04). Config, never a literal in the code that uses it.
     kudos_rate_pence: int = 2000
+    # The quarterly cash prizes (KUDOS.md §5). Config for the same reason as
+    # the rate: these came out of a policy document and policies get revised.
+    # The cash carries no kudos threshold — the 5+ and 3+ in the policy gate
+    # the perks, which are out of scope.
+    award_first_pence: int = 10000
+    award_second_pence: int = 7500
+    award_third_pence: int = 2500
+    # Nothing earned before this is billable (R-KUD-12). 1 July 2026 is the
+    # start of Q3, the first quarter not settled the old way. Everything
+    # earlier is still ingested and still counts for the standings.
+    kudos_claimable_from: date = date(2026, 7, 1)
     payment_terms_days: int = 14  # R-PDF-10
     # Staging only. R-PER-06 shuts the submit action before the 24th, which
     # is right in production and makes the thing untestable for three weeks
@@ -120,6 +132,11 @@ class Settings(BaseSettings):
     # API rather than with a key file (CLAUDE.md §2.7).
     service_account_email: str = ""
     kudos_sheet_id: str = ""
+    # The tab and range read from that sheet. `Raw Data` is the event log and
+    # is what the Google Chat announcer reads, so the two cannot drift apart.
+    # Never a derived grid tab: those hold totals, a winner row and a second
+    # table of givers underneath (R-KUD-07).
+    kudos_sheet_range: str = "Raw Data!A:F"
     postmark_token: SecretStr = SecretStr("")
     mail_from: str = ""
     finance_inbox: str = ""
