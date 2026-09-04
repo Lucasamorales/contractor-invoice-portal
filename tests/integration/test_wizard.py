@@ -341,7 +341,7 @@ def test_submitting_from_the_preview_issues_the_invoice(wizard, factory) -> None
         },
     )
     assert response.status_code == 200
-    assert "has gone to Robin" in response.text
+    assert "has gone to accounts" in response.text
 
     with factory() as session:
         invoice = session.scalars(select(Invoice)).one()

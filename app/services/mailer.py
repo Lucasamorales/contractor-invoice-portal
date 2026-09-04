@@ -123,6 +123,19 @@ class ResendClient:
             raise MailError(f"could not reach Resend: {type(exc).__name__}") from exc
 
         if response.status_code in (200, 201):
+            # A 2xx means accepted, not delivered. Logging the provider's id
+            # is the only way to answer "you say it sent, I never got it"
+            # without going to their dashboard and guessing by timestamp.
+            try:
+                logger.info(
+                    "resend accepted %r as %s",
+                    message.subject,
+                    response.json().get("id"),
+                )
+            except ValueError:
+                logger.info(
+                    "resend accepted %r, no id in the response", message.subject
+                )
             return
 
         # 4xx other than rate limiting will fail again identically, so there is

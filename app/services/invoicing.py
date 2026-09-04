@@ -141,7 +141,7 @@ def prepare(
     fee = repo.fee_for(session, person.id, on=now.date())
     if fee is None:
         raise SubmissionBlocked(
-            "no_fee", "Robin hasn't set your fee yet — he's been notified."
+            "no_fee", "Accounts hasn't set your fee yet — they have been notified."
         )
 
     bank = repo.active_bank_detail(session, person.id)
@@ -767,7 +767,9 @@ def readiness(
 
     blocks: list[tuple[str, str]] = []
     if fee is None:
-        blocks.append(("no_fee", "Robin hasn't set your fee yet — he's been notified."))
+        blocks.append(
+            ("no_fee", "Accounts hasn't set your fee yet — they have been notified.")
+        )
     if not bank_confirmed:
         blocks.append(("bank_unconfirmed", "Confirm your bank details first."))
     if not profile_complete:

@@ -16,7 +16,7 @@
       <p>
         Invoice <strong>{{ state.existing_invoice.number }}</strong> for
         {{ period.label }} was started but did not finish. Nothing has gone to
-        Robin yet.
+        accounts yet.
       </p>
       <p class="hint">
         Trying again picks up where it left off and keeps the same number.
@@ -28,7 +28,7 @@
       <h2>Already sent</h2>
       <p>
         Invoice <strong>{{ state.existing_invoice.number }}</strong> for
-        {{ period.label }} has gone to Robin.
+        {{ period.label }} has gone to accounts.
         Total {{ state.existing_invoice.total_pence | gbp }}.
       </p>
       <a class="button ghost" href="/me">See your invoices</a>

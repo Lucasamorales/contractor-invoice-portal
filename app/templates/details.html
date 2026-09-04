@@ -31,7 +31,7 @@
            (submitted.address if submitted else person.address), 'textarea') }}
   {{ field('phone', 'Phone number', '',
            (submitted.phone if submitted else person.phone)) }}
-  {{ field('contact_email', 'Email address', 'Where Robin replies to you.',
+  {{ field('contact_email', 'Email address', 'Where accounts replies to you.',
            (submitted.contact_email if submitted else person.contact_email)) }}
 
   <button class="button" type="submit">Save and continue</button>

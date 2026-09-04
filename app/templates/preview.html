@@ -4,7 +4,7 @@
 {% block content %}
 <h1>Check it over</h1>
 <p class="lead">
-  This is exactly what Robin receives. Nothing has been sent yet.
+  This is exactly what accounts receives. Nothing has been sent yet.
 </p>
 
 {# The real invoice, isolated so the app's stylesheet cannot alter it.
@@ -30,10 +30,10 @@
     {% if window_open %}
       <button class="button" type="submit"
               onclick="this.disabled=true;this.form.requestSubmit();">
-        Send to Robin
+        Send to accounts
       </button>
     {% else %}
-      <button class="button" type="submit" disabled>Send to Robin</button>
+      <button class="button" type="submit" disabled>Send to accounts</button>
       <p class="hint">{{ window_message }}</p>
     {% endif %}
   </div>
