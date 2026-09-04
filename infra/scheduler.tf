@@ -3,10 +3,10 @@
 # Each job calls its endpoint with an OIDC token. The app verifies the token's
 # audience and that this service account signed it.
 #
-# These endpoints do NOT sit outside IAP: IAP is enabled on the service, so it
-# is in front of every path including /tasks/*. The scheduler therefore needs
-# to be allowed through IAP as well (see scheduler_iap below), and the OIDC
-# token is checked twice — once by IAP, once by the app.
+# The jobs run against their own Cloud Run service (tasks.tf), not the portal:
+# IAP is in front of every path the portal serves and has no way to let a
+# service account through to an endpoint rather than a browser. See the note at
+# the top of tasks.tf for what was tried first.
 
 resource "google_service_account" "scheduler" {
   account_id   = "portal-scheduler-${var.environment}"
@@ -14,37 +14,12 @@ resource "google_service_account" "scheduler" {
   project      = var.project_id
 }
 
-# It may call the service, and nothing else. It is not the app's identity: a
-# compromised scheduler must not be able to read the bank columns.
-resource "google_cloud_run_v2_service_iam_member" "scheduler_invoker" {
-  project  = var.project_id
-  location = google_cloud_run_v2_service.app.location
-  name     = google_cloud_run_v2_service.app.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.scheduler.email}"
-}
-
-# IAP is in front of the whole service, so there is no "outside IAP" for these
-# endpoints to sit in — the comment at the top of this file used to claim there
-# was. Without this the scheduler's OIDC token is refused by IAP before the
-# container ever sees it, and the job fails as UNAUTHENTICATED with nothing in
-# the application log at all, which is a genuinely horrible way to be broken.
-#
-# run.invoker alone is not enough, exactly as it was not enough for a human:
-# that one lets the request reach Cloud Run, this one is what IAP itself
-# checks. The token is still verified a second time by the app against
-# PORTAL_SCHEDULER_AUDIENCE and this service account, so IAP is an added gate
-# rather than the only one.
-resource "google_iap_web_cloud_run_service_iam_member" "scheduler_iap" {
-  project                = var.project_id
-  location               = google_cloud_run_v2_service.app.location
-  cloud_run_service_name = google_cloud_run_v2_service.app.name
-  role                   = "roles/iap.httpsResourceAccessor"
-  member                 = "serviceAccount:${google_service_account.scheduler.email}"
-}
+# The scheduler's only grant is on the tasks service (tasks.tf). It has no
+# access to the portal at all: a compromised scheduler must not be able to
+# reach the wizard or the admin screens.
 
 locals {
-  service_url = google_cloud_run_v2_service.app.uri
+  service_url = google_cloud_run_v2_service.tasks.uri
 
   # All times Europe/London: the window is a question about what day it is
   # where the people are (R-PER-01).
@@ -114,19 +89,14 @@ resource "google_cloud_scheduler_job" "jobs" {
 
     oidc_token {
       service_account_email = google_service_account.scheduler.email
-      # The IAP resource path, not the service URL. IAP is in front of these
-      # endpoints, and it validates this token itself before Cloud Run sees
-      # it — against the same audience it uses for a browser. With the service
-      # URL here IAP does not recognise the token as programmatic access at
-      # all: it answers with its own sign-in page, so Scheduler records a
-      # cheerful HTTP 200 and the container is never invoked.
-      #
-      # Must match PORTAL_SCHEDULER_AUDIENCE, which is set from the same local.
-      audience = local.iap_audience
+      # The tasks service's own URL, which is also what that service checks
+      # against in PORTAL_SCHEDULER_AUDIENCE. Both come from the same local, so
+      # they cannot drift apart.
+      audience = local.tasks_audience
     }
   }
 
-  depends_on = [google_cloud_run_v2_service_iam_member.scheduler_invoker]
+  depends_on = [google_cloud_run_v2_service_iam_member.tasks_invoker]
 }
 
 output "scheduler_service_account" {

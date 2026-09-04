@@ -657,3 +657,43 @@ def test_the_encoded_size_accounts_for_base64() -> None:
     """Budgeting on raw bytes would put us a third over the limit."""
     one_meg = mailer.Attachment("x", b"x" * 1_000_000, "application/octet-stream")
     assert mailer._encoded_size([one_meg]) == pytest.approx(1_333_334, abs=2)
+
+
+def test_the_tasks_service_serves_nothing_but_tasks() -> None:
+    """The second lock on the service that has no IAP in front of it.
+
+    Cloud Run IAM is the actual control — only the scheduler may invoke it.
+    But it runs the same image as the portal, so if that IAM were ever
+    loosened the wizard and the admin screens would be sitting there
+    unauthenticated. They are not: this process answers 404 to them.
+    """
+    from app.config import get_settings
+    from app.main import app as real_app
+
+    tasks_only = Settings(_env_file=None, environment="staging", tasks_only=True)
+    real_app.dependency_overrides[get_settings] = lambda: tasks_only
+    get_settings.cache_clear()
+    original = get_settings.__wrapped__
+
+    def only_tasks() -> Settings:
+        return tasks_only
+
+    import app.config as config_module
+    import app.main as main_module
+
+    main_module.get_settings = only_tasks
+    try:
+        with TestClient(real_app) as client:
+            assert client.get("/healthz").status_code == 200
+            # The wizard, the admin screens and the static files are all gone.
+            assert client.get("/").status_code == 404
+            assert client.get("/admin").status_code == 404
+            assert client.get("/me").status_code == 404
+            # The task routes are still routed; unauthenticated they are 401,
+            # which is the OIDC check doing its job rather than the gate.
+            assert client.post("/tasks/outbox").status_code in (401, 503)
+    finally:
+        main_module.get_settings = config_module.get_settings
+        real_app.dependency_overrides.clear()
+        get_settings.cache_clear()
+        del original

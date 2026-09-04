@@ -125,6 +125,17 @@ class Settings(BaseSettings):
     # runs the payroll reminders is worse than one that is switched off.
     scheduler_audience: str = ""
     scheduler_service_account: str = ""
+    # This process serves only /tasks/* and /healthz, and answers 404 to
+    # everything else.
+    #
+    # The scheduled jobs run on their own Cloud Run service with no IAP in
+    # front of them, because IAP has no way to let a service account through
+    # to an endpoint rather than to a browser. What keeps that service private
+    # is Cloud Run IAM: only the scheduler may invoke it. This flag is the
+    # second lock — if that IAM ever slipped, the exposed surface would still
+    # be six task endpoints that check their own OIDC token, not the wizard
+    # and the admin screens.
+    tasks_only: bool = False
 
     # --- External services -----------------------------------------------------
     gcs_bucket: str = ""

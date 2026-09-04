@@ -73,6 +73,27 @@ app.include_router(member.router)
 app.include_router(tasks.router)
 
 
+# Paths the tasks-only service will answer. Everything else is a 404 there.
+TASKS_ONLY_PREFIXES = ("/tasks/", "/healthz")
+
+
+@app.middleware("http")
+async def tasks_only_gate(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Serve nothing but the scheduled endpoints when this is the tasks service.
+
+    Defence in depth, not the actual control: Cloud Run IAM already restricts
+    that service to the scheduler's identity. But it runs the same image as
+    the portal, so if the IAM were ever loosened the wizard and the admin
+    screens would be sitting there without IAP. This makes that impossible.
+    """
+    settings = get_settings()
+    if settings.tasks_only and not request.url.path.startswith(TASKS_ONLY_PREFIXES):
+        return Response(status_code=404)
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def security_headers(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]

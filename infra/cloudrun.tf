@@ -128,13 +128,12 @@ resource "google_cloud_run_v2_service" "app" {
         value = local.iap_audience
       }
 
-      # Scheduler's OIDC tokens carry the IAP audience too (see scheduler.tf):
-      # IAP validates them before the container is reached, so they have to be
-      # minted for IAP. The app then checks the same token a second time,
-      # against this value and the scheduler's service account.
+      # The portal does not serve /tasks/*; the jobs run on their own service
+      # (tasks.tf). Left set so that if a task route were ever added here by
+      # mistake it would refuse rather than run unauthenticated.
       env {
         name  = "PORTAL_SCHEDULER_AUDIENCE"
-        value = local.iap_audience
+        value = local.tasks_audience
       }
 
       env {
