@@ -93,8 +93,41 @@ either the number has moved or one of the seventeen also does not invoice —
 worth reconciling before go-live, though nothing depends on it: a person with
 no fee simply cannot invoice.
 
-Being on the ignore list is not the same as being excluded from the standings,
-which is a separate decision — see §9.
+Being on the ignore list is not the same as being excluded from the standings.
+*Decided:* someone who has left cannot win, so leavers are out of the standings
+too.
+
+### Leadership: receives kudos, cannot cash them
+
+*Decided.* **Remy Keller invoices through the portal, but his kudos are
+never billable.** Leadership can be given kudos and can appear on the
+leaderboard; they cannot convert them to £20 and they cannot win a prize.
+
+This is a **third** state, and it is worth naming because the first two do not
+cover it:
+
+| | Invoices here | Kudos billable | Can win |
+|---|---|---|---|
+| A contractor | yes | yes | yes |
+| Ignore list | no | — | no |
+| **Leadership who invoices** | **yes** | **no** | **no** |
+
+So it is a flag on the person (`kudos_eligible`), not a name on a list. Today
+Remy Keller is the only person in this state, but modelling it as
+"everything about Keller is special" would be wrong the first time somebody
+else is promoted.
+
+Note this is stricter than the written policy, which says the incentive is paid
+*"to all kudos recipients, regardless of their position on the leaderboard"*
+and does not carve leadership out. Leo's instruction is the decision; the
+policy wording should probably be tightened to match.
+
+One thing needs settling before this can be coded: **is Remy Castellanos
+(`remy@`) leadership?** The announcer's `LEADERSHIP_TEAM` matches him by the
+substring `"Castellanos"`, so today he is treated as leadership and silently
+cannot win. He does invoice here. If he is not leadership, the announcer has
+been quietly excluding him; if he is, his kudos are not billable either. Either
+way something is currently wrong (§9).
 
 Spellings drift: `Jamie Blake Irwin` in the 2026 tab is
 `Jamie Blake irwin` in the 2025 tab. There are two people called Remy
@@ -168,16 +201,54 @@ and the PDF need no changes at all.**
 
 ---
 
-## 4. The cut-over
+## 4. The cut-over, and a problem with it
 
 *Decided: September 2026 forward for money; full history for standings.*
 
 The whole 2026 log is ingested, because Q3 standings need July and August. Every
-event dated before **1 September 2026** is inserted with `claimable = false`:
-counted for winners, never billed. One config value, `kudos_claimable_from`.
+event dated before the cut-over is inserted with `claimable = false`: counted
+for winners, never billed. One config value, `kudos_claimable_from`.
 
-Without this, Marta Aldridge's first portal invoice carries ten kudos and
-£200 that she has in all likelihood already been paid.
+### The written policy moves this date
+
+The policy says the £20 is **paid quarterly**: *"This incentive is paid
+quarterly to all kudos recipients, regardless of their position on the
+leaderboard. You'll need to add the total amount accumulated over that quarter
+to your invoice."*
+
+Q3 ends on 30 September and **has therefore not been paid yet**. A cut-over of
+1 September silently drops July and August — kudos people are still owed:
+
+| | Jul + Aug 2026 |
+|---|---|
+| Ezra Coleman | 3 |
+| Petra Gilmore, Marta Aldridge, Marco Farrow Ives | 2 each |
+| Alexandra Cobb, Samantha Lane, Felix Pearce, Jamie Vance Gray, Oscar Hale | 1 each |
+| **Total** | **14 kudos = £280** |
+
+So the cut-over should almost certainly be **1 July 2026** — the start of the
+first unpaid quarter — not 1 September. Everything up to 30 June belongs to Q2,
+which has been paid the old way, and everything from 1 July is Q3, which has
+not.
+
+The September answer was given while we both believed the £20 was monthly. It
+is one config value either way; it is £280 of other people's money.
+
+### And it raises the cadence question again
+
+If the incentive is paid quarterly, then kudos should appear on the
+**quarter-end invoice** (March, June, September, December) and on no other. The
+portal is monthly, which is right for fees and expenses. Two options:
+
+- **Follow the policy.** Kudos are offered only on a quarter-end invoice. The
+  wizard says "your kudos will appear on your September invoice" in the other
+  two months. Predictable, matches what everyone has been told.
+- **Bill whatever is unclaimed, every month.** People are paid sooner and the
+  ledger already does it. But it silently changes a written policy, and the
+  quarterly prize still has to wait for the quarter to end anyway.
+
+The ledger supports both — it is one condition on one query. This is a policy
+decision, not a technical one, and it is open (§9).
 
 ---
 
@@ -185,20 +256,28 @@ Without this, Marta Aldridge's first portal invoice carries ten kudos and
 
 *Decided: in scope, and they appear on the invoice like kudos do.*
 
-From the announcer, the prize structure is:
+Taken from the written policy (effective 1 October 2024, last reviewed August
+2025), **not** from the announcer's message text:
 
-| | Threshold | Reward |
-|---|---|---|
-| Monthly winner | 3+ kudos | A Sleepy Morning. **No money.** |
-| Quarterly 1st | 5+ kudos | **£100** |
-| Quarterly 2nd | 3+ kudos | **£75** |
-| Quarterly 3rd | none stated | **£25** |
-| Annual podium | none stated | No money stated |
-| Trade-in | 2+ kudos in a month | A perk. Money is unaffected. |
+| | Cash | Threshold on the cash | Perk, and its threshold |
+|---|---|---|---|
+| Quarterly 1st | **£100** | none | LinkedIn/Instagram post, plus an Extra Freaky Friday **or** a Mid-Day Off — **5+ kudos** |
+| Quarterly 2nd | **£75** | none | Social shout-out, plus 1× Sleepy Morning — **3+ kudos** |
+| Quarterly 3rd | **£25** | none | — |
+| Monthly winner | none | — | 1× Sleepy Morning — **3+ kudos in the month** |
+| Annual podium | **none** | — | Not in the policy at all |
 
-Leadership are excluded from winning. Ties are resolved by a human — the
-sheet's own `Winner after tiebreaker` row is proof that this cannot be fully
-automatic, and its nicknames are proof that we should not try to read it back.
+> **This corrects an earlier reading of this document.** The 5+ and 3+
+> thresholds gate the **perks**, not the money. Cash for the top three is
+> unconditional — being in the top three is the whole qualification, and 3rd
+> place has no stated threshold precisely because of that. An earlier draft had
+> the thresholds on the cash, which would have paid nothing where the policy
+> pays £200.
+
+Leadership are excluded from winning. Ties are resolved by a human, and the
+policy names the tiebreakers: year-to-date total, consistency, kudos from
+different teams, and longevity. Every one of those is a judgement, which is why
+the award button exists.
 
 ### So: computed, then confirmed
 
@@ -219,23 +298,21 @@ policy already puts one, and nowhere else.
 
 ### Q3 2026, on the data as it stands
 
-*Decided: a Q3 prize is paid through the portal if there is a winner.* On the
-log as at 1 September, there is not one yet:
+*Decided: a Q3 prize is paid through the portal if there is a winner.* Leavers
+are out of the standings — they earned the kudos but they cannot win — which
+removes Victor Harlow (2) and Remy Carter Bell (1). That leaves:
 
-| | Kudos in Q3 | Threshold |
-|---|---|---|
-| Ezra Coleman | 4 | 1st needs **5** |
-| Marco, Petra, Marta (tied) | 2 | 2nd needs **3** |
+| | Kudos in Q3 | Cash | Perk |
+|---|---|---|---|
+| Ezra Coleman | 4 | **£100** | no — the Freaky Friday needs 5 |
+| Petra, Marta, Marco — tied on 2 | — | **£75 and £25**, split by tiebreaker | no — the Sleepy Morning needs 3 |
 
-Nobody clears their bar, so as things stand **no Q3 award would be made at
-all**. Most of September is still to come and one more kudo puts Ezra over
-the line, so this is a snapshot rather than a result — but it is worth knowing
-that the first quarter this feature touches may well award nothing, and that
-this is the policy working rather than the code failing.
+So Q3 pays **£200 across three people**, and a three-way tie for 2nd and 3rd
+has to be resolved by management against the policy's tiebreakers. Nobody
+earns a perk. September is not over, so this will move.
 
-Two of the Q3 scores belong to people who have left (Victor Harlow 2, Remy
-Carter Bell 1). They cannot be paid a prize, which is a second reason
-the award is a human decision.
+This is the case the award button exists for: the cash is mechanical, the
+allocation between Petra, Marta and Marco is not.
 
 An invoice's Additional therefore becomes:
 
@@ -294,6 +371,18 @@ To be added to `SPEC.md` §6 if this plan is accepted.
 - **R-KUD-18** An award is claimed exactly like a kudo, and prints as its own
   line.
 - **R-KUD-19** Perks are out of scope for v1 and do not affect money.
+- **R-KUD-20** A person may be marked not kudos-eligible: they invoice
+  normally, their kudos are counted and displayed, and none of it is billable.
+  Leadership is the case this exists for.
+- **R-KUD-21** Someone who has left is out of the standings. They cannot win a
+  prize they cannot be paid.
+- **R-KUD-22** Quarterly cash for the top three carries no kudos threshold.
+  Thresholds (5+, 3+) gate perks only, and perks are out of scope.
+- **R-KUD-23** Management may reduce a person's kudos after an abuse review. An
+  unclaimed event that disappears is simply withdrawn; one already billed
+  cannot be reversed, because an issued invoice is immutable (CLAUDE.md §2.3).
+  The correction is a void and reissue, and the sync must report it loudly
+  rather than adjust anything itself.
 
 ---
 
@@ -332,20 +421,28 @@ ignore list (§2), monthly cadence, and one kudo being £20 whatever the `Value`
 column lists (§1). `Raw Data` is the tab we read — it is what the announcer
 already reads, so the two cannot drift apart.
 
+The prize table is now taken from the written policy (§5), the annual podium
+carries no money and is dropped, leadership receives but cannot cash (§2),
+leavers are out of the standings, and the sheet is:
+
+```
+YOUR_KUDOS_SHEET_ID
+```
+
 Still open, in the order they block work:
 
-1. **The spreadsheet's file ID**, and the sheet shared read-only with the Cloud
-   Run service account. Nothing can be built without this.
-2. **Confirm the prize table in §5.** The £100/£75/£25 and the 5+/3+
-   thresholds are read out of the announcer's message text, not out of a policy
-   document. Is there a threshold for 3rd place? Does the annual podium carry
-   money, or only glory? Money should not be derived from a paragraph that was
-   written to be read aloud in Google Chat.
-3. **Does Remy Keller invoice through the portal?** He is in the announcer's
-   `LEADERSHIP_TEAM`, which excludes him from *winning*, but he was not named
-   among the four who do not invoice — and he has a kudo. Leadership exclusion
-   and invoicing are different things, so this needs saying rather than
-   inferring. It decides whether his kudos are billable.
-4. **Do people who have left count in the standings?** They cannot be paid a
-   prize, but they were there and they earned the kudos. Excluding them changes
-   who is 2nd and 3rd. Today it changes nothing in Q3; one quarter soon it will.
+1. **Is the £20 paid monthly or quarterly?** The written policy says quarterly
+   and that is what everyone has been told. The portal is monthly. See §4 — it
+   is one condition in one query, but it changes what people see for two months
+   out of every three.
+2. **Move the cut-over to 1 July 2026?** If the £20 is quarterly then Q3 has
+   not been paid, and a 1 September cut-over drops **14 kudos, £280**, that nine
+   people are owed. The September answer was given while we both thought the
+   incentive was monthly.
+3. **Is Remy Castellanos (`remy@`) leadership?** Today the announcer says
+   yes by accident, through a substring match on the surname. It decides
+   whether his kudos are billable, and it means the announcer is wrong either
+   way. See §2.
+4. **Share the sheet** with
+   `portal-invoices-staging@your-gcp-project.iam.gserviceaccount.com` as
+   **Viewer**, notifications off. Nothing can be built until this is done.
