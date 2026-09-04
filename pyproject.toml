@@ -18,6 +18,9 @@ dependencies = [
     "google-auth>=2.36",
     "httpx>=0.28",
     "openpyxl>=3.1",
+    # The CA bundle sslmode=verify-full verifies against. Named explicitly
+    # because app/db/session.py depends on it, not incidentally via httpx.
+    "certifi>=2024.8.30",
     # The stack table names Google Cloud Storage; this is its client.
     # Hand-rolling V4 signed URLs against the REST API is about a hundred
     # lines of signing code that must be exactly right (R-STO-03).

@@ -95,6 +95,14 @@ def libpq_environment(sqlalchemy_url: str) -> dict[str, str]:
         value = (query.get(key) or [""])[0]
         if value:
             environment[variable] = value
+
+    # Same problem as the application's own connection: "system" depends on how
+    # OpenSSL was built and finds nothing in a slim container. certifi ships a
+    # bundle that is present wherever this runs.
+    if environment.get("PGSSLROOTCERT") == "system":
+        import certifi
+
+        environment["PGSSLROOTCERT"] = certifi.where()
     return environment
 
 
