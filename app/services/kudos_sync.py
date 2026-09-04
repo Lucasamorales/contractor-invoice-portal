@@ -19,7 +19,7 @@ and two systems writing to one sheet is how you get a bad afternoon.
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -273,9 +273,21 @@ def _write_snapshots(session: Session, *, settings: Settings, now: datetime) -> 
             snapshot.synced_at = now
 
 
+RowSource = Callable[[Settings], Sequence[Sequence[object]]]
+
+
 def sync(
-    session: Session, *, settings: Settings, now: datetime | None = None
+    session: Session,
+    *,
+    settings: Settings,
+    now: datetime | None = None,
+    fetch: RowSource = fetch_rows,
 ) -> SyncReport:
-    """Fetch, parse, store. The whole job (R-KUD-02)."""
-    rows = fetch_rows(settings)
-    return store(session, parse(session, rows), settings=settings, now=now)
+    """Fetch, parse, store. The whole job (R-KUD-02).
+
+    ``fetch`` is injected so the staging seeder can drive this exact path with
+    invented rows. Everything after the HTTP call is then the real thing —
+    parsing, matching, the cut-over, the ledger, the snapshots — rather than a
+    separate write path that only staging ever runs and nobody ever tests.
+    """
+    return store(session, parse(session, fetch(settings)), settings=settings, now=now)
