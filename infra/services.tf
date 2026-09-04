@@ -15,6 +15,11 @@ locals {
     "secretmanager.googleapis.com", # R-SEC-02
     "storage.googleapis.com",       # R-STO-01
     "iamcredentials.googleapis.com" # signing V4 URLs without a key file
+    ,
+    # R-KUD-01, the kudos sheet. Sharing the file with the service account is
+    # necessary but not sufficient: without the API enabled every read is a
+    # 403, and the message does not mention the API.
+    "sheets.googleapis.com"
   ]
 }
 

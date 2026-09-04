@@ -112,22 +112,22 @@ cover it:
 | Ignore list | no | — | no |
 | **Leadership who invoices** | **yes** | **no** | **no** |
 
-So it is a flag on the person (`kudos_eligible`), not a name on a list. Today
-Remy Keller is the only person in this state, but modelling it as
-"everything about Keller is special" would be wrong the first time somebody
-else is promoted.
+So it is a flag on the person (`kudos_eligible`), not a name on a list.
+
+*Decided:* **two people are in this state — Remy Keller and Remy
+Castellanos.** Both invoice here, both may be given kudos, neither can cash
+them and neither can win.
+
+That also settles the announcer's substring bug: `"Castellanos"` matching
+Remy as well as Charlie turns out to be the right answer reached by the
+wrong route. It is still worth fixing there, because it will match the next
+Castellanos too, and by then it may be wrong.
 
 Note this is stricter than the written policy, which says the incentive is paid
 *"to all kudos recipients, regardless of their position on the leaderboard"*
 and does not carve leadership out. Leo's instruction is the decision; the
-policy wording should probably be tightened to match.
-
-One thing needs settling before this can be coded: **is Remy Castellanos
-(`remy@`) leadership?** The announcer's `LEADERSHIP_TEAM` matches him by the
-substring `"Castellanos"`, so today he is treated as leadership and silently
-cannot win. He does invoice here. If he is not leadership, the announcer has
-been quietly excluding him; if he is, his kudos are not billable either. Either
-way something is currently wrong (§9).
+policy wording should be tightened to match, or someone will eventually read
+the policy and expect to be paid.
 
 Spellings drift: `Jamie Blake Irwin` in the 2026 tab is
 `Jamie Blake irwin` in the 2025 tab. There are two people called Remy
@@ -201,54 +201,43 @@ and the PDF need no changes at all.**
 
 ---
 
-## 4. The cut-over, and a problem with it
+## 4. The cut-over and the cadence
 
-*Decided: September 2026 forward for money; full history for standings.*
+*Both decided.*
 
-The whole 2026 log is ingested, because Q3 standings need July and August. Every
-event dated before the cut-over is inserted with `claimable = false`: counted
-for winners, never billed. One config value, `kudos_claimable_from`.
+**Kudos are billed quarterly**, following the written policy: *"This incentive
+is paid quarterly to all kudos recipients… add the total amount accumulated
+over that quarter to your invoice."* Kudos and quarterly awards appear on the
+**quarter-end invoice** — March, June, September, December — and on no other.
+Fees and expenses stay monthly. In the other two months the wizard says when
+kudos will next appear rather than showing a zero, which would look like a bug.
 
-### The written policy moves this date
+**The cut-over is 1 July 2026**, the start of the first unpaid quarter. Q3 ends
+on 30 September and has not been paid, so anything from 1 July is still owed.
+Everything to 30 June belongs to Q2 and was settled the old way.
 
-The policy says the £20 is **paid quarterly**: *"This incentive is paid
-quarterly to all kudos recipients, regardless of their position on the
-leaderboard. You'll need to add the total amount accumulated over that quarter
-to your invoice."*
+An earlier draft said 1 September. That was agreed while we both believed the
+£20 was monthly, and under quarterly payment it would have dropped 14 kudos —
+**£280** — that nine people are owed. One config value, `kudos_claimable_from`.
 
-Q3 ends on 30 September and **has therefore not been paid yet**. A cut-over of
-1 September silently drops July and August — kudos people are still owed:
+The whole 2026 log is still ingested; events before the cut-over are inserted
+with `claimable = false`, counted for standings and never billed.
 
-| | Jul + Aug 2026 |
-|---|---|
-| Ezra Coleman | 3 |
-| Petra Gilmore, Marta Aldridge, Marco Farrow Ives | 2 each |
-| Alexandra Cobb, Samantha Lane, Felix Pearce, Jamie Vance Gray, Oscar Hale | 1 each |
-| **Total** | **14 kudos = £280** |
+### What Q3 2026 therefore pays
 
-So the cut-over should almost certainly be **1 July 2026** — the start of the
-first unpaid quarter — not 1 September. Everything up to 30 June belongs to Q2,
-which has been paid the old way, and everything from 1 July is Q3, which has
-not.
+The first quarter this feature touches, on the log as at 1 September:
 
-The September answer was given while we both believed the £20 was monthly. It
-is one config value either way; it is £280 of other people's money.
+| | Kudos | Value |
+|---|---|---|
+| Ezra Coleman | 4 | £80 |
+| Marco Farrow Ives, Petra Gilmore, Marta Aldridge | 2 each | £40 each |
+| Felix Pearce, Jamie Vance Gray, Oscar Hale, Alexandra Cobb, Samantha Lane, Leo Marsh | 1 each | £20 each |
+| **Kudos total** | **16** | **£320** |
+| Quarterly awards (§5) | | **£200** |
+| | | **£520** |
 
-### And it raises the cadence question again
-
-If the incentive is paid quarterly, then kudos should appear on the
-**quarter-end invoice** (March, June, September, December) and on no other. The
-portal is monthly, which is right for fees and expenses. Two options:
-
-- **Follow the policy.** Kudos are offered only on a quarter-end invoice. The
-  wizard says "your kudos will appear on your September invoice" in the other
-  two months. Predictable, matches what everyone has been told.
-- **Bill whatever is unclaimed, every month.** People are paid sooner and the
-  ledger already does it. But it silently changes a written policy, and the
-  quarterly prize still has to wait for the quarter to end anyway.
-
-The ledger supports both — it is one condition on one query. This is a policy
-decision, not a technical one, and it is open (§9).
+No leadership member has a Q3 kudo, so the eligibility flag changes nothing
+this quarter. September is not over, so these will move.
 
 ---
 
@@ -429,20 +418,23 @@ leavers are out of the standings, and the sheet is:
 YOUR_KUDOS_SHEET_ID
 ```
 
-Still open, in the order they block work:
+Settled on 5 September: quarterly cadence and a 1 July 2026 cut-over (§4),
+Remy Castellanos is leadership alongside Remy Keller (§2), and the sheet
+has been shared with the staging service account.
 
-1. **Is the £20 paid monthly or quarterly?** The written policy says quarterly
-   and that is what everyone has been told. The portal is monthly. See §4 — it
-   is one condition in one query, but it changes what people see for two months
-   out of every three.
-2. **Move the cut-over to 1 July 2026?** If the £20 is quarterly then Q3 has
-   not been paid, and a 1 September cut-over drops **14 kudos, £280**, that nine
-   people are owed. The September answer was given while we both thought the
-   incentive was monthly.
-3. **Is Remy Castellanos (`remy@`) leadership?** Today the announcer says
-   yes by accident, through a substring match on the surname. It decides
-   whether his kudos are billable, and it means the announcer is wrong either
-   way. See §2.
-4. **Share the sheet** with
-   `portal-invoices-staging@your-gcp-project.iam.gserviceaccount.com` as
-   **Viewer**, notifications off. Nothing can be built until this is done.
+**Nothing is blocked. One prerequisite remains before the sync can run:**
+
+- **`sheets.googleapis.com` is not enabled on the project.** Sharing the sheet
+  is necessary but not sufficient — the API has to be on or every read returns
+  403. It is one line in `infra/services.tf` and an apply.
+
+Deferred by decision, not forgotten:
+
+- **Perks** (§6). Needs the catalogue, who approves, and whether a perk taken is
+  recorded anywhere today. No money depends on it.
+- **The announcer's substring match** on `LEADERSHIP_TEAM`. Right answer today,
+  wrong method, and it is not our code.
+- **Production sharing.** When production is deployed it gets its own service
+  account and the sheet must be shared with that one too.
+- **`SPEC.md` §6 still says none of this.** R-KUD-07 … R-KUD-23 live here until
+  someone amends it.
