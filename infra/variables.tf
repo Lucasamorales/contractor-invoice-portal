@@ -117,3 +117,35 @@ variable "kudos_sheet_id" {
   type        = string
   default     = ""
 }
+
+variable "resend_secret_id" {
+  description = <<-EOT
+    Secret Manager secret holding the Resend API key. Empty means no mail.
+
+    Create it and add the key yourself; Terraform grants access to it and never
+    reads it, so the key does not end up in the state file (R-SEC-02).
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "mail_from" {
+  description = <<-EOT
+    The From address. Until the sending domain has SPF, DKIM and DMARC this
+    must be Resend's own onboarding sender, which can only deliver to the
+    account owner's address.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "mail_redirect_to" {
+  description = <<-EOT
+    Send every email here instead of to its real recipients, with the intended
+    ones written into the body. For proving delivery before DNS exists.
+
+    Production refuses to start with this set (app/config.py).
+  EOT
+  type        = string
+  default     = ""
+}

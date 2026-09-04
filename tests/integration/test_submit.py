@@ -221,7 +221,7 @@ def test_the_pdf_is_stored_and_recorded(
 def test_the_email_is_queued_never_sent(
     factory, settings, cipher, store, fake_pdf
 ) -> None:
-    """R-SUB-06: a Postmark outage must not lose an accepted invoice."""
+    """R-SUB-06: a provider outage must not lose an accepted invoice."""
     person_id = ready_person(factory, cipher, kudos=3)
     do_submit(
         factory,

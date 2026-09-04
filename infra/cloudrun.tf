@@ -137,6 +137,20 @@ resource "google_cloud_run_v2_service" "app" {
         value = local.iap_audience
       }
 
+      env {
+        name  = "PORTAL_MAIL_FROM"
+        value = var.mail_from
+      }
+
+      # Every email goes to one address instead of its recipients. This is
+      # what lets staging send at all: R-ENV-03 says staging must not reach a
+      # real contractor, and a redirect makes that impossible rather than
+      # merely unlikely. Production refuses to start with it set.
+      env {
+        name  = "PORTAL_MAIL_REDIRECT_TO"
+        value = var.mail_redirect_to
+      }
+
       # R-PER-06 shuts submission before the 24th, which makes the thing
       # untestable for three weeks in four. Staging can force it open;
       # assert_production_ready refuses to let production start with it, so
@@ -176,6 +190,19 @@ resource "google_cloud_run_v2_service" "app" {
           secret_key_ref {
             secret  = data.google_secret_manager_secret.csrf_secret.secret_id
             version = "latest"
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.resend_secret_id == "" ? [] : [1]
+        content {
+          name = "PORTAL_RESEND_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = data.google_secret_manager_secret.resend_api_key[0].secret_id
+              version = "latest"
+            }
           }
         }
       }

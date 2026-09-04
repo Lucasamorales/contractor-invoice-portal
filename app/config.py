@@ -137,7 +137,14 @@ class Settings(BaseSettings):
     # Never a derived grid tab: those hold totals, a winner row and a second
     # table of givers underneath (R-KUD-07).
     kudos_sheet_range: str = "Raw Data!A:F"
-    postmark_token: SecretStr = SecretStr("")
+    resend_api_key: SecretStr = SecretStr("")
+    # Every email goes here instead of its real recipients, with the intended
+    # ones written into the body. For proving delivery and attachments before
+    # the sending domain has DNS, and for letting staging send at all without
+    # any risk of reaching a real contractor.
+    #
+    # Production refuses to start with this set — see assert_production_ready.
+    mail_redirect_to: str = ""
     mail_from: str = ""
     finance_inbox: str = ""
     drive_folder_id: str = ""
@@ -204,6 +211,14 @@ def assert_production_ready(settings: Settings) -> None:
     if missing:
         raise ConfigError(f"missing required configuration: {', '.join(missing)}")
 
+    if settings.mail_redirect_to:
+        # Silently delivering the whole company's invoices to one inbox is a
+        # far worse failure in production than not starting.
+        raise ConfigError(
+            "mail_redirect_to is a testing-only setting and must not be set "
+            "in production"
+        )
+
     if settings.window_always_open:
         # A staging convenience that would silently let somebody invoice for
         # the wrong month in production. Refusing to start is the only way to
@@ -222,7 +237,18 @@ class MailMode(Enum):
 
 
 def mail_mode(settings: Settings) -> MailMode:
-    return MailMode.LIVE if settings.is_production else MailMode.SANDBOX
+    """R-ENV-03 says staging cannot send real email, and this keeps that.
+
+    The one way staging sends is with ``mail_redirect_to`` set, and then every
+    message goes to that single address instead of its recipients. The rule
+    exists so staging cannot email a real contractor; a redirect makes that
+    impossible by construction rather than by convention.
+    """
+    if settings.is_production:
+        return MailMode.LIVE
+    if settings.mail_redirect_to and settings.resend_api_key.get_secret_value():
+        return MailMode.LIVE
+    return MailMode.SANDBOX
 
 
 def drive_writes_allowed(settings: Settings) -> bool:

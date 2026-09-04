@@ -534,7 +534,7 @@ class PrintSnapshot(Base):
 class Outbox(Base):
     """R-DATA-10. Mail is queued in the submit transaction and sent by a job.
 
-    A Postmark outage must not lose an invoice that Postgres already accepted
+    A mail-provider outage must not lose an invoice Postgres already accepted
     (R-SUB-06).
     """
 

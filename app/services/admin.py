@@ -514,7 +514,7 @@ class Attention:
 
     The invoice table looking healthy is not the same as an invoice having
     arrived. A stuck draft holds a number and was never sent; a failed outbox
-    row means Postgres accepted an invoice that Postmark never delivered.
+    row means Postgres accepted an invoice the provider never delivered.
     Neither shows up anywhere else, and the period view would count both as
     received.
     """

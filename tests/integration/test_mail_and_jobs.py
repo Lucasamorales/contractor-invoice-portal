@@ -1,6 +1,6 @@
 """The outbox dispatcher and the scheduled jobs (R-SUB-06, R-JOB-01 .. R-JOB-06).
 
-Postmark itself is not reachable from a test and its credentials do not exist
+Resend itself is not reachable from a test and its credentials do not exist
 yet, so the client is a stand-in. Everything around it — what gets queued, what
 gets retried, what gives up, and who is allowed to trigger any of it — is real.
 """
@@ -157,7 +157,7 @@ def test_a_failure_is_retried_with_backoff_not_dropped(
     with factory() as session, session.begin():
         report = mailer.dispatch(
             session,
-            client=Recorder(fail=mailer.MailError("Postmark is down")),
+            client=Recorder(fail=mailer.MailError("Resend is down")),
             settings=settings,
             store=store,
             now=now,
@@ -170,7 +170,7 @@ def test_a_failure_is_retried_with_backoff_not_dropped(
         assert row.status is OutboxStatus.PENDING
         assert row.attempts == 1
         assert row.next_attempt_at == now + timedelta(seconds=60)
-        assert "Postmark is down" in row.last_error
+        assert "Resend is down" in row.last_error
 
 
 def test_a_row_in_backoff_is_left_alone_until_it_is_due(
@@ -335,7 +335,7 @@ def test_a_bank_change_email_carries_only_last_four(
 
 
 def test_staging_gets_the_sandbox_client_and_sends_nothing() -> None:
-    staging = Settings(_env_file=None, environment="staging", postmark_token="live-key")
+    staging = Settings(_env_file=None, environment="staging", resend_api_key="live-key")
     assert mail_mode(staging) is MailMode.SANDBOX
     client = mailer.build_client(staging)
     assert isinstance(client, mailer.SandboxClient)
@@ -585,3 +585,75 @@ def test_a_verified_scheduler_can_run_the_jobs(
             assert client.post("/tasks/backup").status_code == 503
     finally:
         app.dependency_overrides.clear()
+
+
+# --------------------------------------------------------------------------
+# Resend, the redirect, and the size ceiling
+# --------------------------------------------------------------------------
+
+
+def test_staging_does_not_send_unless_everything_goes_to_one_address() -> None:
+    """R-ENV-03, kept rather than weakened.
+
+    Staging may send only when every message is redirected to a single
+    address, so it cannot reach a real contractor by construction.
+    """
+    plain = Settings(_env_file=None, environment="staging", resend_api_key="re_x")
+    assert isinstance(mailer.build_client(plain), mailer.SandboxClient)
+
+    redirected = Settings(
+        _env_file=None,
+        environment="staging",
+        resend_api_key="re_x",
+        mail_from="portal@other.test",
+        mail_redirect_to="leo@example.com",
+    )
+    assert isinstance(mailer.build_client(redirected), mailer.RedirectingClient)
+
+
+def test_production_refuses_to_start_with_a_redirect_set() -> None:
+    """Every invoice quietly landing in one inbox is worse than not starting."""
+    from app.config import ConfigError, assert_production_ready
+
+    settings = Settings(
+        _env_file=None,
+        environment="production",
+        iap_audience="aud",
+        database_url="postgresql+psycopg://u:p@h/d?sslmode=verify-full",
+        bank_encryption_key="key",
+        csrf_secret="csrf",
+        gcs_bucket="bucket",
+        finance_emails="robin@example.com",
+        mail_redirect_to="leo@example.com",
+    )
+    with pytest.raises(ConfigError, match="mail_redirect_to"):
+        assert_production_ready(settings)
+
+
+def test_a_redirected_email_says_who_it_was_for() -> None:
+    """Otherwise somebody reads it and believes Robin got it."""
+    inner = Recorder()
+    client = mailer.RedirectingClient(inner, "leo@example.com")
+    client.send(
+        mailer.Message(
+            to=("robin@example.com", "jane@example.com"),
+            subject="Invoice 8",
+            text="the body",
+            attachments=(mailer.Attachment("a.pdf", b"%PDF", "application/pdf"),),
+        )
+    )
+
+    sent = inner.sent[0]
+    assert sent.to == ("leo@example.com",)
+    assert "robin@example.com" in sent.text
+    assert "jane@example.com" in sent.text
+    assert sent.text.endswith("the body")
+    assert sent.subject.startswith("[redirected]")
+    # The attachments are the point of the test send.
+    assert sent.attachments[0].name == "a.pdf"
+
+
+def test_the_encoded_size_accounts_for_base64() -> None:
+    """Budgeting on raw bytes would put us a third over the limit."""
+    one_meg = mailer.Attachment("x", b"x" * 1_000_000, "application/octet-stream")
+    assert mailer._encoded_size([one_meg]) == pytest.approx(1_333_334, abs=2)

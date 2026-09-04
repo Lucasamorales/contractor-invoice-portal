@@ -1,11 +1,11 @@
-"""Mail: the Postmark client and the outbox dispatcher (R-SUB-06, R-JOB-04).
+"""Mail: the Resend client and the outbox dispatcher (R-SUB-06, R-JOB-04).
 
 Nothing in this application sends mail inline. Every message is written to the
 ``outbox`` table inside the transaction that caused it, and this dispatcher
-sends it afterwards. A Postmark outage must not lose an invoice Postgres has
+sends it afterwards. A provider outage must not lose an invoice Postgres has
 already accepted.
 
-The client is a protocol with three implementations: Postmark for production,
+The client is a protocol with three implementations: Resend for production,
 a sandbox that records and discards for staging (R-ENV-03), and whatever a
 test passes in.
 """
@@ -28,7 +28,15 @@ from app.services.storage import ObjectStore, StorageError
 
 logger = logging.getLogger(__name__)
 
-POSTMARK_URL = "https://api.postmarkapp.com/email"
+RESEND_URL = "https://api.resend.com/emails"
+
+# Resend caps a whole message, attachments included. Ours are capped lower
+# still (R-WIZ-04) so an invoice with ten receipts cannot become an email
+# nobody can send.
+RESEND_MAX_MESSAGE_BYTES = 40 * 1024 * 1024
+# Room for the body, the headers and the JSON around it all.
+BODY_ALLOWANCE = 256 * 1024
+
 MAX_ATTEMPTS = 5  # R-JOB-04
 BATCH_SIZE = 20
 
@@ -68,53 +76,99 @@ class MailClient(Protocol):
     def send(self, message: Message) -> None: ...
 
 
-class PostmarkClient:
-    """The real one. Used only in production (R-ENV-03)."""
+class ResendClient:
+    """The real one. Used only in production (R-ENV-03).
 
-    def __init__(self, token: str, sender: str, timeout: float = 15.0) -> None:
+    Chosen over Postmark on cost and on attachment size. Sixteen invoices, two
+    reminder rounds and a summary come to roughly a hundred messages a month,
+    bunched into five days — right on Postmark's free ceiling, and paying for
+    it would hand back the same £15 a month we avoided by not putting a load
+    balancer in front of Cloud Run (R-ENV-06).
+    """
+
+    def __init__(self, token: str, sender: str, timeout: float = 30.0) -> None:
         self._token = token
         self._sender = sender
+        # Longer than a plain request: this one can be carrying a PDF and ten
+        # receipts, and giving up early would retry the whole upload.
         self._client = httpx.Client(timeout=timeout)
 
     def send(self, message: Message) -> None:
-        payload = {
-            "From": self._sender,
-            "To": message.recipients(),
-            "Subject": message.subject,
-            "TextBody": message.text,
-            "MessageStream": "outbound",
+        payload: dict[str, object] = {
+            "from": self._sender,
+            "to": [address for address in message.to if address],
+            "subject": message.subject,
+            "text": message.text,
         }
         if message.attachments:
-            payload["Attachments"] = [
+            payload["attachments"] = [
                 {
-                    "Name": attachment.name,
-                    "Content": base64.b64encode(attachment.content).decode("ascii"),
-                    "ContentType": attachment.content_type,
+                    "filename": attachment.name,
+                    "content": base64.b64encode(attachment.content).decode("ascii"),
+                    "content_type": attachment.content_type,
                 }
                 for attachment in message.attachments
             ]
 
         try:
             response = self._client.post(
-                POSTMARK_URL,
+                RESEND_URL,
                 json=payload,
                 headers={
-                    "X-Postmark-Server-Token": self._token,
+                    "Authorization": f"Bearer {self._token}",
                     "Accept": "application/json",
                 },
             )
         except httpx.HTTPError as exc:
-            raise MailError(f"could not reach Postmark: {type(exc).__name__}") from exc
+            raise MailError(f"could not reach Resend: {type(exc).__name__}") from exc
 
-        if response.status_code == 200:
+        if response.status_code in (200, 201):
             return
 
         # 4xx other than rate limiting will fail again identically, so there is
-        # nothing to be gained by retrying them for an hour.
+        # nothing to be gained by retrying them for an hour. 413 is the one
+        # that matters here: too large, and no number of retries shrinks it.
         permanent = 400 <= response.status_code < 500 and response.status_code != 429
-        raise MailError(
-            f"Postmark returned {response.status_code}", permanent=permanent
+        raise MailError(f"Resend returned {response.status_code}", permanent=permanent)
+
+
+class RedirectingClient:
+    """Sends everything to one address instead of its real recipients.
+
+    For proving that mail actually arrives, with its attachments, before the
+    sending domain has DNS — and for letting staging send at all without any
+    chance of reaching a real contractor (R-ENV-03).
+
+    The intended recipients are written into the top of the body rather than
+    dropped. A redirected email that does not say who it was for is a trap:
+    somebody reads it, believes Robin got it, and nobody finds out otherwise.
+    """
+
+    def __init__(self, inner: MailClient, address: str) -> None:
+        self._inner = inner
+        self._address = address
+
+    def send(self, message: Message) -> None:
+        banner = [
+            "[ REDIRECTED ]",
+            f"This would have gone to: {message.recipients()}",
+            "Sent here instead because mail_redirect_to is set.",
+            "",
+            "",
+        ]
+        redirected = Message(
+            to=(self._address,),
+            subject=f"[redirected] {message.subject}",
+            text="\n".join(banner) + message.text,
+            attachments=message.attachments,
         )
+        logger.warning(
+            "mail redirected to %s: %r was addressed to %d recipients",
+            self._address,
+            message.subject,
+            len(message.to),
+        )
+        self._inner.send(redirected)
 
 
 class SandboxClient:
@@ -141,10 +195,14 @@ def build_client(settings: Settings) -> MailClient:
     """The client for this environment. Production is the only one that sends."""
     if mail_mode(settings) is MailMode.SANDBOX:
         return SandboxClient()
-    token = settings.postmark_token.get_secret_value()
+    token = settings.resend_api_key.get_secret_value()
     if not token or not settings.mail_from:
         raise MailError("production mail is not configured", permanent=True)
-    return PostmarkClient(token, settings.mail_from)
+
+    client: MailClient = ResendClient(token, settings.mail_from)
+    if settings.mail_redirect_to:
+        client = RedirectingClient(client, settings.mail_redirect_to)
+    return client
 
 
 def backoff(attempts: int) -> timedelta:
@@ -387,20 +445,51 @@ def _invoice_attachments(
             Expense.invoice_id == invoice.id, Expense.receipt_uri.is_not(None)
         )
     )
+    # The PDF is already counted: it is never dropped for size, because an
+    # invoice email without the invoice is not worth sending.
+    budget = RESEND_MAX_MESSAGE_BYTES - _encoded_size(attachments) - BODY_ALLOWANCE
+
     for expense in receipts:
         try:
-            attachments.append(
-                Attachment(
-                    name=str(expense.receipt_uri).rsplit("/", 1)[-1],
-                    content=store.get(str(expense.receipt_uri)),
-                    content_type="application/octet-stream",
-                )
-            )
+            content = store.get(str(expense.receipt_uri))
         except StorageError:
             logger.warning("invoice %s: receipt missing for %s", invoice.id, expense.id)
             missing.append(f"the receipt for {expense.description}")
+            continue
+
+        # R-WIZ-04 allows ten receipts and each may be several megabytes, so a
+        # loaded invoice can exceed what any provider will accept. Named and
+        # left out beats a 413 that fails the whole email, invoice included.
+        cost = _encoded_size([Attachment("", content, "")])
+        if cost > budget:
+            logger.warning(
+                "invoice %s: receipt for %s is too large to attach",
+                invoice.id,
+                expense.id,
+            )
+            missing.append(f"the receipt for {expense.description} (too large to send)")
+            continue
+
+        budget -= cost
+        attachments.append(
+            Attachment(
+                name=str(expense.receipt_uri).rsplit("/", 1)[-1],
+                content=content,
+                content_type="application/octet-stream",
+            )
+        )
 
     return attachments, missing
+
+
+def _encoded_size(attachments: list[Attachment]) -> int:
+    """What these cost on the wire, base64 included.
+
+    Attachments are sent base64-encoded, which is four bytes for every three.
+    Budgeting against the raw size would leave us a third over the limit and
+    discovering it as a rejected send.
+    """
+    return sum(-(-len(a.content) * 4 // 3) for a in attachments)
 
 
 def _bank_changed(

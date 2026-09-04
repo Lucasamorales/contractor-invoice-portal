@@ -5,7 +5,7 @@ phases, two short transactions, and nothing slow inside either of them.
 
     1. Lock the counter, allocate the number, write the draft and its frozen
        breakdown, release the lock (R-SUB-03). Nothing here talks to GCS,
-       WeasyPrint or Postmark.
+       WeasyPrint or Resend.
     2. Render and upload, outside any transaction (R-SUB-04).
     3. Mark it submitted and queue the email (R-SUB-05).
 
@@ -487,7 +487,7 @@ def finalise(
 ) -> None:
     """Phase 3 (R-SUB-05). Must be called inside a transaction.
 
-    The email is queued, never sent here: a Postmark outage must not lose an
+    The email is queued, never sent here: a provider outage must not lose an
     invoice Postgres has already accepted (R-SUB-06).
     """
     invoice.status = InvoiceStatus.SUBMITTED

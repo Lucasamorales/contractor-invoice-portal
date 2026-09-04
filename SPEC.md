@@ -384,7 +384,7 @@ below are permitted.
 - **R-SUB-05** Transaction 2: set `status='submitted'`, `pdf_uri`, `issued_at`,
   `due_at`, `is_late`; insert an `outbox` row for the email; commit.
 - **R-SUB-06** The email is **never** sent inline. The dispatcher (R-JOB-04)
-  sends it. A Postmark outage must not lose an invoice Postgres already accepted.
+  sends it. A provider outage must not lose an invoice Postgres already accepted.
 - **R-SUB-07** The email to Robin: PDF attached, receipts attached, subject
   `Invoice {number} — {legal_name} — {Month} {Year}`. **No fee figure in the
   subject.** Body carries the full breakdown (fee, kudos, each expense) — this is
@@ -497,13 +497,13 @@ by the app. All are idempotent — a double fire must not double-send.
   with generated people and invented fees that share the real *structure*. The
   moment a real account number exists in staging, staging is production with
   weaker access rules.
-- **R-ENV-03** Staging cannot send real email (Postmark sandbox) and cannot write
+- **R-ENV-03** Staging cannot send real email (a sandbox client) and cannot write
   to the real Drive folder. Enforced by config, asserted by a test.
 - **R-ENV-04** The staging IAP group contains the developers; the production
   finance group does not.
 - **R-ENV-05** All infrastructure in Terraform. No console clicking.
 - **R-ENV-06** Cost target is £0/month: Neon free tier, Cloud Run / GCS /
-  Scheduler within always-free limits, Postmark free tier. Anything that would
+  Scheduler within always-free limits, Resend free tier. Anything that would
   incur cost must be raised, not silently provisioned.
 
 ---
@@ -580,4 +580,6 @@ Leo first.
   the intended payee before her first automated payment.
 - The Shared Drive to use has not been named. Ask before creating one.
 - The kudos sheet's file ID and column layout have not been provided. Ask.
-- Postmark account and sending domain are not set up. Ask.
+- Resend is the mail provider (decided 5 September 2026, over Postmark on
+  cost and attachment size). The sending domain still needs SPF, DKIM and
+  DMARC on example.com.

@@ -22,6 +22,23 @@ data "google_secret_manager_secret" "csrf_secret" {
   secret_id = "portal-csrf-secret-${var.environment}"
 }
 
+# The Resend API key (R-SUB-06). Optional: staging can run without mail, and
+# the service must still start when it is absent, so this is looked up only
+# when a name is given.
+data "google_secret_manager_secret" "resend_api_key" {
+  count     = var.resend_secret_id == "" ? 0 : 1
+  project   = var.project_id
+  secret_id = var.resend_secret_id
+}
+
+resource "google_secret_manager_secret_iam_member" "resend_api_key" {
+  count     = var.resend_secret_id == "" ? 0 : 1
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.resend_api_key[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.app.email}"
+}
+
 # Granted per secret, never project-wide. The staging service must not be able
 # to read the production database's credentials (R-ENV-01, R-ENV-04).
 resource "google_secret_manager_secret_iam_member" "database_url" {

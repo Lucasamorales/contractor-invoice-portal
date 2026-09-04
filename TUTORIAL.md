@@ -389,7 +389,7 @@ For whoever writes the on-screen tutorial — do not point at any of these:
 
 | Not built | Blocked on |
 |---|---|
-| All email | A Postmark account and a sending domain |
+| All email | DNS for the Resend sending domain |
 | Kudos from the sheet | The sheet's file id and column layout |
 | Receipt upload in the wizard | Nothing — validation and conversion are written, the UI is not |
 | Drive mirror | Which Shared Drive to use |

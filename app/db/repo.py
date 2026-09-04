@@ -319,7 +319,7 @@ def queue_email(*, kind: str, payload: dict) -> Outbox:
 
     Returned rather than added, so the caller decides which transaction it
     belongs to. Mail is queued inside the submit transaction and sent later by
-    the dispatcher: a Postmark outage must not lose an invoice Postgres has
+    the dispatcher: a provider outage must not lose an invoice Postgres has
     already accepted.
     """
     return Outbox(kind=kind, payload=payload)
@@ -433,7 +433,7 @@ def stuck_drafts(session: Session, *, older_than: datetime) -> list[Invoice]:
 def failed_outbox(session: Session) -> list[Outbox]:
     """Mail that gave up (R-JOB-04).
 
-    Postgres accepted the invoice and Postmark never delivered it. Nothing
+    Postgres accepted the invoice and the provider never delivered it. Nothing
     else in the system would notice.
     """
     return list(

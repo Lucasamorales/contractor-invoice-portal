@@ -46,6 +46,12 @@ These are invariants. If a task appears to require breaking one, stop and ask.
    identity. Secrets come from Secret Manager.
 8. **Never log, email, or put in an error message:** a fee, a full account
    number, an IBAN, or a receipt URL. Last four digits only.
+   *One agreed exception, decided 5 September 2026:* the invoice email
+   (R-SUB-07) carries the full breakdown including the fee, because it goes
+   only to the finance inbox and to the person the fee belongs to. It must
+   never reach anyone else. Nothing else about this rule relaxes: no fee in a
+   log, in an error message, in a subject line, or in any email with another
+   recipient.
 9. **The invoice number is allocated exactly once per invoice.** See R-NUM-*.
 
 ---
@@ -62,7 +68,7 @@ These are invariants. If a task appears to require breaking one, stop and ask.
 | Hosting | Cloud Run | Scale to zero. |
 | Auth | Cloud IAP | We write no login code. |
 | Files | Google Cloud Storage | Private bucket, V4 signed URLs. |
-| Mail | Postmark | Via an outbox table, never sent inline. |
+| Mail | Resend | Via an outbox table, never sent inline. |
 | Scheduling | Cloud Scheduler → OIDC-authenticated endpoints | |
 | Tooling | `uv`, `ruff`, `pytest` | |
 | IaC | Terraform in `infra/` | |
@@ -103,7 +109,7 @@ app/
     invoicing.py       the submit transaction
     pdf.py             WeasyPrint rendering
     kudos_sync.py      Google Sheets read-only
-    mailer.py          Postmark client + outbox dispatcher
+    mailer.py          Resend client + outbox dispatcher
     drive.py           monthly folder mirror
     crypto.py          encrypt/decrypt bank fields
   web/
