@@ -13,7 +13,6 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -40,7 +39,7 @@ from app.services.invoicing import (
     submit,
 )
 from app.services.pdf import Letterhead, build_context, render_html, render_pdf
-from app.services.storage import LocalObjectStore, ObjectStore
+from app.services.storage import ObjectStore, build_store
 from app.web import csrf
 from app.web.ratelimit import bank_limiter, submit_limiter
 from app.web.templates import templates
@@ -58,14 +57,15 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def get_store() -> ObjectStore:
-    """The object store.
+def get_store(settings: Config) -> ObjectStore:
+    """The object store: GCS when a bucket is configured, local otherwise.
 
-    Local for now. R-STO-01's private bucket replaces this in build order step
-    6; ``assert_production_ready`` already refuses to start a production
-    service without ``gcs_bucket`` set, so this cannot quietly ship.
+    ``build_store`` makes that choice. It used to be bypassed here by a
+    hardcoded local store, which meant a deployed service happily tried to
+    write invoice PDFs into its own container filesystem and failed —
+    a read-only directory standing in for a bucket that existed the whole time.
     """
-    return LocalObjectStore(Path("out/objects"))
+    return build_store(settings)
 
 
 def get_cipher(settings: Config) -> Cipher:

@@ -224,3 +224,19 @@ def test_local_listing_is_prefix_scoped(store) -> None:
     assert store.list_names("backups/") == ["backups/a.sql.gz"]
     assert store.list_names("invoices/") == ["invoices/2026-09/b.pdf"]
     assert len(store.list_names("")) == 2
+
+
+def test_the_wizard_uses_the_bucket_when_one_is_configured() -> None:
+    """The route dependency must go through ``build_store``.
+
+    It once returned a hardcoded local store, so a deployed service wrote
+    invoice PDFs into its own container filesystem and the submit failed at
+    the last step, with the bucket sitting there unused. Asserting the wiring
+    rather than the branch is the point: build_store was already correct.
+    """
+    from app.web.member import get_store
+
+    assert isinstance(get_store(Settings(_env_file=None)), LocalObjectStore)
+    deployed = get_store(Settings(_env_file=None, gcs_bucket="portal-invoices-staging"))
+    assert isinstance(deployed, GcsObjectStore)
+    assert deployed.bucket_name == "portal-invoices-staging"
