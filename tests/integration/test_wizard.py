@@ -528,3 +528,124 @@ def test_a_pdf_missing_from_the_store_is_loud(wizard, factory, caplog) -> None:
 
     assert str(orphan_id) in caplog.text
     assert "/gone/" not in caplog.text
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-04 Receipts
+# --------------------------------------------------------------------------
+
+PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
+    b"\x00\x00\x03\x01\x01\x00\x18\xdd\x8d\xb0\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def upload(client, content: bytes, name: str = "receipt.png"):
+    page = client.get("/additional")
+    return client.post(
+        "/receipts",
+        files={"file": (name, content, "application/octet-stream")},
+        headers={"X-CSRF-Token": token_from(page.text)},
+    )
+
+
+def test_a_receipt_is_checked_and_parked_before_the_invoice_exists(
+    wizard, factory
+) -> None:
+    """R-WIZ-04. It cannot be attached yet: expenses.invoice_id is NOT NULL."""
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+
+    response = upload(client, PNG)
+
+    assert response.status_code == 200
+    body = response.json()
+    # Parked under the top-level pending prefix, not under receipts/, so the
+    # lifecycle rule cannot reach an attached one.
+    assert "pending-receipts/" in body["uri"]
+    assert body["kind"] == "image/png"
+
+
+def test_a_file_we_cannot_read_is_refused_with_a_reason(wizard, factory) -> None:
+    """R-SEC-10: the magic bytes decide, not the filename."""
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+
+    response = upload(client, b"MZ\x90\x00 this is an executable", "invoice.pdf")
+
+    assert response.status_code == 422
+    assert "could not read that file" in response.json()["error"]
+
+
+def test_an_empty_file_is_refused(wizard, factory) -> None:
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+    assert upload(client, b"").status_code == 422
+
+
+def test_a_receipt_survives_preview_and_lands_on_the_invoice(wizard, factory) -> None:
+    """The whole path: upload, carry through preview, promote at submit.
+
+    The uri moves out of the pending prefix, which is what makes it safe from
+    the bucket's lifecycle rule and what the email attaches.
+    """
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+
+    uri = upload(client, PNG).json()["uri"]
+    html, token = full_run(
+        client,
+        {"description": ["travel"], "amount": ["34.50"], "receipt_uri": [uri]},
+    )
+    assert uri in html  # carried through the preview as a hidden field
+
+    key = re.search(r'name="idempotency_key" value="([^"]+)"', html).group(1)
+    sent = client.post(
+        "/submit",
+        data={
+            "csrf_token": token,
+            "idempotency_key": key,
+            "description": ["travel"],
+            "amount": ["34.50"],
+            "receipt_uri": [uri],
+        },
+    )
+    assert sent.status_code == 200
+
+    with factory() as session:
+        from app.db.models import Expense
+
+        expense = session.scalars(select(Expense)).one()
+        assert expense.receipt_uri is not None
+        assert "pending-receipts/" not in expense.receipt_uri
+        # R-STO-02: receipts/{person}/{invoice}/{uuid}.{ext}
+        assert "/receipts/" in expense.receipt_uri or expense.receipt_uri.startswith(
+            "file://"
+        )
+        assert expense.receipt_uri.endswith(".png")
+
+
+def test_an_expense_without_a_receipt_is_still_fine(wizard, factory) -> None:
+    """Most expenses will not have one, and R-WIZ-03 never demanded it."""
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+    html, token = full_run(
+        client, {"description": ["coffee"], "amount": ["3.00"], "receipt_uri": [""]}
+    )
+    key = re.search(r'name="idempotency_key" value="([^"]+)"', html).group(1)
+    sent = client.post(
+        "/submit",
+        data={
+            "csrf_token": token,
+            "idempotency_key": key,
+            "description": ["coffee"],
+            "amount": ["3.00"],
+            "receipt_uri": [""],
+        },
+    )
+    assert sent.status_code == 200
+    with factory() as session:
+        from app.db.models import Expense
+
+        assert session.scalars(select(Expense)).one().receipt_uri is None

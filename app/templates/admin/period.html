@@ -64,8 +64,12 @@
         </td>
         <td>{{ row.person.status.value }}</td>
         <td>
-          {% if row.invoice %}
-            {{ row.invoice.number }}
+          {% if row.invoice and row.invoice.pdf_uri %}
+            <a href="/admin/invoices/{{ row.invoice.id }}/pdf">
+              {{ row.invoice.number }}
+            </a>
+          {% elif row.invoice %}
+            {{ row.invoice.number }} <span class="hint">no PDF</span>
           {% else %}
             <span class="missing">none</span>
           {% endif %}

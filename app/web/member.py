@@ -19,8 +19,22 @@ from datetime import UTC, datetime
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth import CurrentIdentity
@@ -31,7 +45,7 @@ from app.db.session import get_session, get_sessionmaker
 from app.domain.iban import mask
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period, can_submit, closed_message
-from app.services import bank_changes
+from app.services import bank_changes, receipts
 from app.services.crypto import Cipher
 from app.services.invoicing import (
     ExpenseInput,
@@ -637,10 +651,18 @@ async def _parse_items(request: Request) -> tuple[list[ExpenseInput], list[str]]
     form = await request.form()
     descriptions = [str(value) for value in form.getlist("description")]
     amounts = [str(value) for value in form.getlist("amount")]
+    # One per row, blank where nothing was attached. Written by the upload
+    # that already happened, so the file itself never rides on this form.
+    receipts = [str(value) for value in form.getlist("receipt_uri")]
 
     items: list[ExpenseInput] = []
     errors: list[str] = []
-    for description, amount in zip(descriptions, amounts, strict=False):
+    while len(receipts) < len(descriptions):
+        receipts.append("")
+
+    for description, amount, receipt in zip(
+        descriptions, amounts, receipts, strict=False
+    ):
         description = description.strip()
         amount = amount.strip()
         if not description and not amount:
@@ -656,11 +678,80 @@ async def _parse_items(request: Request) -> tuple[list[ExpenseInput], list[str]]
         if pence < 0:
             errors.append(f"{description}: an amount cannot be negative.")
             continue
-        items.append(ExpenseInput(description=description, amount_pence=pence))
+        items.append(
+            ExpenseInput(
+                description=description,
+                amount_pence=pence,
+                receipt_uri=receipt.strip() or None,
+            )
+        )
 
     if len(items) > MAX_ITEMS:
         errors.append(f"That is more than {MAX_ITEMS} items.")
     return items, errors
+
+
+# --------------------------------------------------------------------------
+# R-WIZ-04 Receipts
+# --------------------------------------------------------------------------
+
+
+@router.post("/receipts", response_class=JSONResponse)
+async def upload_receipt(
+    request: Request,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    settings: Config,
+    store: Annotated[ObjectStore, Depends(get_store)],
+    file: Annotated[UploadFile, File()],
+) -> JSONResponse:
+    """Accept one receipt, check it, and park it until the invoice exists.
+
+    DEVIATES FROM R-WIZ-04, which says the bytes go from the browser straight
+    to GCS on a signed URL and never through Cloud Run. They cannot: R-SEC-10
+    requires EXIF to be stripped, and HEIC has to be converted or Robin cannot
+    open half of them. Both need the bytes, so a signed-URL upload would only
+    move the moment the server touches them to after they are already in the
+    bucket, unchecked. At ten files of ten megabytes this saves nothing and
+    costs the guarantee that nothing unvalidated is ever stored. Raised rather
+    than worked around quietly (CLAUDE.md 8).
+
+    The file lands under the pending prefix. It becomes part of an invoice only
+    at submit, because ``expenses.invoice_id`` is NOT NULL (R-DATA-05) and the
+    invoice does not exist yet.
+    """
+    csrf.require_request(settings, identity.email, request, "")
+
+    data = await file.read()
+    try:
+        prepared = receipts.prepare(data, filename=file.filename or "")
+    except receipts.ReceiptRejected as exc:
+        # The person's own mistake, and fixable: say what is wrong plainly.
+        return JSONResponse(
+            {"error": exc.message}, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+
+    receipt_id = str(uuid.uuid4())
+    name = receipts.pending_name(str(person.id), receipt_id, prepared.extension)
+    uri = store.put(name, prepared.content, content_type=prepared.content_type)
+
+    # Never the URI: R-SEC-05 and CLAUDE.md 2.8 forbid one in a log line.
+    logger.info(
+        "receipt %s accepted for %s (%s, %d bytes, converted=%s)",
+        receipt_id,
+        person.id,
+        prepared.kind.value,
+        len(prepared.content),
+        prepared.converted,
+    )
+    return JSONResponse(
+        {
+            "uri": uri,
+            "name": file.filename or "receipt",
+            "converted": prepared.converted,
+            "kind": prepared.kind.value,
+        }
+    )
 
 
 # --------------------------------------------------------------------------

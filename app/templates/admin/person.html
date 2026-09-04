@@ -178,7 +178,7 @@
   <h2>Invoices</h2>
   {% if invoices %}
     <table class="kv wide">
-      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>Issued</th></tr>
+      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>Issued</th><th>PDF</th></tr>
       {% for invoice in invoices %}
         <tr>
           <td>{{ invoice.number }}</td>
@@ -191,6 +191,13 @@
           <td>
             {{ invoice.issued_at.strftime("%d %b %Y") if invoice.issued_at
                else "not issued" }}
+          </td>
+          <td>
+            {% if invoice.pdf_uri %}
+              <a href="/admin/invoices/{{ invoice.id }}/pdf">Download</a>
+            {% else %}
+              <span class="hint">none</span>
+            {% endif %}
           </td>
         </tr>
       {% endfor %}

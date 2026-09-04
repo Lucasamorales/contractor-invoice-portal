@@ -51,9 +51,10 @@ from app.domain.invoice import InvoiceTotals, LineKind, compose, detail_note
 from app.domain.kudos import Quarter, is_quarter_end
 from app.domain.numbering import advance
 from app.domain.period import Period, is_late
+from app.services import receipts
 from app.services.crypto import Cipher, field_aad
 from app.services.pdf import BankBlock, Letterhead, build_context, render_pdf
-from app.services.storage import ObjectStore
+from app.services.storage import ObjectStore, StorageError
 
 logger = logging.getLogger(__name__)
 
@@ -401,6 +402,54 @@ def allocate_draft(
     return invoice
 
 
+def promote_receipts(session: Session, invoice: Invoice, store: ObjectStore) -> int:
+    """Move this invoice's receipts out of the pending prefix (R-STO-02).
+
+    Runs in phase 2, outside any transaction: R-SUB-03 keeps GCS out of the
+    short transaction that allocates the number, and a copy per receipt is
+    exactly the kind of slow thing it means.
+
+    Idempotent. A retry finds the receipts already promoted and does nothing,
+    because a resumed submit must not fail on work the first attempt finished.
+
+    A receipt that cannot be moved is left where it is and the expense keeps
+    pointing at it: the pending object is still readable, so the email still
+    attaches it, and the lifecycle rule is the only thing that will remove it.
+    Losing the invoice over a moved file would be the wrong trade.
+    """
+    moved = 0
+    for expense in repo.expenses_for_invoice(session, invoice.id):
+        uri = expense.receipt_uri or ""
+        if receipts.PENDING_PREFIX not in uri:
+            continue
+        pending_name = uri.split(receipts.PENDING_PREFIX, 1)[1]
+        receipt_id, _, extension = pending_name.rpartition("/")[2].partition(".")
+        try:
+            content = store.get(uri)
+            permanent = receipts.object_name(
+                str(invoice.person_id), str(invoice.id), receipt_id, extension
+            )
+            expense.receipt_uri = store.put(
+                permanent, content, content_type=_content_type_for(extension)
+            )
+            store.delete(receipts.PENDING_PREFIX + pending_name)
+            moved += 1
+        except StorageError:
+            logger.error(
+                "invoice %s: receipt %s could not be moved out of pending",
+                invoice.id,
+                receipt_id,
+            )
+    return moved
+
+
+def _content_type_for(extension: str) -> str:
+    return {
+        "pdf": "application/pdf",
+        "png": "image/png",
+    }.get(extension, "image/jpeg")
+
+
 def render_and_store(
     session: Session,
     invoice: Invoice,
@@ -649,6 +698,11 @@ def submit(
             raise RuntimeError(f"invoice {invoice_id} vanished after allocation")
         if invoice.issued_at is None:
             invoice.issued_at = now
+        # Before the PDF: if rendering fails the invoice is retried, and the
+        # receipts should already be where they belong rather than moving on
+        # every attempt.
+        promote_receipts(session, invoice, store)
+        session.commit()
         pdf_uri = render_and_store(
             session, invoice, cipher=cipher, store=store, render=render
         )

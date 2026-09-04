@@ -402,6 +402,13 @@ def unverified_bank_rows(session: Session) -> list[BankDetail]:
     )
 
 
+def expenses_for_invoice(session: Session, invoice_id: uuid.UUID) -> list[Expense]:
+    """One invoice's expense rows, receipts included."""
+    return list(
+        session.scalars(select(Expense).where(Expense.invoice_id == invoice_id))
+    )
+
+
 def expenses_for_invoices(session: Session, invoice_ids: list[uuid.UUID]) -> list:
     """Expense rows across a period's invoices, for the over-threshold flag."""
     if not invoice_ids:

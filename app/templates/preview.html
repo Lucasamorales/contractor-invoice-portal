@@ -20,6 +20,7 @@
   {% for item in items %}
     <input type="hidden" name="description" value="{{ item.description }}">
     <input type="hidden" name="amount" value="{{ '%.2f' % (item.amount_pence / 100) }}">
+    <input type="hidden" name="receipt_uri" value="{{ item.receipt_uri or '' }}">
   {% endfor %}
   {% if kudos_zero_acknowledged %}
     <input type="hidden" name="kudos_zero_acknowledged" value="1">

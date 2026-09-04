@@ -17,7 +17,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth import Identity, current_identity
 from app.config import Settings, get_settings
-from app.db.models import AuditLog, BankState, Fee, PayoutRegion, PersonStatus
+from app.db.models import (
+    AuditLog,
+    BankState,
+    Fee,
+    Invoice,
+    InvoiceStatus,
+    PayoutRegion,
+    PersonStatus,
+)
 from app.db.session import get_session, get_sessionmaker
 from app.main import app
 from app.services.crypto import Cipher, generate_key
@@ -549,3 +557,101 @@ def test_deactivating_preserves_history_and_audits(admin_client, factory) -> Non
             select(AuditLog).where(AuditLog.action == "person.deactivate")
         ).one()
         assert entry.after["reason"] == "left the studio"
+
+
+# --------------------------------------------------------------------------
+# Finance downloads a PDF
+# --------------------------------------------------------------------------
+
+
+def _written_pdf(session) -> str:
+    """A real file on disk, because the admin store is a LocalObjectStore."""
+    import tempfile
+    from pathlib import Path
+
+    del session
+    path = Path(tempfile.mkdtemp()) / "2026-09 - Jane Smith - 8.pdf"
+    path.write_bytes(b"%PDF-1.7 finance copy")
+    return path.as_posix()
+
+
+def test_finance_can_download_anybody_s_invoice(admin_client, factory) -> None:
+    """R-ACC-06. They pay these; the numbers are on every PDF they hold."""
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    with factory() as session, session.begin():
+        invoice = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=8,
+            status=InvoiceStatus.SUBMITTED,
+            remuneration_pence=100000,
+            additional_pence=0,
+            total_pence=100000,
+            pdf_uri="file://" + str(_written_pdf(session)),
+            idempotency_key="finance-download",
+        )
+        session.add(invoice)
+        session.flush()
+        invoice_id = invoice.id
+
+    response = client.get(f"/admin/invoices/{invoice_id}/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+    assert response.headers["cache-control"] == "private, no-store"
+
+
+def test_downloading_an_invoice_is_audited(admin_client, factory) -> None:
+    """Reading is legitimate; reading unrecorded is not (CLAUDE.md 2.2)."""
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    with factory() as session, session.begin():
+        invoice = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=9,
+            status=InvoiceStatus.SUBMITTED,
+            remuneration_pence=1,
+            additional_pence=0,
+            total_pence=1,
+            pdf_uri="file://" + str(_written_pdf(session)),
+            idempotency_key="finance-audit",
+        )
+        session.add(invoice)
+        session.flush()
+        invoice_id = invoice.id
+
+    client.get(f"/admin/invoices/{invoice_id}/pdf")
+
+    with factory() as session:
+        actions = [
+            row.action
+            for row in session.scalars(select(AuditLog)).all()
+            if row.entity_id == str(invoice_id)
+        ]
+        assert "invoice.download" in actions
+
+
+def test_an_invoice_with_no_pdf_says_so(admin_client, factory) -> None:
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    with factory() as session, session.begin():
+        invoice = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=10,
+            status=InvoiceStatus.DRAFT,
+            remuneration_pence=1,
+            additional_pence=0,
+            total_pence=1,
+            idempotency_key="finance-nopdf",
+        )
+        session.add(invoice)
+        session.flush()
+        invoice_id = invoice.id
+
+    response = client.get(f"/admin/invoices/{invoice_id}/pdf")
+    assert response.status_code == 404
+    assert "never finished sending" in response.text

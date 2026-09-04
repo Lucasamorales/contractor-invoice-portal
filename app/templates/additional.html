@@ -51,15 +51,28 @@
                placeholder="What was it for?">
         <input type="text" name="amount"
                value="{{ '%.2f' % (item.amount_pence / 100) }}" placeholder="0.00">
+        <input type="file" data-receipt accept=".jpg,.jpeg,.png,.heic,.pdf">
+        <input type="hidden" name="receipt_uri" value="{{ item.receipt_uri or '' }}">
+        <span class="receipt-status hint">
+          {% if item.receipt_uri %}Receipt attached{% endif %}
+        </span>
       </div>
     {% endfor %}
     {% for _ in range(3 - (items | length if items | length < 3 else 0)) %}
       <div class="item">
         <input type="text" name="description" placeholder="What was it for?">
         <input type="text" name="amount" placeholder="0.00">
+        <input type="file" data-receipt accept=".jpg,.jpeg,.png,.heic,.pdf">
+        <input type="hidden" name="receipt_uri" value="">
+        <span class="receipt-status hint"></span>
       </div>
     {% endfor %}
   </div>
+  <p class="hint">
+    A receipt each, if you have one &mdash; a photo is fine. Phone photos have
+    their location data removed, and an iPhone HEIC is converted so accounts
+    can open it.
+  </p>
 
   {% if state.kudos_count is none and state.kudos_due_this_period and state.kudos_eligible %}
     <label class="check">
@@ -71,3 +84,4 @@
   <button class="button" type="submit">Preview my invoice</button>
 </form>
 {% endblock %}
+{% block scripts %}<script src="/static/receipts.js" defer></script>{% endblock %}

@@ -10,29 +10,38 @@ write is a typed form with validation and an audit row in the same transaction.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from sqlalchemy.orm import Session
 
 from app.auth import FinanceIdentity
 from app.config import Settings, get_settings
 from app.db import repo
-from app.db.models import BankDetail, Person
+from app.db.models import BankDetail, Invoice, Person
 from app.db.session import get_session
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period
 from app.services import admin, bank_changes, kudos_admin
 from app.services.crypto import Cipher, field_aad
+from app.services.storage import ObjectStore, StorageError
 from app.web import csrf
-from app.web.member import get_cipher
+from app.web.member import _content_disposition as member_disposition
+from app.web.member import get_cipher, get_store
 from app.web.templates import templates
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 DbSession = Annotated[Session, Depends(get_session)]
 Config = Annotated[Settings, Depends(get_settings)]
@@ -327,6 +336,77 @@ async def reveal_bank(
         request=request,
         name="admin/_bank_value.html",
         context={"request": request, "bank": values, "revealed": True},
+    )
+
+
+# --------------------------------------------------------------------------
+# Finance downloads an invoice PDF
+# --------------------------------------------------------------------------
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def download_invoice(
+    request: Request,
+    invoice_id: uuid.UUID,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    store: Annotated[ObjectStore, Depends(get_store)],
+) -> Response:
+    """Any invoice, for the people who pay them.
+
+    NOT COVERED BY A REQUIREMENT, like its member-side twin. The spec gives
+    finance two routes to a PDF — the email in R-SUB-07 and the Drive mirror in
+    R-STO-04 — and until both exist nobody in finance can see one at all.
+
+    Unscoped by design, and that is the whole difference from the member
+    route: finance may read any invoice (R-ACC-06), because they pay them and
+    the same figures are already on every PDF they hold. Reading is audited,
+    because reading is legitimate and reading unrecorded is not.
+    """
+    invoice = session.get(Invoice, invoice_id)
+    if invoice is None or invoice.pdf_uri is None:
+        context = _context(request, identity, settings)
+        context["blocked"] = (
+            "That invoice has no PDF. A draft never finished sending."
+            if invoice is not None
+            else "We have no such invoice."
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/blocked.html",
+            context=context,
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    repo.record_audit(
+        session,
+        actor_email=identity.email,
+        action="invoice.download",
+        entity="invoices",
+        entity_id=str(invoice.id),
+        after={"number": invoice.number, "period": invoice.period},
+    )
+    session.commit()
+
+    try:
+        pdf = store.get(invoice.pdf_uri)
+    except StorageError:
+        logger.error(
+            "invoice %s is marked sent but its PDF is not in the store", invoice.id
+        )
+        raise
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": member_disposition(
+                invoice.pdf_uri.rsplit("/", 1)[-1]
+            ),
+            # It carries somebody's full account number (CLAUDE.md 2.8).
+            "Cache-Control": "private, no-store",
+        },
     )
 
 
