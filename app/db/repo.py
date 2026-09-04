@@ -121,6 +121,24 @@ def invoice_by_idempotency_key(session: Session, key: str) -> Invoice | None:
     return session.scalar(select(Invoice).where(Invoice.idempotency_key == key))
 
 
+def invoice_for_person(
+    session: Session, person_id: uuid.UUID, invoice_id: uuid.UUID
+) -> Invoice | None:
+    """One invoice, scoped to the person who owns it (CLAUDE.md 2.1).
+
+    The owner is part of the query rather than an ``if`` after it. A scoped
+    query cannot be forgotten at a later call site the way a check can, and an
+    invoice belonging to somebody else comes back as nothing at all rather than
+    as a row the caller is trusted to refuse.
+    """
+    return session.scalar(
+        select(Invoice).where(
+            Invoice.id == invoice_id,
+            Invoice.person_id == person_id,
+        )
+    )
+
+
 def invoice_history(session: Session, person_id: uuid.UUID) -> list[Invoice]:
     return list(
         session.scalars(

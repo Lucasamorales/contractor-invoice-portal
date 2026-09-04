@@ -22,7 +22,7 @@ from app.db.models import BankState, Invoice, InvoiceStatus, Outbox, Person
 from app.db.session import get_session, get_sessionmaker
 from app.main import app
 from app.services.crypto import Cipher, generate_key
-from app.services.storage import LocalObjectStore
+from app.services.storage import LocalObjectStore, StorageError
 from app.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import (
     give_bank,
@@ -402,3 +402,129 @@ def test_my_details_lists_issued_invoices(wizard, factory) -> None:
     page = client.get("/me").text
     assert "submitted" in page
     assert "2026-09" in page
+
+
+# --------------------------------------------------------------------------
+# Downloading your own copy
+#
+# NOT COVERED BY A REQUIREMENT. R-SUB-08 puts a copy in the person's inbox and
+# that is the spec's only route to it, so a bounced or deleted email left
+# somebody with no way back to their own invoice. Flagged as a spec gap.
+# --------------------------------------------------------------------------
+
+
+def download_link(html: str) -> str:
+    match = re.search(r'href="(/invoices/[0-9a-f-]+/pdf)"', html)
+    assert match, "the sent screen offers no way to download the invoice"
+    return match.group(1)
+
+
+def test_the_owner_can_download_their_own_invoice(wizard, factory) -> None:
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+    html, token = full_run(client)
+    key = re.search(r'name="idempotency_key" value="([^"]+)"', html).group(1)
+    sent = client.post("/submit", data={"csrf_token": token, "idempotency_key": key})
+
+    response = client.get(download_link(sent.text))
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+    # R-PDF-15's filename, in both the plain and the UTF-8 form (RFC 6266).
+    disposition = response.headers["content-disposition"]
+    assert disposition.startswith("attachment;")
+    assert "2026-09 - Jane Smith - 8.pdf" in disposition
+    assert "filename*=UTF-8''" in disposition
+    # It carries a full account number: no proxy or shared cache (CLAUDE.md 2.8).
+    assert response.headers["cache-control"] == "private, no-store"
+
+
+def test_you_cannot_download_somebody_elses_invoice(wizard, factory) -> None:
+    """CLAUDE.md 2.1, from the other side.
+
+    The answer must be the same as for an id that never existed, or the status
+    code alone tells you whether Sam invoiced this month.
+    """
+    client, _, box = wizard
+    seed_ready(factory, box, kudos=0)
+    with factory() as session, session.begin():
+        other = make_person(session, email=OTHER)
+        session.flush()
+        theirs = Invoice(
+            person_id=other.id,
+            period="2026-09",
+            number=1,
+            status=InvoiceStatus.SUBMITTED,
+            remuneration_pence=100000,
+            additional_pence=0,
+            total_pence=100000,
+            pdf_uri="file:///nowhere/theirs.pdf",
+            idempotency_key="theirs",
+        )
+        session.add(theirs)
+        session.flush()
+        theirs_id = theirs.id
+
+    mine = client.get(f"/invoices/{theirs_id}/pdf")
+    absent = client.get(f"/invoices/{uuid.uuid4()}/pdf")
+
+    assert mine.status_code == absent.status_code == 404
+    assert "We have no such invoice." in mine.text
+    assert mine.text == absent.text
+
+
+def test_a_draft_says_so_rather_than_offering_nothing(wizard, factory) -> None:
+    """A draft holding a number is the failure we most want noticed."""
+    client, _, box = wizard
+    person_id = seed_ready(factory, box, kudos=0)
+    with factory() as session, session.begin():
+        stuck = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=8,
+            status=InvoiceStatus.DRAFT,
+            remuneration_pence=100000,
+            additional_pence=0,
+            total_pence=100000,
+            idempotency_key="stuck",
+        )
+        session.add(stuck)
+        session.flush()
+        stuck_id = stuck.id
+
+    response = client.get(f"/invoices/{stuck_id}/pdf")
+
+    assert response.status_code == 404
+    assert "has not been sent yet" in response.text
+
+
+def test_a_pdf_missing_from_the_store_is_loud(wizard, factory, caplog) -> None:
+    """The row says sent, the bucket says nothing. That is data loss, not a 404.
+
+    It must reach a log with enough to find the invoice and nothing that
+    R-SEC-05 forbids — no object URI.
+    """
+    client, _, box = wizard
+    person_id = seed_ready(factory, box, kudos=0)
+    with factory() as session, session.begin():
+        orphan = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=8,
+            status=InvoiceStatus.SUBMITTED,
+            remuneration_pence=100000,
+            additional_pence=0,
+            total_pence=100000,
+            pdf_uri="file:///gone/2026-09 - Jane Smith - 8.pdf",
+            idempotency_key="orphan",
+        )
+        session.add(orphan)
+        session.flush()
+        orphan_id = orphan.id
+
+    with caplog.at_level("ERROR"), pytest.raises(StorageError):
+        client.get(f"/invoices/{orphan_id}/pdf")
+
+    assert str(orphan_id) in caplog.text
+    assert "/gone/" not in caplog.text

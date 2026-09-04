@@ -10,13 +10,17 @@ abandoned wizard leaves nothing behind to clean up.
 
 from __future__ import annotations
 
+import logging
+import re
+import unicodedata
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth import CurrentIdentity
@@ -39,12 +43,13 @@ from app.services.invoicing import (
     submit,
 )
 from app.services.pdf import Letterhead, build_context, render_html, render_pdf
-from app.services.storage import ObjectStore, build_store
+from app.services.storage import ObjectStore, StorageError, build_store
 from app.web import csrf
 from app.web.ratelimit import bank_limiter, submit_limiter
 from app.web.templates import templates
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 DbSession = Annotated[Session, Depends(get_session)]
 Config = Annotated[Settings, Depends(get_settings)]
@@ -521,6 +526,88 @@ async def my_details(
         }
     )
     return templates.TemplateResponse(request=request, name="me.html", context=context)
+
+
+def _content_disposition(filename: str) -> str:
+    """An ``attachment`` header that survives R-PDF-15's filename.
+
+    That filename contains em dashes, and a bare ``filename=`` parameter is
+    Latin-1 only, so a browser would mangle it or drop the header. RFC 6266
+    wants both forms: a plain one for old clients and a percent-encoded UTF-8
+    one for everything current.
+    """
+    ascii_name = unicodedata.normalize("NFKD", filename.replace("—", "-"))
+    ascii_name = ascii_name.encode("ascii", "ignore").decode("ascii")
+    # A legal name is free text and this ends up inside a quoted header value.
+    ascii_name = re.sub(r"[^A-Za-z0-9 ._-]", "", ascii_name).strip() or "invoice.pdf"
+    return (
+        f'attachment; filename="{ascii_name}"; '
+        f"filename*=UTF-8''{quote(filename, safe='')}"
+    )
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def download_invoice(
+    request: Request,
+    invoice_id: uuid.UUID,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    store: Annotated[ObjectStore, Depends(get_store)],
+) -> Response:
+    """A person's own copy of their own invoice.
+
+    NOT COVERED BY A REQUIREMENT. The spec's only route to the PDF is the
+    emailed copy in R-SUB-08, which leaves a contractor whose mail bounced, or
+    who deleted it, with no way back to their own document. Raised as a gap
+    rather than worked around quietly (CLAUDE.md 8).
+
+    Scoped to the owner inside the query (CLAUDE.md 2.1). Somebody else's
+    invoice id is answered exactly like an id that never existed, so this
+    cannot be used to learn that another person invoiced at all.
+    """
+    invoice = repo.invoice_for_person(session, person.id, invoice_id)
+
+    if invoice is None or invoice.pdf_uri is None:
+        context = _base_context(request, person, identity, settings)
+        context["blocked"] = (
+            # Two states, two honest answers. Telling the owner their own
+            # invoice is still a draft is the point: a draft holding a number
+            # is the failure mode we most want a person to notice.
+            "That invoice has not been sent yet, so there is no PDF of it. "
+            "Go back to the start and finish sending it."
+            if invoice is not None
+            else "We have no such invoice."
+        )
+        return templates.TemplateResponse(
+            request=request, name="blocked.html", context=context, status_code=404
+        )
+
+    try:
+        pdf = store.get(invoice.pdf_uri)
+    except StorageError:
+        # The row says there is a PDF and the bucket disagrees. That is a data
+        # problem rather than a user error, so it is logged loudly and allowed
+        # to become a 500 instead of a polite empty page. The invoice id is
+        # enough to find it; the object URI is not written to the log.
+        logger.error(
+            "invoice %s is marked sent but its PDF is not in the store", invoice.id
+        )
+        raise
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": _content_disposition(
+                invoice.pdf_uri.rsplit("/", 1)[-1]
+            ),
+            # It carries a full account number, so it must not sit in a proxy
+            # or a shared browser cache (CLAUDE.md 2.8).
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 # --------------------------------------------------------------------------

@@ -47,7 +47,7 @@
   <h2>Your invoices</h2>
   {% if invoices %}
     <table class="kv wide">
-      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th></tr>
+      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>PDF</th></tr>
       {% for invoice in invoices %}
         <tr>
           <td>{{ invoice.number }}</td>
@@ -55,6 +55,13 @@
           <td>{{ invoice.total_pence | gbp }}</td>
           <td>
             {{ invoice.status.value }}{% if invoice.is_late %} <span class="tag">late</span>{% endif %}
+          </td>
+          <td>
+            {% if invoice.pdf_uri %}
+              <a href="/invoices/{{ invoice.id }}/pdf">Download</a>
+            {% else %}
+              <span class="hint">not sent</span>
+            {% endif %}
           </td>
         </tr>
       {% endfor %}
