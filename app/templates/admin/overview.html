@@ -7,55 +7,53 @@
   <p class="eyebrow">
     <span class="dot"></span>
     Window &middot; {{ period.label }}
-    {% if window == 'before' %}&middot; opens {{ period.opens_on().strftime('%-d %b') }}
-    {% elif window == 'open' %}&middot; closes {{ period.closes_on().strftime('%-d %b') }}
-    {% else %}&middot; closed {{ period.closes_on().strftime('%-d %b') }}{% endif %}
+    {% if window == 'before' %}&middot; opens {{ period.opens_on().day }} {{ period.opens_on().strftime('%b') }}
+    {% elif window == 'open' %}&middot; closes {{ period.closes_on().day }} {{ period.closes_on().strftime('%b') }}
+    {% else %}&middot; closed {{ period.closes_on().day }} {{ period.closes_on().strftime('%b') }}{% endif %}
   </p>
   <div class="overview-head">
     <h1>
-      <span style="color:var(--red)">{{ view.received }}</span>
+      <span class="count-red">{{ view.received }}</span>
       of {{ view.expected }} invoices in
     </h1>
-    <span style="text-align:right">
-      <span class="figure" style="font-size:22px">{{ received_pence | gbp }}</span>
-      <span class="hint" style="display:block;margin-top:4px">received so far</span>
+    <span class="right">
+      <span class="figure wide">{{ received_pence | gbp }}</span>
+      <span class="hint as-block mt-xs">received so far</span>
     </span>
   </div>
 
   {# One continuous bar, not a segment per person: this has to read the same
      at 16, 30 or 60. #}
-  <div class="track" role="img"
-       aria-label="{{ view.received }} of {{ view.expected }} received">
-    <span style="width: {{ (100 * view.received / view.expected) if view.expected else 0 }}%"></span>
-  </div>
+  <progress class="track" value="{{ view.received }}" max="{{ view.expected or 1 }}"
+            aria-label="{{ view.received }} of {{ view.expected }} received"></progress>
 </div>
 
 <div class="card counts">
   <div><span class="figure">{{ view.received }}</span><span class="hint">received</span></div>
   <div><span class="figure">{{ view.missing | length }}</span><span class="hint">not yet in</span></div>
-  <div><span class="figure" style="color:var(--red-text)">{{ unfinished | length }}</span><span class="hint">unfinished</span></div>
+  <div><span class="figure on-red">{{ unfinished | length }}</span><span class="hint">unfinished</span></div>
   <div><span class="figure">{{ flagged | length }}</span><span class="hint">flagged, not blocked</span></div>
 </div>
-<p class="hint" style="margin-top:10px">
+<p class="hint mt-s">
   Received plus not yet in accounts for everyone. Unfinished and flagged sit
   inside the received figure &mdash; they are already counted, not extra.
 </p>
 
-<div class="card alarm" style="margin-top:22px" data-tut="admin.overview.stuck">
+<div class="card alarm mt-l" data-tut="admin.overview.stuck">
   <p class="label">Needs fixing</p>
-  <p class="hint" style="margin-top:8px">
+  <p class="hint mt-s">
     Things that appear nowhere else. If this panel is empty, nothing is stuck.
   </p>
   {% if attention.is_clear %}
-    <p class="hint" style="margin-top:14px">Nothing is stuck.</p>
+    <p class="hint mt-m">Nothing is stuck.</p>
   {% else %}
-    <ul class="history" style="margin-top:14px">
+    <ul class="history mt-m">
       {% for invoice in attention.stuck_drafts %}
         <li>
-          <strong style="color:var(--ink)">
+          <strong class="on-ink">
             Invoice {{ invoice.number }} took a number and never finished sending
           </strong>
-          <p class="hint" style="margin:4px 0 0">
+          <p class="hint mt-xs flush-x">
             On Period it counts as received, because a row exists. Nothing has
             reached you. They see it too, as “Not quite sent”.
           </p>
@@ -63,8 +61,8 @@
       {% endfor %}
       {% for row in attention.failed_mail %}
         <li>
-          <strong style="color:var(--ink)">An email gave up after {{ row.attempts }} attempts</strong>
-          <p class="hint" style="margin:4px 0 0">{{ row.kind }}, queued {{ row.created_at.strftime('%d %b') }}.</p>
+          <strong class="on-ink">An email gave up after {{ row.attempts }} attempts</strong>
+          <p class="hint mt-xs flush-x">{{ row.kind }}, queued {{ row.created_at.strftime('%d %b') }}.</p>
         </li>
       {% endfor %}
       {% for bank in attention.unconfirmed_bank %}
@@ -77,7 +75,7 @@
       {% endfor %}
       {% for name, count in attention.unmapped_kudos %}
         <li>
-          <strong style="color:var(--ink)">{{ name }}</strong>
+          <strong class="on-ink">{{ name }}</strong>
           has {{ count }} kudo{{ '' if count == 1 else 's' }} and is not anybody
           here, so none of it can be paid.
         </li>
@@ -86,39 +84,39 @@
   {% endif %}
 </div>
 
-<div class="row-grid" style="margin-top:16px">
+<div class="row-grid mt-l">
   <div class="card" data-tut="admin.overview.missing">
     <p class="label">Not yet in</p>
-    <p class="hint" style="margin-top:8px">
+    <p class="hint mt-s">
       The chasing list &mdash; the one that used to be a phone call.
     </p>
     {% if view.missing %}
-      <ul class="history" style="margin-top:12px">
+      <ul class="history mt-m">
         {% for row in view.missing %}
-          <li style="display:flex;justify-content:space-between;gap:14px">
+          <li class="split">
             <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
             <span class="label">{{ row.person.team or 'no team' }}</span>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="hint" style="margin-top:12px">Everyone active has invoiced.</p>
+      <p class="hint mt-m">Everyone active has invoiced.</p>
     {% endif %}
-    <p style="margin:16px 0 0"><a class="quiet" href="/admin/period">Full month</a></p>
+    <p class="mt-l flush-x"><a class="quiet" href="/admin/period">Full month</a></p>
   </div>
 
   <div class="card" data-tut="admin.overview.flags">
     <p class="label">Worth a look</p>
-    <p class="hint" style="margin-top:8px">
+    <p class="hint mt-s">
       Flags never block anything. They tell you where to look.
     </p>
     {% if view.flagged %}
-      <ul class="history" style="margin-top:12px">
+      <ul class="history mt-m">
         {% for row in view.flagged %}
           <li>
             <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
             {% if row.invoice %}&middot; invoice {{ row.invoice.number }}{% endif %}
-            <span style="display:block;margin-top:6px">
+            <span class="as-block mt-xs">
               {% for flag in row.flags %}
                 <span class="chip{% if flag.kind in ('late',) %} alert{% endif %}">{{ flag.kind.replace('_', ' ') }}</span>
               {% endfor %}
@@ -127,12 +125,12 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p class="hint" style="margin-top:12px">Nothing flagged.</p>
+      <p class="hint mt-m">Nothing flagged.</p>
     {% endif %}
   </div>
 </div>
 
-<div class="row-grid" style="margin-top:16px" data-tut="admin.overview.waiting">
+<div class="row-grid mt-l" data-tut="admin.overview.waiting">
   <a class="card tile" href="/admin/queue">
     <span class="figure hero">{{ queue_fee if queue_fee is defined else attention.unconfirmed_bank | length }}</span>
     <span class="hint">bank never confirmed</span>

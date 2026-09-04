@@ -4,7 +4,7 @@
 {% if fee_pence is none %}
   <span class="missing">Not set</span>
 {% elif revealed %}
-  <span class="figure" style="font-size:15px">{{ fee_pence | gbp }}</span>
+  <span class="figure sm">{{ fee_pence | gbp }}</span>
 {% else %}
   <button class="quiet" type="button"
           hx-post="/admin/people/{{ person.id }}/reveal-fee"

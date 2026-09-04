@@ -27,11 +27,11 @@
           <td>{{ row.person.team or "—" }}</td>
           <td>
             {% if row.person.payout_region and row.person.payout_region.value == 'INTL' %}
-              <span style="color:var(--red-text);font-weight:600">INTL</span>
+              <span class="on-red">INTL</span>
             {% elif row.person.payout_region %}
               {{ row.person.payout_region.value }}
             {% else %}
-              <span style="color:var(--faint)">—</span>
+              <span class="on-faint">—</span>
             {% endif %}
           </td>
           <td>

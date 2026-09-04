@@ -14,7 +14,7 @@
 
 {% if errors %}
   <div class="card attention">
-    <ul style="margin:0;padding-left:18px">
+    <ul class="bullets">
       {% for e in errors %}<li>{{ e }}</li>{% endfor %}
     </ul>
   </div>
@@ -22,7 +22,7 @@
 
 <div class="card" data-tut="member.additional.kudos">
   <p class="label">Kudos &mdash; read from the sheet</p>
-  <div class="card-row" style="margin-top:14px;border-top:0;padding-top:6px">
+  <div class="card-row mt-m no-rule">
     <span class="figure">
       {% if not state.kudos_eligible %}
         <span class="hint">Not payable on your invoices</span>
@@ -35,7 +35,7 @@
         <span class="missing">Unavailable</span>
       {% endif %}
     </span>
-    <span class="hint" style="text-align:right;max-width:34ch">
+    <span class="hint note-right">
       {% if state.kudos_due_this_period %}
         You cannot change them here.
       {% else %}
@@ -50,7 +50,7 @@
 
   <div class="card" data-tut="member.additional.receipts">
     <p class="label">Expenses</p>
-    <div id="items" style="margin-top:16px">
+    <div class="mt-l" id="items">
       {% for item in items %}
         {% set value = '%.2f' % (item.amount_pence / 100) %}
         {% include "_expense_row.html" %}
@@ -60,7 +60,7 @@
         {% include "_expense_row.html" %}
       {% endfor %}
     </div>
-    <p class="hint" style="margin-top:14px">
+    <p class="hint mt-m">
       A photo is fine. Location data is removed and an iPhone HEIC is converted,
       so accounts can always open it.
     </p>
@@ -69,9 +69,8 @@
   {% if state.kudos_count is none and state.kudos_due_this_period
         and state.kudos_eligible %}
     <div class="card attention">
-      <label class="hint" style="display:flex;gap:10px;align-items:flex-start">
-        <input type="checkbox" name="kudos_zero_acknowledged" value="1"
-               style="width:auto;margin-top:2px">
+      <label class="hint check-row">
+        <input type="checkbox" name="kudos_zero_acknowledged" value="1">
         <span>
           I understand my kudos could not be read, and want to invoice without
           them.
@@ -83,9 +82,7 @@
   <div class="page-foot">
     <span>
       <span class="label">Invoice total</span>
-      <span class="figure hero" id="running-total"
-            data-base="{{ state.running_total_pence }}"
-            style="display:block;margin-top:6px">
+      <span class="figure hero as-block mt-xs" id="running-total" data-base="{{ state.running_total_pence }}">
         {{ state.running_total_pence | gbp }}
       </span>
     </span>

@@ -489,8 +489,17 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 }
 
 .steps li { display: flex; align-items: center; gap: 10px; }
-.steps li::after { content: "→"; color: var(--faint); }
-.steps li:last-child::after { content: ""; }
+/* Drawn, not typed: U+2192 is not in either font subset. */
+.steps li::after {
+  content: "";
+  width: 14px;
+  height: 1px;
+  background: var(--faint);
+  position: relative;
+}
+
+.steps li::before { content: none; }
+.steps li:last-child::after { display: none; }
 .steps a { color: var(--muted); text-decoration: none; }
 .steps a:hover { color: var(--ink); }
 .steps .on { color: var(--ink); font-weight: 600; }
@@ -561,7 +570,7 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 @media (max-width: 720px) {
   main { padding: 32px 18px 70px; }
   h1 { font-size: 30px; }
-  .row-grid { flex-direction: column; }
+  .row-grid { flex-direction: column; align-items: stretch; }
   .card-row { flex-direction: column; align-items: flex-start; gap: 6px; }
   .table td, .table th { padding: 14px 16px; }
 }
@@ -820,3 +829,125 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   .counts { flex-wrap: wrap; }
   .counts > div { flex: 1 1 50%; border-left: 0; border-top: 1px solid var(--line-soft); }
 }
+
+/* ------------------------------------------------------------ utilities --
+ *
+ * The design handoff's prototypes use inline style attributes because their
+ * runtime requires it. This app cannot: the CSP is style-src 'self' with no
+ * 'unsafe-inline', so a style="" attribute is silently dropped by the browser
+ * and the element renders unstyled. Everything the prototype does inline is a
+ * class here.
+ */
+
+[hidden] { display: none !important; }
+
+.mt-xs { margin-top: 6px; }
+.mt-s { margin-top: 10px; }
+.mt-m { margin-top: 14px; }
+.mt-l { margin-top: 20px; }
+.mt-xl { margin-top: 26px; }
+.flush { margin: 0; }
+.pt-l { padding-top: 34px; }
+
+.on-ink { color: var(--ink); }
+.on-muted { color: var(--muted); }
+.on-faint { color: var(--faint); }
+.on-good { color: var(--good); }
+.on-red { color: var(--red-text); }
+.on-red strong, strong.on-red { font-weight: 600; }
+.count-red { color: var(--red); }
+
+.right { text-align: right; }
+.contents { display: contents; }
+.as-block { display: block; }
+.grow { flex: 1; }
+
+.split {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.inline-row { display: flex; align-items: center; gap: 16px; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; }
+.check-row input[type="checkbox"] { width: auto; margin-top: 3px; flex: none; }
+
+.bullets { margin: 0; padding-left: 18px; }
+.note-right { text-align: right; max-width: 34ch; }
+
+.figure.sm { font-size: 15px; }
+.figure.row { font-size: 16px; }
+.figure.wide { font-size: 22px; }
+h1.big { font-size: 40px; }
+
+/* A separator neither font has a glyph for. U+2192 is absent from both the
+   Inter and Unbounded latin subsets, so a literal arrow silently fell back to
+   a system font at a different weight. Drawn instead. */
+.sep {
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  background: var(--faint);
+  position: relative;
+  vertical-align: middle;
+  margin: 0 4px;
+}
+
+.sep::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-top: 1px solid var(--faint);
+  border-right: 1px solid var(--faint);
+  transform: rotate(45deg);
+}
+
+/* The progress track is a real <progress>: its value is data, and a width
+   cannot be an inline style here. */
+progress.track { width: 100%; height: 8px; border: 0; display: block; }
+progress.track::-webkit-progress-bar { background: var(--line); border-radius: 4px; }
+progress.track::-webkit-progress-value { background: var(--red); border-radius: 4px; }
+progress.track::-moz-progress-bar { background: var(--red); border-radius: 4px; }
+
+/* Buttons sitting on the tutorial banner, which is --ink. */
+.tut-banner .button.ghost {
+  color: var(--inverse-text);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.tut-banner .button.ghost:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* Invoice list on My details. */
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.rows li:first-child { border-top: 0; }
+.rows .no { width: 44px; flex: none; }
+.rows .status { width: 110px; text-align: right; }
+.rows .get { width: 76px; text-align: right; }
+
+@media (max-width: 560px) {
+  .rows li { flex-wrap: wrap; gap: 8px 12px; }
+  .rows .status, .rows .get { width: auto; text-align: left; }
+}
+
+/* Left over from the inline-style conversion: these pair with a margin-top
+   utility on an element whose horizontal margins must stay zero. */
+.flush-x { margin-left: 0; margin-right: 0; margin-bottom: 0; }
+.no-rule { border-top: 0; padding-top: 6px; }
+.mt-0-inline { margin-left: 8px; }
+
+/* htmx's indicator rules, which it would otherwise inject as an inline
+   <style> the CSP blocks. */
+.htmx-indicator { opacity: 0; }
+.htmx-request .htmx-indicator { opacity: 1; transition: opacity 200ms ease-in; }
+.htmx-request.htmx-indicator { opacity: 1; transition: opacity 200ms ease-in; }

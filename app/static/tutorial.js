@@ -36,7 +36,15 @@
   }
 
   function present() {
-    return steps.filter(target);
+    // Ordered by where they sit on the page, not by how they were declared.
+    // Numbering that runs 1 at the foot and 2 at the top is worse than no
+    // numbering, and which steps exist depends on the state the screen is in.
+    return steps.filter(target).sort(function (a, b) {
+      var position = target(a).compareDocumentPosition(target(b));
+      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
   }
 
   // ---------------------------------------------------------------- pins --

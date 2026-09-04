@@ -18,7 +18,7 @@
      (R-BANK-07). #}
   <div class="card attention">
     <p class="eyebrow"><span class="dot"></span>Accounts has suggested a change</p>
-    <table class="kv" style="margin-top:14px">
+    <table class="kv mt-m">
       <tr><th>Name on the account</th><td>{{ pending.account_name or "not given" }}</td></tr>
       <tr><th>Bank</th><td>{{ pending.bank_name or "not given" }}</td></tr>
       {% if pending.sort_code %}
@@ -29,7 +29,7 @@
       {% endif %}
       {% if pending.iban %}<tr><th>IBAN</th><td>{{ pending.iban }}</td></tr>{% endif %}
     </table>
-    <form method="post" action="/bank/confirm" class="actions" style="margin-top:20px">
+    <form method="post" action="/bank/confirm" class="actions mt-l">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="detail_id" value="{{ pending.id }}">
       <button class="button" type="submit">Yes, that is right{% include "_arrow.html" %}</button>
@@ -41,7 +41,7 @@
 {% if not bank %}
   <div class="card attention">
     <h2>We have no bank details for you.</h2>
-    <p class="actions" style="margin-top:20px">
+    <p class="actions mt-l">
       <a class="button" href="/bank/change">Add them{% include "_arrow.html" %}</a>
     </p>
   </div>
@@ -83,7 +83,7 @@
         <span class="hint"><span class="dot-good"></span>Confirmed by you</span>
         <a class="button ghost" href="/bank/change">Change it</a>
       {% else %}
-        <form method="post" action="/bank/confirm" style="display:contents">
+        <form class="contents" method="post" action="/bank/confirm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="button" type="submit">
             Yes &mdash; this is my account{% include "_arrow.html" %}
@@ -99,7 +99,7 @@
 
   <div class="card" data-tut="member.bank.owner">
     <p class="label">If you change it</p>
-    <p class="hint" style="margin-top:8px">
+    <p class="hint mt-s">
       Changing creates a new row rather than editing this one, and asks for the
       account number twice. The old row is closed, and both you and accounts get
       an email showing the old and new last four digits.

@@ -9,6 +9,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Invoices{% endblock %}</title>
+  {# htmx injects a <style> block for its indicator classes, which the CSP
+     blocks and which then fills the console with violations that hide real
+     ones. The rules live in app.css instead. #}
+  <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
   {% block scripts %}{% endblock %}

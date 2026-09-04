@@ -18,14 +18,13 @@
       This is the document itself, not a summary of it. Nothing has been sent.
     </p>
 
-    <div class="card" style="margin-top:24px" data-tut="member.preview.fixed">
+    <div class="card mt-xl" data-tut="member.preview.fixed">
       <div class="card-row"><span class="name">Invoice</span><span class="figure">{{ number }}</span></div>
       <div class="card-row"><span class="name">Goes to</span><span class="figure">Accounts</span></div>
       <div class="card-row total-row"><span class="name">Total</span><span class="figure mid">{{ totals.total_pence | gbp }}</span></div>
     </div>
 
-    <form method="post" action="/submit" class="card dark" style="margin-top:16px"
-          data-tut="member.preview.send">
+    <form method="post" action="/submit" class="card dark mt-l" data-tut="member.preview.send">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
       {% for item in items %}
@@ -39,23 +38,22 @@
 
       <p class="label">Send invoice {{ number }}</p>
       {% if window_open %}
-        <button class="button block" type="submit" style="margin-top:14px"
-                onclick="this.disabled=true;this.form.requestSubmit();">
+        <button class="button block mt-m" type="submit" onclick="this.disabled=true;this.form.requestSubmit();">
           Send this document{% include "_arrow.html" %}
         </button>
       {% else %}
-        <button class="button block" type="submit" style="margin-top:14px" disabled>
+        <button class="button block mt-m" type="submit" disabled>
           Send this document
         </button>
-        <p class="hint" style="margin-top:10px">{{ window_message }}</p>
+        <p class="hint mt-s">{{ window_message }}</p>
       {% endif %}
-      <p class="hint" style="margin-top:12px">
+      <p class="hint mt-m">
         One press. It disables itself immediately, and pressing twice cannot
         make two invoices.
       </p>
     </form>
 
-    <p class="actions" style="margin-top:16px">
+    <p class="actions mt-l">
       <a class="button ghost" href="/additional">Go back and edit</a>
     </p>
   </div>

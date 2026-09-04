@@ -7,7 +7,7 @@
   <div class="overview-head">
     <h1>{{ period.label }}</h1>
     <span class="hint">
-      <strong style="color:var(--ink)">{{ view.received }}</strong>
+      <strong class="on-ink">{{ view.received }}</strong>
       of {{ view.expected }} received
     </span>
   </div>
@@ -37,9 +37,9 @@
           </td>
           <td class="num">
             {% if row.invoice %}
-              <span class="figure" style="font-size:15px">{{ row.invoice.total_pence | gbp }}</span>
+              <span class="figure sm">{{ row.invoice.total_pence | gbp }}</span>
             {% else %}
-              <span style="color:var(--faint)">&mdash;</span>
+              <span class="on-faint">&mdash;</span>
             {% endif %}
           </td>
           <td class="num">
@@ -54,7 +54,7 @@
   </table>
 </div>
 
-<p class="hint" style="margin-top:14px">
+<p class="hint mt-m">
   Flags never block a payment. Late means after the 28th &mdash; still valid,
   still paid, still next in that sequence.
 </p>

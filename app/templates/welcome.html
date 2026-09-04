@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block width %}{% endblock %}
-{% block steps %}{% set active = 'check' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
 
 <div class="page-head">
@@ -8,10 +7,10 @@
     <span class="dot"></span>
     <span data-tut="member.month.window">
       {{ period.label }}
-      {% if window_message %}
-        &middot; {{ window_message }}
+      {% if window_open %}
+        &middot; window closes {{ period.closes_on().day }} {{ period.closes_on().strftime('%b') }}
       {% else %}
-        &middot; window closes {{ period.closes_on().strftime('%-d %b') if period.closes_on().day else '' }}
+        &middot; window opens {{ period.opens_on().day }} {{ period.opens_on().strftime('%b') }}
       {% endif %}
     </span>
   </p>
@@ -30,7 +29,7 @@
       finish sending. The number stays yours &mdash; trying again picks up where
       it stopped.
     </p>
-    <p class="actions" style="margin-top:20px">
+    <p class="actions mt-l">
       <a class="button" href="/additional">Try again{% include "_arrow.html" %}</a>
     </p>
   </div>
@@ -39,10 +38,10 @@
   <div class="card dark hero">
     <p class="eyebrow"><span class="dot"></span>Already sent</p>
     <h2>Invoice {{ state.existing_invoice.number }} has gone to accounts.</h2>
-    <p class="hint" style="margin-top:10px">
+    <p class="hint mt-s">
       {{ period.label }} &middot; {{ state.existing_invoice.total_pence | gbp }}
     </p>
-    <p class="actions" style="margin-top:22px">
+    <p class="actions mt-l">
       {% if state.existing_invoice.pdf_uri %}
         <a class="button light" href="/invoices/{{ state.existing_invoice.id }}/pdf">
           Download the PDF
@@ -55,7 +54,7 @@
 {% else %}
   <div class="card hero">
     <p class="label">This month</p>
-    <div class="card-row" data-tut="member.month.fee" style="margin-top:16px">
+    <div class="card-row mt-l" data-tut="member.month.fee">
       <span class="name">Remuneration</span>
       <span class="figure">
         {% if state.fee_pence is not none %}
@@ -68,12 +67,12 @@
 
     <div class="card-row" data-tut="member.month.kudos">
       <span class="name">Kudos</span>
-      <span style="text-align:right">
+      <span class="right">
         {% if not state.kudos_eligible %}
           <span class="hint">Not payable on your invoices</span>
         {% elif not state.kudos_due_this_period %}
           <span class="figure">{{ 0 | gbp }}</span>
-          <span class="hint" style="display:block;margin-top:5px">
+          <span class="hint as-block mt-xs">
             Paid quarterly &mdash; next on your
             {% if period.month < 3 %}March{% elif period.month < 6 %}June
             {% elif period.month < 9 %}September{% else %}December{% endif %}
@@ -111,11 +110,11 @@
         </h2>
         <p class="lead">{{ message }}</p>
         {% if reason == 'bank_unconfirmed' %}
-          <p class="actions" style="margin-top:20px">
+          <p class="actions mt-l">
             <a class="button" href="/bank">Check the account{% include "_arrow.html" %}</a>
           </p>
         {% elif reason == 'profile_incomplete' %}
-          <p class="actions" style="margin-top:20px">
+          <p class="actions mt-l">
             <a class="button" href="/details">Add them{% include "_arrow.html" %}</a>
           </p>
         {% endif %}
@@ -124,7 +123,7 @@
   {% else %}
     <div class="card" data-tut="member.month.blocks">
       <h2>Nothing is in your way.</h2>
-      <p class="actions" style="margin-top:20px">
+      <p class="actions mt-l">
         <a class="button" href="{{ '/additional' if person.profile_confirmed_at else '/details' }}">
           Add expenses{% include "_arrow.html" %}
         </a>
@@ -134,7 +133,7 @@
 {% endif %}
 
 <div class="page-foot" data-tut="member.month.steps">
-  <span class="hint"><strong style="color:var(--ink)">Check</strong> → Add → Send</span>
-  <a class="hint" href="/me" style="color:var(--muted)">Your details and bank account</a>
+  <span class="hint"><strong class="on-ink">Check</strong><span class="sep"></span>Add<span class="sep"></span>Send</span>
+  <a class="hint on-muted" href="/me">Your details and bank account</a>
 </div>
 {% endblock %}
