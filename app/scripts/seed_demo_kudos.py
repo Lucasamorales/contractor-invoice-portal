@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session
 from app.config import Environment, Settings, get_settings
 from app.db.models import KudosAlias, KudosEvent, Person
 from app.db.session import get_sessionmaker
-from app.domain.kudos import SHEETS_EPOCH, normalise_name
+from app.domain.kudos import SHEETS_EPOCH, normalise_name, parse_rows
 from app.services import kudos_sync
 
 DEMO_DOMAIN = "@example.com"
@@ -126,6 +126,49 @@ def sheet_rows(settings: Settings) -> list[list[object]]:
     return rows
 
 
+def demo_event_keys(settings: Settings) -> set[str]:
+    """Exactly the events this fixture produces, by identity.
+
+    Matched on the event key rather than the receiver's name. The live sheet
+    and the fixture share a name — the real Leo Marsh has kudos in both —
+    so purging by name would leave four real rows behind and quietly inflate
+    one person's count.
+    """
+    result = parse_rows(sheet_rows(settings), aliases={})
+    return {event.event_key for event in result.events}
+
+
+def purge_foreign(session: Session, settings: Settings) -> tuple[int, list[str]]:
+    """Remove kudos that did not come from this fixture.
+
+    Staging was pointed at the real sheet once and the scheduled sync did
+    exactly what it was told: it pulled the live log in alongside the invented
+    one. Mixed, the figures look plausible and mean nothing, so a clean test
+    needs the real rows gone.
+
+    A claimed event is never deleted, whatever it is (R-KUD-15): an issued
+    invoice states what it billed, and removing the row behind that destroys
+    the record. If one is found this refuses outright rather than deleting the
+    rest and leaving a half-purged database.
+    """
+    keep = demo_event_keys(settings)
+    doomed = [
+        event
+        for event in session.scalars(select(KudosEvent)).all()
+        if event.event_key not in keep
+    ]
+    claimed = [e.receiver_name for e in doomed if e.claimed_by_invoice_id is not None]
+    if claimed:
+        raise DemoRefused(
+            "these have already been billed and must not be deleted: "
+            + ", ".join(sorted(set(claimed)))
+        )
+    names = sorted({event.receiver_name for event in doomed})
+    for event in doomed:
+        session.delete(event)
+    return len(doomed), names
+
+
 def refuse_production(settings: Settings) -> None:
     if settings.environment is Environment.PRODUCTION:
         raise DemoRefused("This writes invented data. Never in production.")
@@ -190,6 +233,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--commit", action="store_true")
     parser.add_argument("--actor", default="seed-demo")
+    parser.add_argument(
+        "--purge-foreign",
+        action="store_true",
+        help="delete kudos that did not come from this fixture, then reseed",
+    )
     args = parser.parse_args(argv)
 
     settings = get_settings()
@@ -202,11 +250,20 @@ def main(argv: list[str] | None = None) -> int:
     now = datetime.now(UTC)
     factory = get_sessionmaker()
     with factory() as session:
-        try:
-            refuse_real_kudos(session)
-        except DemoRefused as exc:
-            print(str(exc), file=sys.stderr)
-            return 2
+        purged, purged_names = 0, []
+        if args.purge_foreign:
+            try:
+                purged, purged_names = purge_foreign(session, settings)
+            except DemoRefused as exc:
+                print(str(exc), file=sys.stderr)
+                return 2
+            session.flush()
+        else:
+            try:
+                refuse_real_kudos(session)
+            except DemoRefused as exc:
+                print(str(exc), file=sys.stderr)
+                return 2
 
         people = session.scalar(select(func.count()).select_from(Person)) or 0
         print(f"{people} people in this database, {len(KUDOS)} invented kudos to load.")
@@ -222,6 +279,10 @@ def main(argv: list[str] | None = None) -> int:
         # matching, the cut-over and the snapshots are all the shipping code.
         report = kudos_sync.sync(session, settings=settings, now=now, fetch=sheet_rows)
 
+        if args.purge_foreign:
+            print(f"  purged foreign       {purged} kudos")
+            for name in purged_names:
+                print(f"                       {name}")
         print(f"  aliases written      {aliases}")
         print(f"  marked leadership    {leaders}")
         print(f"  events new           {report.events_new}")
