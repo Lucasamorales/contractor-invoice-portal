@@ -27,7 +27,14 @@
   <script src="{{ static('htmx.min.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </head>
-<body hx-boost="true" hx-select="body" hx-target="body" hx-swap="outerHTML"
+{# hx-boost on its own, with no hx-select/hx-target/hx-swap. Boost already
+   swaps the body's contents and takes the new title; spelling that out as
+   hx-target="body" hx-swap="outerHTML" asked htmx to replace the body
+   element with a fragment parsed from a body tag, and the HTML fragment
+   parser discards that tag. The swap emptied the body: every boosted
+   navigation landed on a blank white page, which a reload then fixed,
+   because the server render was never the problem. #}
+<body hx-boost="true"
       {%- if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
   <header class="bar">
     <a class="brand" href="/">

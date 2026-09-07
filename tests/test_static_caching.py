@@ -90,3 +90,25 @@ def test_every_form_opts_out_of_boosting() -> None:
             if 'method="post"' in tag and not unboosted.match(tag):
                 missing.append(f"{template}: {tag[:70]}")
     assert not missing, "these POST forms would be boosted: " + "; ".join(missing)
+
+
+def test_boosting_does_not_override_the_swap() -> None:
+    """The body must not tell htmx how to swap a boosted page in.
+
+    hx-boost already replaces the body's contents and takes the new title.
+    Adding hx-target="body" hx-swap="outerHTML" asked htmx to replace <body>
+    with a fragment parsed from a <body> tag, and the HTML fragment parser
+    throws that tag away — so the swap emptied the body and every boosted
+    navigation landed on a blank white page. A reload fixed it, because the
+    server render was never at fault, which is exactly how it was reported.
+    """
+    import re
+    from pathlib import Path
+
+    base = Path("app/templates/base.html").read_text(encoding="utf-8")
+    tag = re.search(r"<body[^>]*>", base, re.S)
+    assert tag is not None
+    body = tag.group(0)
+    assert 'hx-boost="true"' in body
+    for attribute in ("hx-select", "hx-target", "hx-swap"):
+        assert attribute not in body, f"{attribute} on <body> breaks boosted navigation"
