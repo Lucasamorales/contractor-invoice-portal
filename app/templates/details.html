@@ -22,7 +22,7 @@
   </label>
 {% endmacro %}
 
-<form method="post" action="/details" class="card">
+<form hx-boost="false" method="post" action="/details" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {{ field('legal_name', 'Legal name', 'As it should appear on the invoice.',
            submitted.legal_name if submitted else person.legal_name) }}

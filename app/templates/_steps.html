@@ -1,5 +1,8 @@
 {# Three steps, not five. Your details and bank account are permanent pages
-   (R-WIZ-08), not stations you walk through every month. #}
+   (R-WIZ-08), not stations you walk through every month.
+
+   The separator is an element rather than a ::after, so it can carry both the
+   line and the arrowhead: neither font has U+2192, so the arrow is drawn. #}
 <ol class="steps">
   {% for key, label, href in [
       ('check', 'Check', '/'),
@@ -13,6 +16,7 @@
       {% else %}
         <span>{{ label }}</span>
       {% endif %}
+      {% if not loop.last %}<span class="sep" aria-hidden="true"></span>{% endif %}
     </li>
   {% endfor %}
 </ol>

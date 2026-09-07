@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ person.display_name }}{% endblock %}
 {% block content %}
+<a class="back" href="/admin/people">&larr; People</a>
 <h1>{{ person.display_name }}</h1>
 <p class="lead">{{ person.email }} &middot; {{ person.status.value }}</p>
 
@@ -48,7 +49,7 @@
   {% endif %}
 
   <h2>Set a new fee</h2>
-  <form method="post" action="/admin/people/{{ person.id }}/fee" class="form">
+  <form hx-boost="false" method="post" action="/admin/people/{{ person.id }}/fee" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label class="field">
       <span class="label">Amount</span>
@@ -104,7 +105,7 @@
           Reveal full details
         </button>
       </div>
-      <form method="post" action="/admin/bank/{{ bank.id }}/flag" class="form inline">
+      <form hx-boost="false" method="post" action="/admin/bank/{{ bank.id }}/flag" class="form inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label class="field">
           <span class="label">Flag this back to them</span>
@@ -126,7 +127,7 @@
     you cannot make it do so &mdash; that is deliberate, and it is what stops a
     stolen admin account redirecting the payroll.
   </p>
-  <form method="post" action="/admin/people/{{ person.id }}/bank/propose"
+  <form hx-boost="false" method="post" action="/admin/people/{{ person.id }}/bank/propose"
         class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label class="field">
@@ -213,7 +214,7 @@
   <p class="hint">
     No reminders, cannot invoice, history kept. Nothing is deleted.
   </p>
-  <form method="post" action="/admin/people/{{ person.id }}/deactivate" class="form">
+  <form hx-boost="false" method="post" action="/admin/people/{{ person.id }}/deactivate" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label class="field">
       <span class="label">Reason</span>

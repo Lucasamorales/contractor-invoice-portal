@@ -3,6 +3,7 @@
 {% block width %}reading{% endblock %}
 {% block steps %}{% set active = 'send' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
+<a class="back" href="/">&larr; This month</a>
 <div class="page-head pt-l">
   <p class="eyebrow"><span class="dot"></span>Sent</p>
   <h1 class="big">Invoice {{ invoice.number }} is with accounts.</h1>

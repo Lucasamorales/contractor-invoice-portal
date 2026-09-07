@@ -27,7 +27,8 @@
   <script src="{{ static('htmx.min.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </head>
-<body{% if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
+<body hx-boost="true" hx-select="body" hx-target="body" hx-swap="outerHTML"
+      {%- if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
   <header class="bar">
     <a class="brand" href="/">
       <span class="brand-mark">YOURCOMPANY</span>
@@ -44,6 +45,8 @@
         <a href="/admin/people"{% if path.startswith('/admin/people') %} class="on"{% endif %}>People</a>
         <a href="/admin/period"{% if path.startswith('/admin/period') %} class="on"{% endif %}>Period</a>
         <a href="/admin/queue"{% if path.startswith('/admin/queue') %} class="on"{% endif %}>Queue</a>
+        <a href="/admin/payment-run"{% if path.startswith('/admin/payment-run') %} class="on"{% endif %}>Payment run</a>
+        <a href="/admin/kudos"{% if path.startswith('/admin/kudos') %} class="on"{% endif %}>Kudos</a>
       {% endif %}
     </nav>
     <button type="button" class="help-toggle" id="help-toggle"

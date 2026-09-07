@@ -34,12 +34,12 @@
   <div><span class="figure on-red">{{ unfinished | length }}</span><span class="hint">unfinished</span></div>
   <div><span class="figure">{{ flagged | length }}</span><span class="hint">flagged, not blocked</span></div>
 </div>
-<p class="hint mt-s">
+<p class="hint caption">
   Received plus not yet in accounts for everyone. Unfinished and flagged sit
   inside the received figure &mdash; they are already counted, not extra.
 </p>
 
-<div class="card alarm mt-l" data-tut="admin.overview.stuck">
+<div class="card alarm" data-tut="admin.overview.stuck">
   <p class="label">Needs fixing</p>
   <p class="hint mt-s">
     Things that appear nowhere else. If this panel is empty, nothing is stuck.
@@ -84,7 +84,7 @@
   {% endif %}
 </div>
 
-<div class="row-grid mt-l">
+<div class="row-grid">
   <div class="card" data-tut="admin.overview.missing">
     <p class="label">Not yet in</p>
     <p class="hint mt-s">
@@ -130,7 +130,7 @@
   </div>
 </div>
 
-<div class="row-grid mt-l" data-tut="admin.overview.waiting">
+<div class="row-grid" data-tut="admin.overview.waiting">
   <a class="card tile" href="/admin/queue">
     <span class="figure hero">{{ queue_fee if queue_fee is defined else attention.unconfirmed_bank | length }}</span>
     <span class="hint">bank never confirmed</span>
@@ -139,7 +139,7 @@
     <span class="figure hero">{{ attention.unmapped_kudos | length }}</span>
     <span class="hint">kudos names unmapped</span>
   </a>
-  <a class="card tile" href="/admin/kudos">
+  <a class="card tile" href="/admin/queue">
     <span class="figure hero">{{ attention.failed_mail | length }}</span>
     <span class="hint">emails that gave up</span>
   </a>

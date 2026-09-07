@@ -640,7 +640,15 @@ async def additional_form(
     """Kudos read-only; the person adds any number of items. Empty means £0."""
     period, state = _read_state(session, person, settings)
     context = _base_context(request, person, identity, settings)
-    context.update({"state": state, "period": period, "items": [], "errors": []})
+    context.update(
+        {
+            "state": state,
+            "period": period,
+            "items": [],
+            "errors": [],
+            "max_items": MAX_ITEMS,
+        }
+    )
     return templates.TemplateResponse(
         request=request, name="additional.html", context=context
     )
@@ -677,6 +685,12 @@ async def _parse_items(request: Request) -> tuple[list[ExpenseInput], list[str]]
             continue
         if pence < 0:
             errors.append(f"{description}: an amount cannot be negative.")
+            continue
+        if pence == 0:
+            # An item worth nothing is a mistake rather than a choice: it
+            # prints on the invoice as a zero line and means nothing to
+            # anybody reading it. Leaving the row empty is how you add none.
+            errors.append(f"{description}: an amount of zero is not an expense.")
             continue
         items.append(
             ExpenseInput(
@@ -781,7 +795,13 @@ async def preview(
 
     if errors:
         context.update(
-            {"state": state, "period": period, "items": items, "errors": errors}
+            {
+                "state": state,
+                "period": period,
+                "items": items,
+                "errors": errors,
+                "max_items": MAX_ITEMS,
+            }
         )
         return templates.TemplateResponse(
             request=request,

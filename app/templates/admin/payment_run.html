@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Payment run {{ period.key }}{% endblock %}
 {% block content %}
+<a class="back" href="/admin">&larr; Overview</a>
 <h1>Payment run &mdash; {{ period.label }}</h1>
 <p class="lead">
   Split into the two batches you pay separately. Account numbers are masked on
   screen; the CSV carries them in full and taking it is recorded.
 </p>
 
-<form method="post" action="/admin/payment-run.csv" class="form">
+<form hx-boost="false" method="post" action="/admin/payment-run.csv" class="form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="month" value="{{ period.key }}">
   <button class="button" type="submit">Export CSV</button>

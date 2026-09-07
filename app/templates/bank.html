@@ -29,7 +29,7 @@
       {% endif %}
       {% if pending.iban %}<tr><th>IBAN</th><td>{{ pending.iban }}</td></tr>{% endif %}
     </table>
-    <form method="post" action="/bank/confirm" class="actions mt-l">
+    <form hx-boost="false" method="post" action="/bank/confirm" class="actions mt-l">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="detail_id" value="{{ pending.id }}">
       <button class="button" type="submit">Yes, that is right{% include "_arrow.html" %}</button>
@@ -83,7 +83,7 @@
         <span class="hint"><span class="dot-good"></span>Confirmed by you</span>
         <a class="button ghost" href="/bank/change">Change it</a>
       {% else %}
-        <form class="contents" method="post" action="/bank/confirm">
+        <form hx-boost="false" class="contents" method="post" action="/bank/confirm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="button" type="submit">
             Yes &mdash; this is my account{% include "_arrow.html" %}

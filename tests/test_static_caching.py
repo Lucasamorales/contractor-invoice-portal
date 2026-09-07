@@ -67,3 +67,26 @@ def test_a_missing_file_does_not_break_a_page(tmp_path, monkeypatch) -> None:
     fingerprint.cache_clear()
     assert static_url("nothing-here.css") == "/static/nothing-here.css"
     fingerprint.cache_clear()
+
+
+def test_every_form_opts_out_of_boosting() -> None:
+    """hx-boost is on the body so navigation does not flash white.
+
+    It boosts forms as well as links, and a boosted POST swaps a response into
+    the page instead of navigating. The submit path allocates an invoice
+    number and must stay an ordinary form post, so every form says so — and
+    one already slipped through because its attributes were in a different
+    order, which is why this asserts rather than trusting a search-and-replace.
+    """
+    import re
+    from pathlib import Path
+
+    unboosted = re.compile(r"<form[^>]*hx-boost=\"false\"", re.S)
+    forms = re.compile(r"<form[^>]*>", re.S)
+
+    missing: list[str] = []
+    for template in sorted(Path("app/templates").rglob("*.html")):
+        for tag in forms.findall(template.read_text(encoding="utf-8")):
+            if 'method="post"' in tag and not unboosted.match(tag):
+                missing.append(f"{template}: {tag[:70]}")
+    assert not missing, "these POST forms would be boosted: " + "; ".join(missing)

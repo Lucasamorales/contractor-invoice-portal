@@ -3,6 +3,7 @@
 {% block width %}reading{% endblock %}
 {% block steps %}{% set active = 'add' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
+<a class="back" href="/">&larr; This month</a>
 
 <div class="page-head">
   <h1>Anything to add?</h1>
@@ -45,7 +46,7 @@
   </div>
 </div>
 
-<form method="post" action="/preview" class="form">
+<form hx-boost="false" method="post" action="/preview" class="form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <div class="card" data-tut="member.additional.receipts">
@@ -60,6 +61,12 @@
         {% include "_expense_row.html" %}
       {% endfor %}
     </div>
+    {# The server has always accepted ten (MAX_ITEMS); the template only ever
+       drew three, so a fourth expense was impossible. #}
+    <p class="actions mt-m">
+      <button class="button ghost small" type="button" id="add-row"
+              data-max="{{ max_items }}">Add another</button>
+    </p>
     <p class="hint mt-m">
       A photo is fine. Location data is removed and an iPhone HEIC is converted,
       so accounts can always open it.

@@ -99,4 +99,35 @@
   document.addEventListener("input", function (event) {
     if (event.target.matches && event.target.matches(".item .amount")) retotal();
   });
+
+  // Another expense row. The template draws three; the server has always
+  // taken up to MAX_ITEMS, which the button carries so the two cannot
+  // disagree. Cloned from the last row rather than built here, so the row's
+  // markup lives in one place — the Jinja partial.
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest && event.target.closest("#add-row");
+    if (!button) return;
+    var list = document.getElementById("items");
+    var rows = list.querySelectorAll(".item");
+    var max = parseInt(button.getAttribute("data-max") || "10", 10);
+    if (rows.length >= max) return;
+
+    var copy = rows[rows.length - 1].cloneNode(true);
+    copy.querySelectorAll("input").forEach(function (input) {
+      input.value = "";
+    });
+    var status = copy.querySelector(".receipt-status");
+    if (status) {
+      status.textContent = "";
+      status.classList.remove("missing");
+    }
+    list.appendChild(copy);
+    var first = copy.querySelector(".desc");
+    if (first) first.focus();
+
+    if (list.querySelectorAll(".item").length >= max) {
+      button.disabled = true;
+      button.textContent = "That is the most we can attach";
+    }
+  });
 })();

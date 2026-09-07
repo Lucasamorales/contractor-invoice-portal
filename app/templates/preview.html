@@ -3,6 +3,7 @@
 {% block width %}sheet-page{% endblock %}
 {% block steps %}{% set active = 'send' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
+<a class="back" href="/additional">&larr; Add expenses</a>
 <div class="sheet-layout">
   {# The invoice itself, at its natural width and scaled down. The frame and
      the scale step together in the media queries below; move one without the
@@ -18,13 +19,13 @@
       This is the document itself, not a summary of it. Nothing has been sent.
     </p>
 
-    <div class="card mt-xl" data-tut="member.preview.fixed">
+    <div class="card" data-tut="member.preview.fixed">
       <div class="card-row"><span class="name">Invoice</span><span class="figure">{{ number }}</span></div>
       <div class="card-row"><span class="name">Goes to</span><span class="figure">Accounts</span></div>
       <div class="card-row total-row"><span class="name">Total</span><span class="figure mid">{{ totals.total_pence | gbp }}</span></div>
     </div>
 
-    <form method="post" action="/submit" class="card dark mt-l" data-tut="member.preview.send">
+    <form hx-boost="false" method="post" action="/submit" class="card dark" data-tut="member.preview.send">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
       {% for item in items %}
@@ -53,9 +54,11 @@
       </p>
     </form>
 
-    <p class="actions mt-l">
-      <a class="button ghost" href="/additional">Go back and edit</a>
+    <p class="actions">
+      <a class="button ghost block" href="/additional">Go back and edit</a>
     </p>
+
+    
   </div>
 </div>
 {% endblock %}
