@@ -650,3 +650,53 @@ def test_an_expense_without_a_receipt_is_still_fine(wizard, factory) -> None:
         from app.db.models import Expense
 
         assert session.scalars(select(Expense)).one().receipt_uri is None
+
+
+def test_the_theme_is_a_cookie_and_survives_a_navigation(wizard, factory) -> None:
+    """The CSP forbids the inline script that normally sets a theme before
+    first paint, so the choice is rendered by the server instead. It has to
+    reach every page, not only the one the toggle was pressed on."""
+    client, _, cipher = wizard
+    seed_ready(factory, cipher)
+
+    page = client.get("/")
+    # Nobody has chosen: no attribute, so prefers-color-scheme decides.
+    assert "data-theme=" not in page.text
+    assert 'action="/theme"' in page.text
+
+    response = client.post(
+        "/theme",
+        data={"csrf_token": token_from(page.text), "next": "/me"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == "/me"
+    assert client.cookies.get("theme") == "night"
+
+    assert 'data-theme="night"' in client.get("/").text
+    assert 'data-theme="night"' in client.get("/me").text
+
+    back = client.post(
+        "/theme",
+        data={"csrf_token": token_from(client.get("/").text), "next": "/"},
+        follow_redirects=False,
+    )
+    assert back.status_code == 303
+    assert client.cookies.get("theme") == "day"
+    assert 'data-theme="day"' in client.get("/").text
+
+
+def test_the_theme_form_cannot_redirect_off_the_app(wizard, factory) -> None:
+    client, _, cipher = wizard
+    seed_ready(factory, cipher)
+
+    page = client.get("/")
+    response = client.post(
+        "/theme",
+        data={
+            "csrf_token": token_from(page.text),
+            "next": "https://evil.example/steal",
+        },
+        follow_redirects=False,
+    )
+    assert response.headers["location"] == "/"

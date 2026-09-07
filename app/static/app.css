@@ -45,6 +45,25 @@
  * fallback and simply stay there; every load after it is correct from the
  * first paint. Nothing moves under the reader either way. */
 
+/* ------------------------------------------------------------- tokens -- *
+ *
+ * Two sets, and every colour on every screen comes from one of them. The day
+ * values are exactly what they have always been: night mode is a second set,
+ * not a redesign, and any day screen that looks different is a bug.
+ *
+ * The theme is decided on the server and rendered as data-theme on <html>.
+ * It cannot be done in the browser here: the usual trick is an inline script
+ * in <head> that reads localStorage before first paint, and this app's CSP is
+ * default-src 'self' with no unsafe-inline, so that script would be blocked.
+ * A JS-set theme would then flash the light page on every navigation, and
+ * this app navigates for everything. See app/web/theme.py.
+ *
+ * NIGHT VALUES APPEAR TWICE: once under [data-theme="night"] for somebody who
+ * has chosen, and once under prefers-color-scheme for somebody who has not.
+ * There is no build step, so there is nowhere to define them once. The two
+ * blocks must move together.
+ */
+
 :root {
   --paper: #faf9f7;
   --surface: #ffffff;
@@ -66,15 +85,192 @@
   --red-wash: #ffe9e9;
 
   --good: #2e7d54;
-  --inverse-text: #f5f5f4;
-  --inverse-muted: #9a9a97;
-  --inverse-faint: #6b6b68;
+  --good-wash: #e8f3ed;
+
+  /* An inverted panel is a SURFACE, not the text colour. Kept apart from
+   * --ink so night mode can lift it instead of turning it white — --ink used
+   * as a background is what makes a dark card go white-on-white the moment
+   * the ink itself becomes light. */
+  --panel-invert: #0a0a0a;
+  --on-panel-invert: #f5f5f4;
+  --on-panel-invert-muted: #9a9a97;
+  --on-panel-invert-faint: #6b6b68;
+  --panel-invert-hairline: rgba(255, 255, 255, 0.28);
+  --panel-invert-hover: rgba(255, 255, 255, 0.08);
+  /* The card's own outline. On a light page it disappears into the panel, as
+     it always has; on a dark one it is what separates the two. */
+  --panel-invert-edge: #0a0a0a;
+
+  /* A solid ink button: .button.on, "Reveal in full" once toggled. */
+  --ink-solid: #0a0a0a;
+  --on-ink-solid: #ffffff;
+
+  /* White on a red or ink fill. White in both modes. */
+  --on-accent: #ffffff;
+
+  --sheet-desk: #e9e7e3;
+  --sheet-desk-line: #dcd9d3;
+
+  --scrim: rgba(10, 10, 10, 0.5);
+
+  /* Shadows stay black in both modes — a shadow is an absence of light, not a
+     colour — but a dark ground needs a deeper one to read at all. */
+  --shadow-sheet: rgba(0, 0, 0, 0.4);
+  --shadow-spot: rgba(0, 0, 0, 0.55);
+  --shadow-card: rgba(0, 0, 0, 0.6);
+  --ring-wash: rgba(255, 43, 43, 0.16);
 
   --sans: "Inter", Arial, system-ui, sans-serif;
   --display: "Unbounded", Arial, system-ui, sans-serif;
 
   --radius: 10px;
   --radius-lg: 14px;
+
+  color-scheme: light;
+}
+
+/* Warm greys in the same hue family as --paper, not blue-black: the brand's
+ * light ground is warm, and a cool dark reads as a different product.
+ *
+ * --red does not move. #ff2b2b on #100f0e is 5.3:1, so the one action colour
+ * is identical in both modes. --red-text is the only red that changes,
+ * because it is 12.5px text and #c11f1f on a dark ground is unreadable.
+ *
+ * color-scheme is what makes the native controls follow — the date picker on
+ * a person's record, select menus, scrollbars. Without it the picker renders
+ * as a white slab on a dark card. */
+:root[data-theme="night"] {
+  --paper: #100f0e;
+  --surface: #191817;
+  --surface-sunk: #211f1d;
+  --surface-alt: #2a2825;
+  --ink: #f5f4f2;
+  --body: #c8c6c0;
+  --muted: #94918a;
+  --faint: #5d5a54;
+  --line: #302e2b;
+  --line-soft: #262421;
+  --line-strong: #45423d;
+
+  --red: #ff2b2b;
+  --red-dark: #ff5c5c;
+  --red-text: #ff6161;
+  --red-wash: #2e1414;
+
+  --good: #57b98a;
+  --good-wash: #16291f;
+
+  /* On a dark page an inverted panel cannot invert without going white, so
+   * it lifts one step above the card and takes a visible hairline instead. */
+  --panel-invert: #2a2825;
+  --on-panel-invert: #f5f4f2;
+  --on-panel-invert-muted: #a8a49c;
+  --on-panel-invert-faint: #7d7970;
+  --panel-invert-hairline: rgba(255, 255, 255, 0.16);
+  --panel-invert-hover: rgba(255, 255, 255, 0.06);
+  --panel-invert-edge: rgba(255, 255, 255, 0.16);
+
+  --ink-solid: #f5f4f2;
+  --on-ink-solid: #100f0e;
+
+  --sheet-desk: #2a2825;
+  --sheet-desk-line: #45423d;
+
+  --scrim: rgba(0, 0, 0, 0.62);
+
+  --shadow-sheet: rgba(0, 0, 0, 0.6);
+  --shadow-spot: rgba(0, 0, 0, 0.75);
+  --shadow-card: rgba(0, 0, 0, 0.8);
+  --ring-wash: rgba(255, 43, 43, 0.22);
+
+  color-scheme: dark;
+}
+
+/* Nobody has chosen yet, so follow the machine. The moment the toggle is
+ * pressed a cookie sets data-theme and this stops applying.
+ * KEEP IN STEP WITH THE BLOCK ABOVE. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #100f0e;
+    --surface: #191817;
+    --surface-sunk: #211f1d;
+    --surface-alt: #2a2825;
+    --ink: #f5f4f2;
+    --body: #c8c6c0;
+    --muted: #94918a;
+    --faint: #5d5a54;
+    --line: #302e2b;
+    --line-soft: #262421;
+    --line-strong: #45423d;
+
+    --red: #ff2b2b;
+    --red-dark: #ff5c5c;
+    --red-text: #ff6161;
+    --red-wash: #2e1414;
+
+    --good: #57b98a;
+    --good-wash: #16291f;
+
+    --panel-invert: #2a2825;
+    --on-panel-invert: #f5f4f2;
+    --on-panel-invert-muted: #a8a49c;
+    --on-panel-invert-faint: #7d7970;
+    --panel-invert-hairline: rgba(255, 255, 255, 0.16);
+    --panel-invert-hover: rgba(255, 255, 255, 0.06);
+    --panel-invert-edge: rgba(255, 255, 255, 0.16);
+
+    --ink-solid: #f5f4f2;
+    --on-ink-solid: #100f0e;
+
+    --sheet-desk: #2a2825;
+    --sheet-desk-line: #45423d;
+
+    --scrim: rgba(0, 0, 0, 0.62);
+
+    --shadow-sheet: rgba(0, 0, 0, 0.6);
+    --shadow-spot: rgba(0, 0, 0, 0.75);
+    --shadow-card: rgba(0, 0, 0, 0.8);
+    --ring-wash: rgba(255, 43, 43, 0.22);
+
+    color-scheme: dark;
+  }
+}
+
+/* A printed admin page is paper, whichever way the screen was set. The
+ * invoice PDF is rendered by WeasyPrint from invoice.css and is untouched
+ * either way. */
+@media print {
+  :root,
+  :root[data-theme="night"] {
+    --paper: #ffffff;
+    --surface: #ffffff;
+    --surface-sunk: #f7f6f4;
+    --surface-alt: #f2f0ec;
+    --ink: #0a0a0a;
+    --body: #55554f;
+    --muted: #8a8a82;
+    --faint: #cfccc5;
+    --line: #e5e2dc;
+    --line-soft: #eeebe5;
+    --line-strong: #cfccc5;
+    --red-text: #c11f1f;
+    --red-wash: #ffe9e9;
+    --good: #2e7d54;
+    --good-wash: #e8f3ed;
+    --panel-invert: #0a0a0a;
+    --panel-invert-edge: #0a0a0a;
+    --on-panel-invert: #f5f5f4;
+    --ink-solid: #0a0a0a;
+    --on-ink-solid: #ffffff;
+    --sheet-desk: #e9e7e3;
+    --sheet-desk-line: #dcd9d3;
+    --scrim: rgba(10, 10, 10, 0.5);
+    --shadow-sheet: rgba(0, 0, 0, 0.4);
+    --shadow-spot: rgba(0, 0, 0, 0.55);
+    --shadow-card: rgba(0, 0, 0, 0.6);
+    --ring-wash: rgba(255, 43, 43, 0.16);
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -187,10 +383,57 @@ a { color: var(--red-text); }
   cursor: pointer;
 }
 
+/* Day or night. Beside the ?, same geometry, so the two read as a pair of
+   utilities rather than a new kind of control. */
+.theme-form { margin: 0; flex: none; }
+
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 100px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--body);
+  cursor: pointer;
+}
+
+.theme-toggle:hover { color: var(--ink); border-color: var(--ink); }
+
+/* A crescent, drawn — offered when the page is light. Neither Inter nor
+   Unbounded carries a moon, and a missing glyph falls back silently to a
+   system font at the wrong weight. Same reason .sep draws its own arrow. */
+.theme-glyph {
+  width: 13px;
+  height: 13px;
+  border-radius: 100px;
+  box-shadow: inset -4px -1px 0 0 currentColor;
+}
+
+/* A sun — offered when the page is dark. */
+:root[data-theme="night"] .theme-glyph,
+:root[data-theme="night"] .theme-toggle .theme-glyph {
+  width: 9px;
+  height: 9px;
+  border-radius: 100px;
+  background: currentColor;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px currentColor;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-glyph {
+    width: 9px;
+    height: 9px;
+    background: currentColor;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px currentColor;
+  }
+}
+
 .help-toggle[aria-expanded="true"] {
   background: var(--red);
   border-color: var(--red);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 main {
@@ -334,17 +577,17 @@ main.sheet-page { max-width: 1080px; }
 }
 
 .card.dark {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--inverse-text);
+  background: var(--panel-invert);
+  border: 1px solid var(--panel-invert-edge);
+  color: var(--on-panel-invert);
 }
 
 .card.dark h1,
-.card.dark h2 { color: var(--inverse-text); }
-.card.dark .label { color: var(--inverse-faint); }
-.card.dark .hint { color: var(--inverse-muted); }
-.card.dark .eyebrow { color: var(--inverse-text); }
-.card.dark .eyebrow .dot { background: #fff; }
+.card.dark h2 { color: var(--on-panel-invert); }
+.card.dark .label { color: var(--on-panel-invert-faint); }
+.card.dark .hint { color: var(--on-panel-invert-muted); }
+.card.dark .eyebrow { color: var(--on-panel-invert); }
+.card.dark .eyebrow .dot { background: var(--on-accent); }
 
 .card-row {
   display: flex;
@@ -375,7 +618,7 @@ main.sheet-page { max-width: 1080px; }
 .figure.hero { font-weight: 700; font-size: 30px; }
 .figure.huge { font-weight: 700; font-size: 44px; }
 .figure.mid { font-size: 24px; font-weight: 700; }
-.card.dark .figure { color: var(--inverse-text); }
+.card.dark .figure { color: var(--on-panel-invert); }
 
 .total-row { padding-top: 16px; }
 .total-row .name { font-weight: 600; color: var(--ink); }
@@ -390,7 +633,7 @@ main.sheet-page { max-width: 1080px; }
   border: 0;
   border-radius: 100px;
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
   font: 600 14px var(--sans);
   text-decoration: none;
   cursor: pointer;
@@ -409,19 +652,19 @@ main.sheet-page { max-width: 1080px; }
 .button.ghost:hover { background: var(--surface-sunk); }
 
 .card.dark .button.ghost {
-  color: var(--inverse-text);
-  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--on-panel-invert);
+  border-color: var(--panel-invert-hairline);
 }
 
-.card.dark .button.ghost:hover { background: rgba(255, 255, 255, 0.08); }
+.card.dark .button.ghost:hover { background: var(--panel-invert-hover); }
 
-.button.light { background: #fff; color: var(--ink); }
+.button.light { background: var(--surface); color: var(--ink); }
 .button.light:hover { background: var(--surface-sunk); }
 
 .button.on {
-  background: var(--ink);
-  color: #fff;
-  border: 1px solid var(--ink);
+  background: var(--ink-solid);
+  color: var(--on-ink-solid);
+  border: 1px solid var(--ink-solid);
 }
 
 .button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -455,7 +698,7 @@ main.sheet-page { max-width: 1080px; }
 }
 
 .chip.alert { background: var(--red-wash); color: var(--red-text); }
-.chip.good { background: #e8f3ed; color: var(--good); }
+.chip.good { background: var(--good-wash); color: var(--good); }
 
 .dot-good {
   display: inline-block;
@@ -900,7 +1143,7 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   border-radius: 100px;
   border: 2px solid var(--paper);
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
   font: 700 12px var(--sans);
   line-height: 1;
   cursor: pointer;
@@ -912,8 +1155,8 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   align-items: center;
   gap: 12px;
   padding: 11px 28px;
-  background: var(--ink);
-  color: var(--inverse-text);
+  background: var(--panel-invert);
+  color: var(--on-panel-invert);
   font-size: 12.5px;
 }
 
@@ -926,13 +1169,13 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   letter-spacing: 0.1em;
 }
 
-.tut-banner-count { color: var(--inverse-muted); margin-right: auto; }
+.tut-banner-count { color: var(--on-panel-invert-muted); margin-right: auto; }
 
 .tut-backdrop {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(10, 10, 10, 0.5);
+  background: var(--scrim);
   /* Without backdrop-filter the 50% tint alone is still sufficient. */
   backdrop-filter: blur(4px);
 }
@@ -943,8 +1186,8 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   border-radius: 12px;
   box-shadow:
     0 0 0 3px var(--red),
-    0 0 0 10px rgba(255, 43, 43, 0.16),
-    0 30px 70px -24px rgba(0, 0, 0, 0.55);
+    0 0 0 10px var(--ring-wash),
+    0 30px 70px -24px var(--shadow-spot);
 }
 
 /* An opaque ground behind the lift, so it reads as lit rather than as a
@@ -964,11 +1207,11 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   width: 360px;
   max-width: calc(100vw - 48px);
   overflow: auto;
-  background: var(--ink);
-  color: var(--inverse-text);
+  background: var(--panel-invert);
+  color: var(--on-panel-invert);
   border-radius: var(--radius-lg);
   padding: 24px 26px;
-  box-shadow: 0 30px 70px -24px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 30px 70px -24px var(--shadow-card);
 }
 
 .tut-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -981,7 +1224,7 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   place-items: center;
   border-radius: 100px;
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
   font: 700 12px var(--sans);
 }
 
@@ -990,23 +1233,26 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--inverse-faint);
+  color: var(--on-panel-invert-faint);
   margin-right: auto;
 }
 
 .tut-close {
   background: none;
   border: 0;
-  color: var(--inverse-muted);
+  color: var(--on-panel-invert-muted);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
 }
 
-.tut-title { font-size: 17px; margin: 0 0 8px; color: var(--inverse-text); }
-.tut-body { font-size: 14px; line-height: 1.6; color: var(--inverse-muted); margin: 0 0 18px; }
+.tut-title { font-size: 17px; margin: 0 0 8px; color: var(--on-panel-invert); }
+.tut-body { font-size: 14px; line-height: 1.6; color: var(--on-panel-invert-muted); margin: 0 0 18px; }
 .tut-actions { display: flex; gap: 10px; }
-.tut-card .button.ghost { color: var(--inverse-text); border-color: rgba(255, 255, 255, 0.28); }
+.tut-card .button.ghost {
+  color: var(--on-panel-invert);
+  border-color: var(--panel-invert-hairline);
+}
 
 /* --------------------------------------------------------- bank decision -- */
 
@@ -1065,11 +1311,11 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
   width: 672px;
   height: 960px;
   flex: none;
-  border: 1px solid #dcd9d3;
+  border: 1px solid var(--sheet-desk-line);
   border-radius: var(--radius);
-  background: #e9e7e3;
+  background: var(--sheet-desk);
   overflow: hidden;
-  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 24px 60px -30px var(--shadow-sheet);
 }
 
 .sheet-scale {
@@ -1274,13 +1520,13 @@ progress.track::-webkit-progress-bar { background: var(--line); border-radius: 4
 progress.track::-webkit-progress-value { background: var(--red); border-radius: 4px; }
 progress.track::-moz-progress-bar { background: var(--red); border-radius: 4px; }
 
-/* Buttons sitting on the tutorial banner, which is --ink. */
+/* Buttons sitting on the tutorial banner, which is an inverted panel. */
 .tut-banner .button.ghost {
-  color: var(--inverse-text);
-  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--on-panel-invert);
+  border-color: var(--panel-invert-hairline);
 }
 
-.tut-banner .button.ghost:hover { background: rgba(255, 255, 255, 0.1); }
+.tut-banner .button.ghost:hover { background: var(--panel-invert-hover); }
 
 /* Invoice list on My details. */
 .rows { list-style: none; margin: 0; padding: 0; }
@@ -1321,7 +1567,8 @@ progress.track::-moz-progress-bar { background: var(--red); border-radius: 4px; 
 .back,
 .tile,
 .receipt-drop,
-.help-toggle {
+.help-toggle,
+.theme-toggle {
   transition:
     background-color 120ms ease,
     border-color 120ms ease,

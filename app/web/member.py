@@ -59,7 +59,7 @@ from app.services.invoicing import (
 )
 from app.services.pdf import Letterhead, build_context, render_html, render_pdf
 from app.services.storage import ObjectStore, StorageError, build_store
-from app.web import csrf
+from app.web import csrf, theme
 from app.web.ratelimit import bank_limiter, submit_limiter
 from app.web.templates import templates
 
@@ -495,6 +495,40 @@ async def submit_bank_change(
 
     session.commit()
     return RedirectResponse("/bank", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/theme")
+async def toggle_theme(
+    request: Request,
+    identity: CurrentIdentity,
+    settings: Config,
+    next: Annotated[str, Form()] = "/",
+    csrf_token: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    """Switch between day and night, and go back to the page it was pressed on.
+
+    A cookie rather than a column: a UI preference is not personal data, so
+    this stores nothing about anybody and needs no migration (CLAUDE.md §8).
+
+    It carries CSRF like every other post here. It writes nothing sensitive,
+    but an exception costs more to explain than the check costs to make.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+
+    chosen = theme.next_theme(theme.theme_of(request))
+    response = RedirectResponse(
+        theme.safe_next(next), status_code=status.HTTP_303_SEE_OTHER
+    )
+    response.set_cookie(
+        theme.COOKIE,
+        chosen,
+        max_age=theme.MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=settings.is_production,
+        path="/",
+    )
+    return response
 
 
 @router.get("/me", response_class=HTMLResponse)

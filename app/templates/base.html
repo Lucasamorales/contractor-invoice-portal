@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="en">
+{# The theme is decided on the server and written here, because the CSP
+   forbids the inline script that would normally set it before first paint.
+   Absent means nobody has chosen, and prefers-color-scheme follows the
+   machine instead. See app/web/theme.py. #}
+{% set theme = theme_of(request) %}
+<html lang="en"{% if theme %} data-theme="{{ theme }}"{% endif %}>
 {# The shell. Nav membership is the only thing that differs between a
    contractor and finance, and it is decided by is_finance from the verified
    IAP identity — the finance links are absent from the markup, not disabled
@@ -58,6 +63,24 @@
     </nav>
     <button type="button" class="help-toggle" id="help-toggle"
             aria-expanded="false" aria-label="Show the tutorial">?</button>
+    {# Shows the mode you will get, not the mode you are in. Boosting is off:
+       a boosted post swaps the body, and data-theme lives on <html>. #}
+    <form method="post" action="/theme" hx-boost="false" class="theme-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {# Where to come back to. Omitted on a refusal, because two refusals
+         have to be indistinguishable — otherwise the page body says whether
+         the thing you asked for exists (CLAUDE.md §2.1). Without it the
+         toggle still works and returns to This month. #}
+      {% if not blocked %}
+        <input type="hidden" name="next" value="{{ request.url.path }}">
+      {% endif %}
+      <button type="submit" class="theme-toggle"
+              aria-pressed="{{ 'true' if theme == 'night' else 'false' }}"
+              aria-label="{{ 'Switch to day mode' if theme == 'night' else 'Switch to night mode' }}"
+              title="{{ 'Switch to day mode' if theme == 'night' else 'Switch to night mode' }}">
+        <span class="theme-glyph" aria-hidden="true"></span>
+      </button>
+    </form>
   </header>
 
   {% if window_forced %}

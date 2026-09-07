@@ -156,3 +156,54 @@ def test_every_download_link_opts_out_of_boosting() -> None:
             if 'hx-boost="false"' not in tag:
                 missing.append(f"{template}: {tag[:70]}")
     assert not missing, "these download links would be boosted: " + "; ".join(missing)
+
+
+def test_every_colour_lives_in_a_token_block() -> None:
+    """Night mode is a second set of tokens, so a rule that hardcodes a colour
+    is a rule that only works in one of them.
+
+    The failure is silent and easy to reintroduce — a literal looks perfectly
+    fine until somebody switches theme — so it is asserted rather than trusted
+    to review.
+    """
+    import re
+    from pathlib import Path
+
+    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    # Everything after the last token block is ordinary rules.
+    end = css.rindex("@media print {")
+    end = css.index("}\n}", end) + 3
+    literals = re.findall(r"#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)", css[end:])
+    assert not literals, f"colours outside the token blocks: {sorted(set(literals))}"
+
+
+def test_the_two_night_blocks_agree() -> None:
+    """The night values appear twice — once for somebody who chose, once for
+    somebody whose machine is dark and who has not. There is no build step, so
+    nothing but this stops them drifting apart."""
+    import re
+    from pathlib import Path
+
+    css = Path("app/static/app.css").read_text(encoding="utf-8")
+
+    def tokens(block: str) -> dict[str, str]:
+        return {
+            name: value.strip()
+            for name, value in re.findall(r"(--[a-z0-9-]+):\s*([^;]+);", block)
+        }
+
+    chosen = re.search(r':root\[data-theme="night"\] \{(.*?)\n\}', css, re.S)
+    system = re.search(r":root:not\(\[data-theme\]\) \{(.*?)\n  \}", css, re.S)
+    assert chosen and system
+    picked, followed = tokens(chosen.group(1)), tokens(system.group(1))
+    # The system block may omit tokens it does not need to restate, but any it
+    # does set must agree.
+    disagree = {
+        name: (value, picked.get(name))
+        for name, value in followed.items()
+        if picked.get(name) != value
+    }
+    assert not disagree, f"night blocks drifted: {disagree}"
+    assert set(followed) == set(picked), (
+        f"only in one block: {set(followed) ^ set(picked)}"
+    )
