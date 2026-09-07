@@ -13,8 +13,7 @@
     </span>
   </div>
   <p class="hint mt-s">
-    Each kudo is worth {{ kudos_rate_pence | gbp }}, paid on the quarter-end
-    invoice. Prizes are on top.
+    {{ kudos_rate_pence | gbp }} each, paid on the quarter-end invoice.
   </p>
 </div>
 
@@ -32,7 +31,6 @@
       to nobody
     </h2>
     <p class="hint mt-s">
-      Their kudos cannot be paid until somebody says who they are.
       <a href="/admin/queue">Map them on the queue</a>.
     </p>
   </div>
@@ -41,10 +39,6 @@
 {% if view.has_tie %}
   <div class="card attention">
     <h2>A tie needs settling</h2>
-    <p class="hint mt-s">
-      Two or more people are level on the podium. The tiebreakers are
-      judgements, so pick the place yourself and say why.
-    </p>
   </div>
 {% endif %}
 
@@ -121,10 +115,6 @@
         </tbody>
       </table>
     </div>
-    <p class="hint mt-s">
-      Leadership and anyone deactivated still receive kudos, but are not in
-      these standings and cannot be paid a prize.
-    </p>
   {% else %}
     <p class="hint">Nobody eligible has a kudo this quarter.</p>
   {% endif %}

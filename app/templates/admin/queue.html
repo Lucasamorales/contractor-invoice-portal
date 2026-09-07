@@ -5,7 +5,6 @@
 <a class="back" href="/admin">&larr; Overview</a>
 <div class="page-head">
   <h1>Queue</h1>
-  <p class="lead">Everything waiting on somebody, and what makes it go away.</p>
 </div>
 
 {% if errors %}
@@ -14,13 +13,11 @@
   </div>
 {% endif %}
 
-{# Every item says who it is waiting for and what removes it from the list.
-   Without that a panel is only a complaint, and a list nobody can empty is a
-   list people stop reading. #}
+{# One line an item, and no explanation of why any of it matters: that is
+   what the tutorial is for. A queue is read at a glance or not at all. #}
 <div class="card {{ 'alarm' if not attention.is_clear else '' }}"
      data-tut="admin.queue.unconfirmed">
   <p class="label">Needs fixing &mdash; {{ attention.total }}</p>
-  <p class="hint mt-s">Nothing else in the app reports these.</p>
 
   {% if attention.is_clear %}
     <p class="hint mt-m">Nothing is stuck.</p>
@@ -31,10 +28,7 @@
           <strong class="on-ink">Invoice {{ invoice.number }} never finished sending</strong>
           <p class="hint mt-xs flush-x">
             Took its number on {{ invoice.created_at.strftime("%d %b at %H:%M") }}.
-            Period counts it as received; nothing reached accounts. They see it
-            as &ldquo;Not quite sent&rdquo;.
           </p>
-          <p class="hint mt-xs flush-x on-red">Clears when they send it again.</p>
         </li>
       {% endfor %}
 
@@ -44,15 +38,13 @@
           <p class="hint mt-xs flush-x">
             {{ row.kind }}, queued {{ row.created_at.strftime("%d %b") }},
             {{ row.attempts }} attempt{{ '' if row.attempts == 1 else 's' }}.
-            Retrying will not help until the cause is fixed &mdash; usually a
-            wrong address or an attachment too large.
+            {% if row.last_error %}{{ row.last_error }}{% endif %}
           </p>
           <form hx-boost="false" method="post"
                 action="/admin/outbox/{{ row.id }}/retry" class="row-form mt-s">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button class="button small" type="submit">Try again</button>
           </form>
-          <p class="hint mt-xs flush-x on-red">Clears when it sends. Nothing else takes it off this list.</p>
         </li>
       {% endfor %}
 
@@ -62,10 +54,8 @@
           <p class="hint mt-xs flush-x">
             {{ row.kind }}, queued {{ row.created_at.strftime("%d %b at %H:%M") }},
             {{ row.attempts }} attempt{{ '' if row.attempts == 1 else 's' }} so far.
-            Still trying, and it will keep trying.
-            {% if row.last_error %}Last problem: {{ row.last_error }}{% endif %}
+            {% if row.last_error %}{{ row.last_error }}{% endif %}
           </p>
-          <p class="hint mt-xs flush-x on-red">Clears when it sends.</p>
         </li>
       {% endfor %}
 
@@ -75,12 +65,6 @@
             <a href="/admin/people/{{ bank.person_id }}">{{ bank.account_name or "Someone" }}</a>
             has never confirmed their bank details
           </strong>
-          <p class="hint mt-xs flush-x">
-            They cannot invoice until they do, and may not realise it. Only
-            they can confirm it &mdash; you can look, but never confirm for
-            them.
-          </p>
-          <p class="hint mt-xs flush-x on-red">Clears when they confirm on their own screen.</p>
         </li>
       {% endfor %}
 
@@ -90,24 +74,14 @@
             <a href="/admin/people/{{ person.id }}">{{ person.display_name }}</a>
             cannot be told their kudos
           </strong>
-          <p class="hint mt-xs flush-x">
-            Their screen shows no figure rather than a wrong one, and says you
-            have been told. Kudos are due this quarter, so this holds up their
-            invoice.
-          </p>
-          <p class="hint mt-xs flush-x on-red">Clears on the next kudos sync.</p>
         </li>
       {% endfor %}
 
-      {# The one item with its control beside it, which is why it is the only
-         one that reliably gets dealt with. #}
       {% for name, count in attention.unmapped_kudos %}
         <li>
           <strong class="on-ink">{{ name }}</strong> is not anybody here
           <p class="hint mt-xs flush-x">
-            {{ count }} kudo{{ '' if count == 1 else 's' }} in the sheet with
-            nowhere to go. Nothing is guessed: a near miss pays the wrong
-            person. Pick them, or pick nobody for a leaver.
+            {{ count }} kudo{{ '' if count == 1 else 's' }} with nowhere to go.
           </p>
           <form hx-boost="false" method="post" action="/admin/kudos/map"
                 class="row-form mt-s">
@@ -129,10 +103,6 @@
 
 <div class="card" data-tut="admin.queue.fee">
   <p class="label">Waiting for you &mdash; {{ queue.awaiting_fee | length }}</p>
-  <p class="hint mt-s">
-    No fee, so they cannot invoice at all. They can see it is with you.
-    Clears when you set one on their page.
-  </p>
   {% if queue.awaiting_fee %}
     <ul class="history mt-m">
       {% for person in queue.awaiting_fee %}
@@ -149,10 +119,6 @@
 
 <div class="card" data-tut="admin.queue.pending">
   <p class="label">Waiting for them &mdash; {{ queue.pending_bank | length }}</p>
-  <p class="hint mt-s">
-    Bank changes you proposed. Only the person themselves can make one
-    payable. Clears when they accept it.
-  </p>
   {% if queue.pending_bank %}
     <ul class="history mt-m">
       {% for bank in queue.pending_bank %}

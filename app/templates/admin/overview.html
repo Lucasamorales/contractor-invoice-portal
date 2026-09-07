@@ -34,30 +34,19 @@
   <div><span class="figure on-red">{{ unfinished | length }}</span><span class="hint">unfinished</span></div>
   <div><span class="figure">{{ flagged | length }}</span><span class="hint">flagged, not blocked</span></div>
 </div>
-<p class="hint caption">
-  Unfinished and flagged are already counted inside received.
-</p>
 
 {# The list itself lives on the Queue, which is the only screen that can act
    on it. Two copies with different wording taught nobody where to go. #}
 {% if not attention.is_clear %}
   <a class="card alarm stuck-link" href="/admin/queue" data-tut="admin.overview.stuck">
     <span class="label">Needs fixing &mdash; {{ attention.total }}</span>
-    <span class="hint mt-s as-block">
-      {{ 'One thing is' if attention.total == 1 else attention.total ~ ' things are' }}
-      stuck and nothing else reports
-      {{ 'it' if attention.total == 1 else 'them' }}. Fix
-      {{ 'it' if attention.total == 1 else 'them' }} on the Queue.
-    </span>
+    <span class="hint mt-s as-block">On the Queue.</span>
   </a>
 {% endif %}
 
 <div class="row-grid">
   <div class="card" data-tut="admin.overview.missing">
     <p class="label">Not yet in</p>
-    <p class="hint mt-s">
-      The chasing list &mdash; the one that used to be a phone call.
-    </p>
     {% if view.missing %}
       <ul class="history mt-m">
         {% for row in view.missing %}
@@ -75,10 +64,6 @@
 
   <div class="card" data-tut="admin.overview.flags">
     <p class="label">Worth a look</p>
-    <p class="hint mt-s">
-      Nothing to do here. Flags never block anything, and they clear
-      themselves when the month rolls over.
-    </p>
     {% if view.flagged %}
       <ul class="history mt-m">
         {% for row in view.flagged %}

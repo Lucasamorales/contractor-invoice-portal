@@ -39,7 +39,6 @@
 
 <section>
   <h2>Flagged by the import</h2>
-  <p class="hint">These came out of the spreadsheet and need checking.</p>
   {% set flagged = rows | rejectattr("notes", "equalto", ()) | list %}
   {% if flagged %}
     {% for row in flagged %}

@@ -117,9 +117,7 @@
           &rarr; {% endif %}{{ pending_row.account_number or pending_row.iban or "not given" }}
       </p>
       <p class="hint mt-s">
-        Proposed by you, {{ pending_row.created_at.strftime("%d %b %Y") }}. Nothing
-        has changed. It is on your queue until they answer, and you cannot
-        approve your own proposal.
+        Proposed by you, {{ pending_row.created_at.strftime("%d %b %Y") }}.
       </p>
     </div>
   {% endif %}
@@ -168,17 +166,12 @@
       {% endif %}
       {{ panel_link("flag", "Flag back") }}
     </div>
-    <p class="hint mt-s">Every reveal is recorded in the audit log.</p>
 
     {% if last_flag %}
       <div class="result-note mt-m">
         <p class="panel-head">Flagged {{ last_flag.at.strftime("%d %b %Y") }}</p>
         <p class="hint">
           &ldquo;{{ last_flag.after.get('reason', '') }}&rdquo;
-        </p>
-        <p class="hint mt-s">
-          Emailed to {{ person.display_name.split(' ')[0] }} asking them to check
-          the row. Still active, still payable.
         </p>
       </div>
     {% endif %}
@@ -240,10 +233,7 @@
                          placeholder="00000000">
                 </label>
               </div>
-              <p class="hint mt-s">
-                Typed twice on purpose. Double entry catches transpositions no
-                checksum can.
-              </p>
+              <p class="hint mt-s">Typed twice.</p>
             </div>
             <label class="field">
               <span class="label">IBAN <em>(optional)</em></span>
@@ -260,10 +250,6 @@
 
         {% for e in errors %}<p class="panel-error">{{ e }}</p>{% endfor %}
 
-        <p class="hint mt-m">
-          It lands as pending and changes nothing until they agree. You cannot
-          approve your own proposal.
-        </p>
         <div class="pill-row mt-m">
           <button class="button" type="submit">Propose</button>
           <a class="button ghost" href="{{ here }}">Cancel</a>
@@ -283,10 +269,6 @@
           <input type="text" name="reason" required autofocus>
         </label>
         {% for e in errors %}<p class="panel-error">{{ e }}</p>{% endfor %}
-        <p class="hint mt-s">
-          A flag is a request, not an edit. It emails them what to look at.
-          Still active, still payable &mdash; a flag changes nothing on its own.
-        </p>
         <div class="pill-row mt-m">
           <button class="button" type="submit">Send the flag</button>
           <a class="button ghost" href="{{ here }}">Cancel</a>
@@ -317,9 +299,7 @@
       </details>
     {% endfor %}
   {% else %}
-    <p class="hint mt-l">
-      No earlier accounts. A change closes this row rather than editing it.
-    </p>
+    <p class="hint mt-l">No earlier accounts.</p>
   {% endif %}
 </section>
 
@@ -356,9 +336,7 @@
       </table>
     </div>
   {% else %}
-    <p class="hint mt-m">
-      No fee has ever been set. They cannot invoice until one is.
-    </p>
+    <p class="hint mt-m">No fee set.</p>
   {% endif %}
 
   {# The one form that earns being always on: the page's most common write,
@@ -387,10 +365,6 @@
       {% if panel == 'fee' %}
         {% for e in errors %}<p class="panel-error">{{ e }}</p>{% endfor %}
       {% endif %}
-      <p class="hint mt-m">
-        Effective-dated: this closes the current row the day before, rather
-        than overwriting it. A change with no reason is refused.
-      </p>
     </form>
   </div>
 </section>
@@ -449,9 +423,6 @@
         </tbody>
       </table>
     </div>
-    <p class="hint mt-s">
-      An invoice is immutable once issued. Corrections are a void and a reissue.
-    </p>
   {% else %}
     <p class="hint mt-m">None yet.</p>
   {% endif %}
@@ -467,11 +438,7 @@
           <input type="text" name="reason" required autofocus
                  aria-label="Why invoice {{ void_invoice.number }} is void">
         </label>
-        <p class="hint mt-s">
-          The reason is the confirmation &mdash; it is required, so nothing is
-          voided by one misplaced click. They can invoice again;
-          {{ void_invoice.number }} is not reused.
-        </p>
+        <p class="hint mt-s">{{ void_invoice.number }} is not reused.</p>
         <div class="pill-row mt-m">
           <button class="button" type="submit">Void {{ void_invoice.number }}</button>
           <a class="button ghost" href="{{ here }}">Cancel</a>
@@ -531,9 +498,6 @@
           <span class="label">Reason &mdash; required</span>
           <input type="text" name="reason" required autofocus>
         </label>
-        <p class="hint mt-s">
-          They stop being chased and cannot invoice. Nothing is deleted.
-        </p>
         <div class="pill-row mt-m">
           <button class="button" type="submit">Deactivate</button>
           <a class="button ghost" href="{{ here }}">Cancel</a>

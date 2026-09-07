@@ -183,8 +183,8 @@ ADMIN_OVERVIEW = (
         "admin.overview.flags",
         "Flags, not blocks",
         "Late, fee changed mid-period, bank changed inside 72 hours, an expense "
-        "over the threshold. None of them stop anything. They tell you where to "
-        "look.",
+        "over the threshold. None of them stop anything, there is nothing to do "
+        "about them, and they clear themselves when the month rolls over.",
     ),
     Step(
         "admin.overview.waiting",
@@ -208,23 +208,26 @@ ADMIN_PERSON = (
     Step(
         "admin.person.bank",
         "Read, propose, flag — never confirm",
-        "You can reveal the account because you pay it and it is printed on "
-        "every PDF you hold. A change you propose sits pending until its owner "
-        "agrees. There is no button here that makes a row payable.",
+        "You can reveal the account because you pay it, and every reveal is "
+        "recorded in the audit log. A change you propose sits pending until "
+        "its owner agrees, and the account number is typed twice because "
+        "double entry catches transpositions no checksum can. There is no "
+        "button here that makes a row payable.",
     ),
     Step(
         "admin.person.invoices",
         "Fixing a wrong invoice",
-        "Figures are never edited. Void the invoice and let them send a new "
-        "one — the void keeps its number and its reason, so the gap in their "
-        "sequence explains itself later.",
+        "An invoice is immutable once issued, so a correction is a void and a "
+        "reissue. The reason you type is the confirmation, and it is required. "
+        "The number is never reused: the gap explains itself later.",
     ),
     Step(
         "admin.person.fee",
         "The note is required",
-        "Fees are effective-dated: setting a new one closes the old row rather "
-        "than overwriting it. A change with no reason is refused, because in "
-        "six months this note is the only thing that explains the number.",
+        "Effective-dated: a new fee closes the current row the day before, "
+        "rather than overwriting it. A change with no reason is refused, "
+        "because in six months that note is the only thing that explains the "
+        "number.",
     ),
 )
 
@@ -232,8 +235,8 @@ ADMIN_PERIOD = (
     Step(
         "admin.period.table",
         "Everything, with its flags",
-        "The full month. Every flag is visible and none of them block a "
-        "payment. Use the arrows for a previous month.",
+        "The full month. No flag blocks a payment. Late means after the 28th "
+        "— still valid, still paid, still next in that sequence.",
     ),
 )
 
@@ -241,20 +244,23 @@ ADMIN_QUEUE = (
     Step(
         "admin.queue.fee",
         "Blocked at the door",
-        "Until a fee is set these people cannot invoice at all, and they can "
-        "see that it is with you.",
+        "No fee, so they cannot invoice at all. They can see it is with you. "
+        "Set one on their page and they leave this list.",
     ),
     Step(
         "admin.queue.pending",
         "Proposals you cannot complete",
-        "Bank changes you suggested, waiting on their owner. They stay here "
-        "until the person answers — you cannot approve your own proposal.",
+        "Bank changes you proposed, waiting on their owner. Only they can make "
+        "one payable, so these stay until the person answers. You cannot "
+        "approve your own proposal.",
     ),
     Step(
         "admin.queue.unconfirmed",
         "Everything stuck, in one list",
-        "Each item says who it is waiting for and what takes it off the list. "
-        "An empty panel means nothing is stuck.",
+        "Nothing else in the app reports these. A stuck invoice clears when "
+        "they send it again; an email when it sends; a bank row when its owner "
+        "confirms it, which no admin can do for them; a kudos name when "
+        "somebody says who it is. An empty panel means nothing is stuck.",
     ),
 )
 

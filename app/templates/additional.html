@@ -8,8 +8,7 @@
 <div class="page-head">
   <h1>Anything to add?</h1>
   <p class="lead">
-    Expenses, or anything else for {{ period.month_name }}. Leaving it empty is
-    fine and means zero.
+    Expenses for {{ period.month_name }}. Leaving it empty is fine.
   </p>
 </div>
 
@@ -69,10 +68,7 @@
       <button class="button ghost small" type="button" id="add-row"
               data-max="{{ max_items }}">Add another</button>
     </p>
-    <p class="hint mt-m">
-      A photo is fine. Location data is removed and an iPhone HEIC is converted,
-      so accounts can always open it.
-    </p>
+    <p class="hint mt-m">A photo is fine.</p>
   </div>
 
   {% if state.kudos_count is none and state.kudos_due_this_period
