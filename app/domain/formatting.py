@@ -60,3 +60,26 @@ def month_heading(period: Period) -> str:
     lines above, so it is just the month now.
     """
     return period.label
+
+
+def name_from_email(email: str) -> str:
+    """A first guess at somebody's name, from the address IAP verified.
+
+    A person who was never in the seed spreadsheet is created on their first
+    login, and the only thing known about them at that moment is their
+    address. Taking the local part verbatim greeted them as "leo" and put
+    "leo" in the payee column of the payment run, so this at least
+    capitalises it and splits the usual separators:
+    ``remy.castellanos@`` becomes ``Remy Castellanos``.
+
+    A guess, not a fact — it is a display name, never the legal name that
+    prints on the invoice, and finance can correct it.
+    """
+    # Everything from a "+" is a subaddress, not part of who they are.
+    local = email.partition("@")[0].partition("+")[0]
+    words = [word for word in re.split(r"[._\-]+", local) if word]
+    if not words:
+        return local
+    # Only lift a word that is entirely lower case. "McDonald" and "OConnor"
+    # are somebody's own capitalisation and title() would ruin them.
+    return " ".join(word.capitalize() if word.islower() else word for word in words)

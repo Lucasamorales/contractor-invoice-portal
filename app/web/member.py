@@ -42,6 +42,7 @@ from app.config import Settings, get_settings
 from app.db import repo
 from app.db.models import BankState, Counter, Invoice, Person
 from app.db.session import get_session, get_sessionmaker
+from app.domain.formatting import name_from_email
 from app.domain.iban import mask
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period, can_submit, closed_message
@@ -110,8 +111,14 @@ def current_person(identity: CurrentIdentity, session: DbSession) -> Person:
     person = repo.get_or_create_person(
         session,
         email=identity.email,
-        display_name=identity.email.partition("@")[0],
+        display_name=name_from_email(identity.email),
     )
+    # Rows created before that derivation existed hold the bare local part of
+    # the address, so the app greeted them as "leo" and the payment run
+    # listed "leo" as the payee. Nothing else ever writes display_name, so a
+    # row still holding it verbatim was never anybody's decision to keep.
+    if person.display_name == identity.email.partition("@")[0]:
+        person.display_name = name_from_email(identity.email)
     session.commit()
     return person
 

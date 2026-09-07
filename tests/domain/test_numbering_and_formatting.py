@@ -12,6 +12,7 @@ from app.domain.formatting import (
     format_sort_code,
     invoice_filename,
     month_heading,
+    name_from_email,
 )
 from app.domain.numbering import (
     NumberingError,
@@ -105,3 +106,22 @@ def test_filename_strips_path_separators() -> None:
 def test_month_heading_is_just_the_month() -> None:
     # "Your Company" was redundant three lines under "Your ref: Your Company".
     assert month_heading(Period.parse("2026-09")) == "September 2026"
+
+
+def test_a_name_is_guessed_from_the_address_for_a_new_person() -> None:
+    """Somebody who was never in the spreadsheet is created on first login,
+    and their address is the only thing known about them at that moment."""
+    assert name_from_email("leo@example.com") == "Leo"
+    assert name_from_email("remy.castellanos@x.com") == "Remy Castellanos"
+    assert name_from_email("mary_jamie@x.com") == "Mary Jamie"
+
+
+def test_a_guessed_name_leaves_somebody_elses_capitals_alone() -> None:
+    """title() would turn McDonald into Mcdonald. Only lift a word that is
+    entirely lower case; anything else was already somebody's choice."""
+    assert name_from_email("McDonald@x.com") == "McDonald"
+    assert name_from_email("aMBrose.OConnor@x.com") == "aMBrose OConnor"
+
+
+def test_a_subaddress_is_not_part_of_a_name() -> None:
+    assert name_from_email("julian.robin+invoices@x.com") == "Julian Robin"
