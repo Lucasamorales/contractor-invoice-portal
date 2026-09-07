@@ -1,13 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Kudos {{ quarter.key }}{% endblock %}
+{% block width %}wide{% endblock %}
 {% block content %}
 <a class="back" href="/admin">&larr; Overview</a>
-<h1>Kudos — {{ quarter.key }}</h1>
-<p class="lead">
-  The quarter's leaderboard. Each kudo is worth {{ kudos_rate_pence | gbp }} and
-  is paid on the quarter-end invoice; the prizes below are separate money on
-  top of that.
-</p>
+
+<div class="page-head">
+  <div class="head-row">
+    <h1>Kudos &mdash; {{ quarter.key }}</h1>
+    <span class="quarter-nav">
+      <a href="/admin/kudos?quarter={{ quarter.previous.key }}">&larr; {{ quarter.previous.key }}</a>
+      <a href="/admin/kudos?quarter={{ quarter.next.key }}">{{ quarter.next.key }} &rarr;</a>
+    </span>
+  </div>
+  <p class="hint mt-s">
+    Each kudo is worth {{ kudos_rate_pence | gbp }}, paid on the quarter-end
+    invoice. Prizes are on top.
+  </p>
+</div>
 
 {% if errors %}
   <div class="card attention">
@@ -17,8 +26,12 @@
 
 {% if unmapped %}
   <div class="card attention">
-    <h2>{{ unmapped | length }} name{{ '' if unmapped | length == 1 else 's' }} in the sheet belong to nobody</h2>
-    <p class="hint">
+    <h2>
+      {{ unmapped | length }}
+      {{ 'name in the sheet belongs' if unmapped | length == 1 else 'names in the sheet belong' }}
+      to nobody
+    </h2>
+    <p class="hint mt-s">
       Their kudos cannot be paid until somebody says who they are.
       <a href="/admin/queue">Map them on the queue</a>.
     </p>
@@ -28,92 +41,90 @@
 {% if view.has_tie %}
   <div class="card attention">
     <h2>A tie needs settling</h2>
-    <p>
-      Two or more people are level on the podium. The policy's tiebreakers are
-      year-to-date total, consistency, kudos from other teams, and longevity —
-      all judgements, so the portal will not pick for you.
+    <p class="hint mt-s">
+      Two or more people are level on the podium. The tiebreakers are
+      judgements, so pick the place yourself and say why.
     </p>
   </div>
 {% endif %}
 
 <section>
-  <h2>Standings</h2>
+  <div class="table-head">
+    <h2>Standings</h2>
+    <span class="hint">
+      {{ view.unbilled_kudos }} kudos not yet invoiced
+      &middot; <span class="figure sm">{{ view.awarded_pence | gbp }}</span> in prizes awarded
+    </span>
+  </div>
+
   {% if view.rows %}
-    <table class="kv">
-      <tr>
-        <th>Place</th><th>Name</th><th>Kudos</th><th>Prize</th><th></th>
-      </tr>
-      {% for row in view.rows %}
-        <tr>
-          <td>
-            {% if row.place %}
-              {{ row.place }}{% if row.tied_with > 1 %}
-                <span class="chip">tied {{ row.tied_with }} ways</span>
-              {% endif %}
-            {% else %}&mdash;{% endif %}
-          </td>
-          <td>
-            <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
-          </td>
-          <td>{{ row.kudos_count }}</td>
-          <td>
-            {% if row.awarded %}
-              {{ row.awarded.amount_pence | gbp }}
-              <span class="chip">awarded</span>
-              {% if row.awarded.claimed_by_invoice_id %}
-                <span class="chip">invoiced</span>
-              {% else %}
-                <span class="hint">on their next invoice</span>
-              {% endif %}
-            {% elif row.place %}
-              {{ row.cash_pence | gbp }}
-            {% endif %}
-          </td>
-          <td>
-            {% if row.place and not row.awarded %}
-              <form hx-boost="false" method="post" action="/admin/kudos/{{ quarter.key }}/award">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="person_id" value="{{ row.person.id }}">
-                <input type="hidden" name="kudos_count" value="{{ row.kudos_count }}">
-                <select name="place">
-                  {% for place in [1, 2, 3] %}
-                    <option value="{{ place }}"{% if place == row.place %} selected{% endif %}>
-                      {{ place }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <input type="text" name="note" placeholder="Why (tiebreaker, etc.)">
-                <button class="button" type="submit">Award</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </table>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th class="tight num">Place</th>
+            <th>Name</th>
+            <th class="tight num">Kudos</th>
+            <th class="tight num">Prize</th>
+            <th class="award-col">{{ '' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in view.rows %}
+            <tr>
+              <td class="tight num">
+                {% if row.place %}{{ row.place }}{% else %}&mdash;{% endif %}
+              </td>
+              <td class="name">
+                <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
+                {% if row.tied_with > 1 %}
+                  <span class="chip alert">tied {{ row.tied_with }} ways</span>
+                {% endif %}
+              </td>
+              <td class="tight num">{{ row.kudos_count }}</td>
+              <td class="tight num">
+                {% if row.awarded %}
+                  {{ row.awarded.amount_pence | gbp }}
+                {% elif row.place %}
+                  {{ row.cash_pence | gbp }}
+                {% else %}
+                  <span class="on-faint">&mdash;</span>
+                {% endif %}
+              </td>
+              <td class="award-col">
+                {% if row.awarded %}
+                  {% if row.awarded.claimed_by_invoice_id %}
+                    <span class="chip good">invoiced</span>
+                  {% else %}
+                    <span class="chip">on their next invoice</span>
+                  {% endif %}
+                {% elif row.place %}
+                  <form class="row-form" hx-boost="false" method="post"
+                        action="/admin/kudos/{{ quarter.key }}/award">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="person_id" value="{{ row.person.id }}">
+                    <input type="hidden" name="kudos_count" value="{{ row.kudos_count }}">
+                    <select name="place" aria-label="Place for {{ row.person.display_name }}">
+                      {% for place in [1, 2, 3] %}
+                        <option value="{{ place }}"{% if place == row.place %} selected{% endif %}>{{ place }}</option>
+                      {% endfor %}
+                    </select>
+                    <input type="text" name="note" placeholder="Why">
+                    <button class="button small" type="submit">Award</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="hint mt-s">
+      Leadership and anyone deactivated still receive kudos, but are not in
+      these standings and cannot be paid a prize.
+    </p>
   {% else %}
     <p class="hint">Nobody eligible has a kudo this quarter.</p>
   {% endif %}
 </section>
-
-<section>
-  <h2>This quarter</h2>
-  <table class="kv">
-    <tr>
-      <th>Kudos not yet invoiced</th>
-      <td>{{ view.unbilled_kudos }}</td>
-    </tr>
-    <tr>
-      <th>Prizes awarded</th>
-      <td>{{ view.awarded_pence | gbp }}</td>
-    </tr>
-  </table>
-  <p class="hint">
-    Leadership and anyone deactivated are not in these standings: neither can be
-    paid a prize. They still receive kudos and still appear in the sheet.
-  </p>
-</section>
-
-<p class="hint">
-  Another quarter: add <code>?quarter=2026-Q2</code> to the address.
-</p>
 {% endblock %}

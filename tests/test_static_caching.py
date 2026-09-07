@@ -112,3 +112,25 @@ def test_boosting_does_not_override_the_swap() -> None:
     assert 'hx-boost="true"' in body
     for attribute in ("hx-select", "hx-target", "hx-swap"):
         assert attribute not in body, f"{attribute} on <body> breaks boosted navigation"
+
+
+def test_the_footer_is_the_same_width_as_the_page() -> None:
+    """base.html gives main and the footer the same width class.
+
+    They used to be set separately — main defaults to 860px, the footer was
+    pinned at 1000px — so on most screens the footer sat 70px to the left of
+    every heading above it. Both now read one block, and every width class
+    main can take needs a matching rule in the stylesheet or the footer goes
+    back to hanging off the edge.
+    """
+    import re
+    from pathlib import Path
+
+    base = Path("app/templates/base.html").read_text(encoding="utf-8")
+    assert '<main class="{{ page_width | trim }}">' in base
+    assert '<footer class="foot {{ page_width | trim }}">' in base
+
+    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    widths = set(re.findall(r"^main\.([a-z-]+) \{", css, re.M))
+    feet = set(re.findall(r"^\.foot\.([a-z-]+) \{", css, re.M))
+    assert widths <= feet, f"no .foot rule for: {sorted(widths - feet)}"

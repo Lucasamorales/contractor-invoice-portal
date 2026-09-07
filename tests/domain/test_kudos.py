@@ -283,3 +283,12 @@ def test_the_podium_stops_at_three_because_only_three_are_paid() -> None:
 
 def test_an_empty_quarter_has_no_podium() -> None:
     assert podium(()) == ()
+
+
+def test_a_quarter_knows_its_neighbours_across_the_year_boundary() -> None:
+    """Stepping between quarters, so the screen need not tell anyone to edit
+    a URL to see last quarter."""
+    assert Quarter(2026, 2).previous == Quarter(2026, 1)
+    assert Quarter(2026, 2).next == Quarter(2026, 3)
+    assert Quarter(2026, 1).previous == Quarter(2025, 4)
+    assert Quarter(2026, 4).next == Quarter(2027, 1)

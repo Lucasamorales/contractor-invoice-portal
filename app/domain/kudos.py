@@ -78,6 +78,20 @@ class Quarter:
     def contains(self, day: date) -> bool:
         return day.year == self.year and day.month in self.months
 
+    @property
+    def previous(self) -> Quarter:
+        """The quarter before this one, crossing the year boundary."""
+        if self.number == 1:
+            return Quarter(self.year - 1, 4)
+        return Quarter(self.year, self.number - 1)
+
+    @property
+    def next(self) -> Quarter:
+        """The quarter after this one, crossing the year boundary."""
+        if self.number == 4:
+            return Quarter(self.year + 1, 1)
+        return Quarter(self.year, self.number + 1)
+
     def __str__(self) -> str:
         return self.key
 

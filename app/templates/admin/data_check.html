@@ -1,40 +1,45 @@
 {% extends "base.html" %}
 {% block title %}Data check{% endblock %}
+{% block width %}wide{% endblock %}
 {% block content %}
 <a class="back" href="/admin">&larr; Overview</a>
 {% set ready = rows | selectattr("ready") | list %}
 <h1>Data check</h1>
 <p class="lead">
   <strong>{{ ready | length }}</strong> of <strong>{{ rows | length }}</strong>
-  people are ready to invoice. This is the screen that says whether the first
-  real cycle will work.
+  people are ready to invoice.
 </p>
 
-<table class="kv">
-  <tr>
-    <th>Name</th><th>Fee set</th><th>Profile</th><th>Bank confirmed</th>
-    <th>Number seeded</th>
-  </tr>
-  {% for row in rows %}
-    <tr>
-      <td>
-        <a href="/admin/people/{{ row.person.id }}">
-          {{ row.person.display_name }}
-        </a>
-      </td>
-      <td>{{ "yes" if row.fee_set else "no" }}</td>
-      <td>{{ "yes" if row.profile_complete else "no" }}</td>
-      <td>{{ "yes" if row.bank_confirmed else "no" }}</td>
-      <td>{{ "yes" if row.counter_seeded else "no" }}</td>
-    </tr>
-  {% endfor %}
-</table>
+<div class="table">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th class="tight">Fee set</th>
+        <th class="tight">Profile</th>
+        <th class="tight">Bank confirmed</th>
+        <th class="tight">Number seeded</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td class="name">
+            <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
+          </td>
+          <td class="tight">{{ "yes" if row.fee_set else "no" }}</td>
+          <td class="tight">{{ "yes" if row.profile_complete else "no" }}</td>
+          <td class="tight">{{ "yes" if row.bank_confirmed else "no" }}</td>
+          <td class="tight">{{ "yes" if row.counter_seeded else "no" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <section>
   <h2>Flagged by the import</h2>
-  <p class="hint">
-    These came out of the spreadsheet and need a human to confirm or chase.
-  </p>
+  <p class="hint">These came out of the spreadsheet and need checking.</p>
   {% set flagged = rows | rejectattr("notes", "equalto", ()) | list %}
   {% if flagged %}
     {% for row in flagged %}

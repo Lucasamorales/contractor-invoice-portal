@@ -216,13 +216,21 @@ main.narrow { max-width: 620px; }
 main.wide { max-width: 1000px; }
 main.sheet-page { max-width: 1080px; }
 
+/* The footer takes the same width class as main (base.html passes it to
+   both). It used to be pinned at 1000px while main defaults to 860, so on
+   most screens it sat 70px to the left of every heading on the page. */
 .foot {
-  max-width: 1000px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 0 28px 60px;
   font-size: 12.5px;
   color: var(--muted);
 }
+
+.foot.reading { max-width: 760px; }
+.foot.narrow { max-width: 620px; }
+.foot.wide { max-width: 1000px; }
+.foot.sheet-page { max-width: 1080px; }
 
 /* ------------------------------------------------------------ typography -- */
 
@@ -266,6 +274,24 @@ main.sheet-page { max-width: 1080px; }
 .missing { color: var(--red-text); font-weight: 600; }
 
 .page-head { margin-bottom: 30px; }
+
+/* A page title with its one action beside it. An action floating on its own
+   line above the content reads as unrelated to it. */
+.head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.head-row h1 { margin: 0; }
+.head-row form { margin: 0; }
+
+/* Stepping between quarters, instead of telling somebody to edit the URL. */
+.quarter-nav { display: flex; gap: 16px; font-size: 13px; font-weight: 600; }
+.quarter-nav a { text-decoration: none; }
+.quarter-nav a:hover { text-decoration: underline; }
 
 .back {
   display: inline-block;
@@ -506,6 +532,47 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 .table td.name a:hover { text-decoration: underline; }
 .table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .table td .figure { font-size: 16px; }
+
+/* A numeric column is right-aligned in the body, so its heading has to be
+   right-aligned too. It was not, which left every money heading floating over
+   the wrong end of its column. */
+.table th.num { text-align: right; }
+
+/* Columns that must not wrap and must not take more room than they need:
+   a date, an invoice number, a sort code, a row's buttons. */
+.table th.tight, .table td.tight { width: 1%; white-space: nowrap; }
+
+/* The second line of a cell — a sort code under an account name. */
+.table .sub {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A heading with its count and total on the far side, sitting on the table
+   it belongs to rather than drifting above it. */
+.table-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* One decision, taken inside a row. The note has to be allowed to shrink or
+   the form pushes the table wider than the page. */
+/* The column holding a row's decision. Wide enough for the form, capped so
+   it cannot push the money columns off the edge of the page. */
+.table th.award-col, .table td.award-col { width: 40%; }
+
+.row-form { display: flex; align-items: center; gap: 8px; }
+.row-form select { width: auto; padding-right: 30px; }
+.row-form input[type="text"] { flex: 1; min-width: 0; }
+.row-form .button { flex: none; }
 
 /* ---------------------------------------------------------------- steps -- */
 

@@ -67,12 +67,16 @@
     </p>
   {% endif %}
 
-  <main class="{% block width %}{% endblock %}">
+  {# The footer has to be the same width as the page above it, or it hangs
+     out to the left of every heading. Reading the block once and using it in
+     both places is the only way they cannot drift apart. #}
+  {% set page_width %}{% block width %}{% endblock %}{% endset %}
+  <main class="{{ page_width | trim }}">
     {% block steps %}{% endblock %}
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="foot">
+  <footer class="foot {{ page_width | trim }}">
     Something wrong? Tell the IT department.
   </footer>
 
