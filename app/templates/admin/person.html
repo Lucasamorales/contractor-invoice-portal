@@ -345,7 +345,7 @@
               <td class="tight">{{ fee.valid_from.strftime("%d %b %Y") }}</td>
               <td class="tight">
                 {% if fee.valid_to %}{{ fee.valid_to.strftime("%d %b %Y") }}
-                {% else %}<span class="chip good">current</span>{% endif %}
+                {% else %}open{% endif %}
               </td>
               <td class="tight num">{{ fee.fee_pence | gbp }}</td>
               <td>{{ fee.note }}</td>
@@ -355,10 +355,6 @@
         </tbody>
       </table>
     </div>
-    <p class="hint mt-s">
-      Effective-dated, never overwritten. A March invoice must still explain
-      itself in December.
-    </p>
   {% else %}
     <p class="hint mt-m">
       No fee has ever been set. They cannot invoice until one is.
@@ -367,37 +363,34 @@
 
   {# The one form that earns being always on: the page's most common write,
      three fields, and hiding it behind a link bought nothing. #}
-  <div class="panel-inset" id="panel-fee">
-    <p class="panel-head">Set a new fee</p>
+  <div class="form-box" id="panel-fee">
+    <p class="panel-head">Set a new one</p>
     <form hx-boost="false" method="post"
           action="/admin/people/{{ person.id }}/fee">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <div class="field-grid">
-        <label class="field">
+      <div class="form-row">
+        <label class="field fixed-s">
           <span class="label">Amount</span>
           <input type="text" name="amount" inputmode="decimal" data-format="money"
                  autocomplete="off" placeholder="0.00">
         </label>
-        <label class="field">
+        <label class="field fixed-m">
           <span class="label">Effective from</span>
           <input type="date" name="valid_from" value="{{ today.isoformat() }}">
         </label>
-        <label class="field">
+        <label class="field grow">
           <span class="label">Note &mdash; required</span>
-          <input type="text" name="note" required>
+          <input type="text" name="note" required placeholder="Why the fee changed">
         </label>
+        <button class="button" type="submit">Set fee</button>
       </div>
       {% if panel == 'fee' %}
         {% for e in errors %}<p class="panel-error">{{ e }}</p>{% endfor %}
       {% endif %}
       <p class="hint mt-m">
         Effective-dated: this closes the current row the day before, rather
-        than overwriting it. A change with no reason is refused &mdash; in six
-        months that note is the only thing that explains the number.
+        than overwriting it. A change with no reason is refused.
       </p>
-      <div class="pill-row mt-m">
-        <button class="button" type="submit">Set fee</button>
-      </div>
     </form>
   </div>
 </section>

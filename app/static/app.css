@@ -476,6 +476,7 @@ input[type="text"],
 input[type="email"],
 input[type="tel"],
 input[type="password"],
+input[type="date"],
 textarea,
 select {
   width: 100%;
@@ -488,6 +489,21 @@ select {
 }
 
 textarea { resize: none; line-height: 1.5; }
+
+/* The native picker button is the only part of a date field a browser will
+   not let us restyle, so at least give it the page's ink rather than the
+   system blue, and the same height as every other field. */
+input[type="date"] {
+  font-variant-numeric: tabular-nums;
+  min-height: 46px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
 input:focus-visible,
 textarea:focus-visible,
@@ -663,6 +679,31 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 
 .field-grid .field { margin-bottom: 0; }
 
+/* A short form that reads as one instruction: the fields and the button that
+   completes them on one line, wrapping only when there is no room. */
+.form-row {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px 16px;
+}
+
+.form-row .field { margin-bottom: 0; }
+.form-row .field.grow { flex: 1 1 220px; min-width: 0; }
+.form-row .field.fixed-s { flex: 0 0 150px; }
+.form-row .field.fixed-m { flex: 0 0 180px; }
+.form-row .button { flex: none; }
+
+/* The always-on form under a history. Same ground as an opened panel, without
+   the accent bar: nothing was disclosed, so nothing is being pointed at. */
+.form-box {
+  margin-top: 18px;
+  padding: 20px 22px;
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
 /* The double-entry pair, kept together in its own box. Separated by other
  * fields, the second entry stops being a check and becomes a chore
  * (R-BANK-03). */
@@ -688,6 +729,13 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 /* As a flex child it has no width of its own, so auto-fit collapses the
    whole grid to one column and the four facts read downwards again. */
 .head-row > .facts { flex: 1; min-width: 0; }
+
+.facts > div { min-width: 0; }
+
+/* .figure carries white-space: nowrap because it is built for money, and no
+   amount of overflow-wrap beats that. These cells hold names, addresses and
+   email addresses, so here it wraps — an address is not a figure. */
+.facts .figure { white-space: normal; overflow-wrap: anywhere; }
 
 .facts .label { display: block; margin-bottom: 6px; }
 .facts .figure { font-size: 17px; }
