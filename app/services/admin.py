@@ -31,6 +31,7 @@ from app.domain.iban import mask
 from app.domain.kudos import is_quarter_end
 from app.domain.money import format_gbp
 from app.domain.period import Period
+from app.services import mailer
 from app.services.crypto import Cipher, field_aad
 
 
@@ -530,6 +531,9 @@ class Attention:
     # Their screen says accounts have been told, and this is what makes that
     # true rather than a sentence that sounds reassuring.
     kudos_unreadable: list[Person] = field(default_factory=list)
+    # Still retrying, but for long enough that somebody should know. Not a
+    # failure: nothing has given up, and nothing will.
+    stale_mail: list = field(default_factory=list)
 
     @property
     def total(self) -> int:
@@ -539,6 +543,7 @@ class Attention:
             + len(self.unconfirmed_bank)
             + len(self.unmapped_kudos)
             + len(self.kudos_unreadable)
+            + len(self.stale_mail)
         )
 
     @property
@@ -564,4 +569,7 @@ def needs_attention(
         unconfirmed_bank=repo.unverified_bank_rows(session),
         unmapped_kudos=repo.unresolved_kudos_names(session),
         kudos_unreadable=unreadable,
+        stale_mail=repo.unsent_outbox(
+            session, queued_before=now - timedelta(hours=mailer.STALE_AFTER_HOURS)
+        ),
     )

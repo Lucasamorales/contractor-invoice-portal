@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from app.auth import FinanceIdentity
 from app.config import Settings, get_settings
 from app.db import repo
-from app.db.models import BankDetail, Invoice, Person
+from app.db.models import BankDetail, Invoice, Outbox, OutboxStatus, Person
 from app.db.session import get_session
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, format_gbp, parse_gbp_to_pence
@@ -340,6 +340,44 @@ async def deactivate(
     return RedirectResponse(
         f"/admin/people/{person_id}", status_code=status.HTTP_303_SEE_OTHER
     )
+
+
+@router.post("/outbox/{row_id}/retry")
+async def retry_mail(
+    row_id: uuid.UUID,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    csrf_token: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    """Put a stopped email back in the queue (R-JOB-04).
+
+    Only a failure that cannot succeed as it stands ever stops — a bad address,
+    a message too large — so this is used after fixing the cause. There is no
+    matching "give up": the only way a message leaves the queue is by being
+    sent.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    row = session.get(Outbox, row_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No such message."
+        )
+
+    row.status = OutboxStatus.PENDING
+    row.attempts = 0
+    row.next_attempt_at = None
+    row.last_error = None
+    repo.record_audit(
+        session,
+        actor_email=identity.email,
+        action="outbox.retry",
+        entity="outbox",
+        entity_id=str(row.id),
+        after={"kind": row.kind},
+    )
+    session.commit()
+    return RedirectResponse("/admin/queue", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/invoices/{invoice_id}/void")

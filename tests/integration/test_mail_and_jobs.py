@@ -214,29 +214,94 @@ def test_a_row_in_backoff_is_left_alone_until_it_is_due(
     assert report.sent == 1
 
 
-def test_it_gives_up_after_five_attempts(factory, settings, cipher, tmp_path) -> None:
-    """R-JOB-04: after five failures the row is marked failed and alerts."""
+def test_it_never_gives_up_on_a_failure_that_could_pass_later(
+    factory, settings, cipher, tmp_path
+) -> None:
+    """R-JOB-04, and the reason the five-attempt limit is gone.
+
+    Postgres has already accepted the invoice. A provider being unwell for a
+    quarter of an hour must not permanently lose the email announcing it, so a
+    retryable failure keeps its row pending however many times it fails.
+    """
     store = LocalObjectStore(tmp_path / "objects")
     seed_and_submit(factory, cipher, settings, store)
     moment = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
 
-    for attempt in range(5):
+    for attempt in range(12):
         with factory() as session, session.begin():
             mailer.dispatch(
                 session,
                 client=Recorder(fail=mailer.MailError("still down")),
                 settings=settings,
                 store=store,
-                now=moment + timedelta(hours=attempt),
+                now=moment + timedelta(hours=attempt + 1),
             )
 
     with factory() as session:
         row = session.scalars(select(Outbox)).one()
-        assert row.status is OutboxStatus.FAILED
-        assert row.attempts == 5
+        assert row.status is OutboxStatus.PENDING
+        assert row.attempts == 12
+        assert row.next_attempt_at is not None
+
+    # And it still sends the moment the provider comes back.
+    with factory() as session, session.begin():
+        report = mailer.dispatch(
+            session,
+            client=Recorder(),
+            settings=settings,
+            store=store,
+            now=moment + timedelta(days=2),
+        )
+    assert report.sent == 1
 
 
-def test_a_permanent_failure_is_not_retried_five_times(
+def test_the_wait_between_attempts_stops_at_an_hour() -> None:
+    """Unbounded doubling puts the twentieth attempt weeks out, which for an
+    unsent invoice is giving up while pretending not to."""
+    assert mailer.backoff(1) == timedelta(minutes=1)
+    assert mailer.backoff(4) == timedelta(minutes=8)
+    assert mailer.backoff(7) == timedelta(hours=1)
+    assert mailer.backoff(30) == timedelta(hours=1)
+
+
+def test_mail_that_is_taking_too_long_reaches_the_queue(
+    factory, settings, cipher, tmp_path
+) -> None:
+    """A pending row reports nowhere. It has not failed, so the failure list
+    does not have it, and it can retry for days while the person who submitted
+    believes it arrived."""
+    from app.services import admin as admin_service
+
+    store = LocalObjectStore(tmp_path / "objects")
+    seed_and_submit(factory, cipher, settings, store)
+    moment = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
+
+    # created_at comes from the database clock, so it has to be pinned to the
+    # same fake moment the assertions use.
+    with factory() as session, session.begin():
+        session.scalars(select(Outbox)).one().created_at = moment
+
+    with factory() as session, session.begin():
+        mailer.dispatch(
+            session,
+            client=Recorder(fail=mailer.MailError("still down")),
+            settings=settings,
+            store=store,
+            now=moment,
+        )
+
+    with factory() as session:
+        fresh = admin_service.needs_attention(session, now=moment)
+        assert fresh.stale_mail == []
+
+        later = admin_service.needs_attention(
+            session, now=moment + timedelta(hours=mailer.STALE_AFTER_HOURS + 1)
+        )
+        assert len(later.stale_mail) == 1
+        assert later.failed_mail == []  # still trying, not failed
+
+
+def test_a_permanent_failure_stops_rather_than_retrying(
     factory, settings, cipher, tmp_path
 ) -> None:
     """A rejected address will be rejected identically in twenty minutes."""

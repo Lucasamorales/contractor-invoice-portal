@@ -37,13 +37,24 @@ RESEND_MAX_MESSAGE_BYTES = 40 * 1024 * 1024
 # Room for the body, the headers and the JSON around it all.
 BODY_ALLOWANCE = 256 * 1024
 
-MAX_ATTEMPTS = 5  # R-JOB-04
 BATCH_SIZE = 20
 
-# Doubling, from a minute. Attempt 5 lands about sixteen minutes after the
-# first failure, which is long enough to ride out a provider blip and short
-# enough that an invoice is not sitting unsent for hours.
+# Doubling from a minute, and then not doubling any further: 1, 2, 4, 8, 16,
+# 32, 60, 60, 60... About twenty-four tries in the first day and hourly after
+# that, for as long as it takes.
+#
+# There is deliberately **no attempt limit**. Giving up after five tries meant
+# sixteen minutes of a provider being unwell could permanently lose an invoice
+# email that Postgres had already accepted, and nothing would ever retry it.
+# The cap is what makes retrying forever safe: even a row that will never
+# succeed costs one call an hour rather than one every five minutes.
 BACKOFF_BASE_SECONDS = 60
+BACKOFF_CEILING_SECONDS = 60 * 60
+
+# How long a row may go unsent before it is somebody's problem rather than the
+# dispatcher's. It has not failed — it is still trying — but an invoice that
+# has not reached accounts after this long is worth a person knowing about.
+STALE_AFTER_HOURS = 6
 
 
 class MailError(RuntimeError):
@@ -219,8 +230,14 @@ def build_client(settings: Settings) -> MailClient:
 
 
 def backoff(attempts: int) -> timedelta:
-    """How long to wait before attempt ``attempts + 1`` (R-JOB-04)."""
-    return timedelta(seconds=BACKOFF_BASE_SECONDS * (2 ** max(0, attempts - 1)))
+    """How long to wait before attempt ``attempts + 1`` (R-JOB-04).
+
+    Doubles up to an hour and then stays there. Unbounded doubling would put
+    the twentieth attempt weeks away, which for an unsent invoice is the same
+    as giving up while looking like it has not.
+    """
+    seconds = BACKOFF_BASE_SECONDS * (2 ** max(0, attempts - 1))
+    return timedelta(seconds=min(seconds, BACKOFF_CEILING_SECONDS))
 
 
 @dataclass(slots=True)
@@ -255,7 +272,10 @@ def due_rows(session: Session, *, now: datetime, limit: int) -> list[Outbox]:
                 Outbox.status == OutboxStatus.PENDING,
                 (Outbox.next_attempt_at.is_(None)) | (Outbox.next_attempt_at <= now),
             )
-            .order_by(Outbox.created_at)
+            # By when it is due, not when it was made: a row on an hour's
+            # backoff must not keep taking a place in the batch ahead of a
+            # freshly queued invoice that is ready to go now.
+            .order_by(Outbox.next_attempt_at.nulls_first(), Outbox.created_at)
             .limit(limit)
             .with_for_update(skip_locked=True)
         )
@@ -305,16 +325,16 @@ def _record_failure(
     # The message, never the payload: a payload carries the fee breakdown.
     row.last_error = f"{type(exc).__name__}: {exc}"[:500]
 
-    permanent = isinstance(exc, MailError) and exc.permanent
-    if permanent or row.attempts >= MAX_ATTEMPTS:
+    # Only a failure that cannot succeed on a later try stops. A bad address
+    # or an oversized message will be just as bad in an hour; a refused
+    # connection will not. FAILED now means "needs a person", never
+    # "abandoned" — nothing leaves the queue until it has actually been sent.
+    if isinstance(exc, MailError) and exc.permanent:
         row.status = OutboxStatus.FAILED
+        row.next_attempt_at = None
         report.failed += 1
-        # Worth a human's attention: an invoice was accepted and not delivered.
         logger.error(
-            "outbox row %s failed after %d attempts: %s",
-            row.id,
-            row.attempts,
-            row.last_error,
+            "outbox row %s cannot be sent as it stands: %s", row.id, row.last_error
         )
         report.errors.append(f"{row.kind} {row.id}: {row.last_error}")
         return

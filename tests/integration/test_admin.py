@@ -741,3 +741,52 @@ def test_a_void_without_a_reason_is_refused(admin_client, factory) -> None:
     assert response.status_code == 422
     with factory() as session:
         assert session.get(Invoice, invoice_id).status is InvoiceStatus.SUBMITTED
+
+
+def test_a_stopped_email_can_be_put_back_in_the_queue(admin_client, factory) -> None:
+    """R-JOB-04. The only way a message leaves the queue is by being sent, so
+    the counterpart to a permanent failure is a retry, never a dismissal."""
+    from app.db.models import Outbox, OutboxStatus
+
+    client, _, _cipher = admin_client
+    with factory() as session:
+        row = Outbox(
+            kind="invoice_submitted",
+            status=OutboxStatus.FAILED,
+            attempts=3,
+            last_error="MailError: recipient rejected",
+            payload={"marker": "test"},
+        )
+        session.add(row)
+        session.commit()
+        row_id = row.id
+
+    page = client.get("/admin/queue")
+    assert "Try again" in page.text
+
+    response = client.post(
+        f"/admin/outbox/{row_id}/retry",
+        data={"csrf_token": token_from(page.text)},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    with factory() as session:
+        back = session.get(Outbox, row_id)
+        assert back.status is OutboxStatus.PENDING
+        assert back.attempts == 0
+        assert back.last_error is None
+        assert back.next_attempt_at is None
+        assert session.scalars(
+            select(AuditLog).where(AuditLog.action == "outbox.retry")
+        ).one()
+
+
+def test_there_is_no_way_to_dismiss_an_unsent_email() -> None:
+    """Asserted on the markup, because "we gave up quietly" is exactly the
+    outcome this design exists to prevent."""
+    from pathlib import Path
+
+    queue = Path("app/templates/admin/queue.html").read_text(encoding="utf-8")
+    for wording in ("Give up", "Dismiss", "Ignore this email"):
+        assert wording not in queue

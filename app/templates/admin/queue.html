@@ -40,10 +40,30 @@
 
       {% for row in attention.failed_mail %}
         <li>
-          <strong class="on-ink">An email has not gone out</strong>
+          <strong class="on-ink">An email cannot be sent as it stands</strong>
           <p class="hint mt-xs flush-x">
             {{ row.kind }}, queued {{ row.created_at.strftime("%d %b") }},
             {{ row.attempts }} attempt{{ '' if row.attempts == 1 else 's' }}.
+            Retrying will not help until the cause is fixed &mdash; usually a
+            wrong address or an attachment too large.
+          </p>
+          <form hx-boost="false" method="post"
+                action="/admin/outbox/{{ row.id }}/retry" class="row-form mt-s">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="button small" type="submit">Try again</button>
+          </form>
+          <p class="hint mt-xs flush-x on-red">Clears when it sends. Nothing else takes it off this list.</p>
+        </li>
+      {% endfor %}
+
+      {% for row in attention.stale_mail %}
+        <li>
+          <strong class="on-ink">An email is taking too long</strong>
+          <p class="hint mt-xs flush-x">
+            {{ row.kind }}, queued {{ row.created_at.strftime("%d %b at %H:%M") }},
+            {{ row.attempts }} attempt{{ '' if row.attempts == 1 else 's' }} so far.
+            Still trying, and it will keep trying.
+            {% if row.last_error %}Last problem: {{ row.last_error }}{% endif %}
           </p>
           <p class="hint mt-xs flush-x on-red">Clears when it sends.</p>
         </li>

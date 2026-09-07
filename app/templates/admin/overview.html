@@ -113,7 +113,7 @@
     <span class="hint">kudos names unmapped</span>
   </a>
   <a class="card tile" href="/admin/queue">
-    <span class="figure hero">{{ attention.failed_mail | length }}</span>
+    <span class="figure hero">{{ attention.failed_mail | length + attention.stale_mail | length }}</span>
     <span class="hint">emails still not sent</span>
   </a>
 </div>

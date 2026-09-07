@@ -463,6 +463,25 @@ def stuck_drafts(session: Session, *, older_than: datetime) -> list[Invoice]:
     )
 
 
+def unsent_outbox(session: Session, *, queued_before: datetime) -> list[Outbox]:
+    """Mail still trying, but trying for too long (R-JOB-04).
+
+    A pending row is invisible: it has not failed, so nothing reports it, and
+    it can go on retrying for days while the person who submitted the invoice
+    believes it arrived. After a few hours that is a fact somebody should have.
+    """
+    return list(
+        session.scalars(
+            select(Outbox)
+            .where(
+                Outbox.status == OutboxStatus.PENDING,
+                Outbox.created_at < queued_before,
+            )
+            .order_by(Outbox.created_at)
+        )
+    )
+
+
 def failed_outbox(session: Session) -> list[Outbox]:
     """Mail that gave up (R-JOB-04).
 
