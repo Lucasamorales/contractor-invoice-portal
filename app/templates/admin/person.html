@@ -195,7 +195,7 @@
           </td>
           <td>
             {% if invoice.pdf_uri %}
-              <a href="/admin/invoices/{{ invoice.id }}/pdf">Download</a>
+              <a hx-boost="false" href="/admin/invoices/{{ invoice.id }}/pdf">Download</a>
             {% else %}
               <span class="hint">none</span>
             {% endif %}

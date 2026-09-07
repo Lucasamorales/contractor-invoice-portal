@@ -85,7 +85,7 @@
           </span>
           <span class="get">
             {% if invoice.pdf_uri %}
-              <a class="quiet" href="/invoices/{{ invoice.id }}/pdf">Download</a>
+              <a class="quiet" hx-boost="false" href="/invoices/{{ invoice.id }}/pdf">Download</a>
             {% endif %}
           </span>
         </li>

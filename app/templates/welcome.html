@@ -42,7 +42,7 @@
     </p>
     <p class="actions mt-l">
       {% if state.existing_invoice.pdf_uri %}
-        <a class="button light" href="/invoices/{{ state.existing_invoice.id }}/pdf">
+        <a class="button light" hx-boost="false" href="/invoices/{{ state.existing_invoice.id }}/pdf">
           Download the PDF
         </a>
       {% endif %}

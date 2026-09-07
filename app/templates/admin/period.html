@@ -29,7 +29,7 @@
           </td>
           <td>
             {% if row.invoice and row.invoice.pdf_uri %}
-              <a href="/admin/invoices/{{ row.invoice.id }}/pdf">{{ row.invoice.number }}</a>
+              <a hx-boost="false" href="/admin/invoices/{{ row.invoice.id }}/pdf">{{ row.invoice.number }}</a>
             {% elif row.invoice %}
               {{ row.invoice.number }}
             {% else %}

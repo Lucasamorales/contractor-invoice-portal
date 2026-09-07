@@ -134,3 +134,25 @@ def test_the_footer_is_the_same_width_as_the_page() -> None:
     widths = set(re.findall(r"^main\.([a-z-]+) \{", css, re.M))
     feet = set(re.findall(r"^\.foot\.([a-z-]+) \{", css, re.M))
     assert widths <= feet, f"no .foot rule for: {sorted(widths - feet)}"
+
+
+def test_every_download_link_opts_out_of_boosting() -> None:
+    """hx-boost turns a link into an AJAX GET whose body is swapped into the
+    page. That is right for a page and wrong for a file: htmx does not look at
+    the content type, so clicking an invoice printed the PDF's own bytes into
+    the document instead of letting the browser act on Content-Disposition.
+
+    Anything serving bytes rather than a page has to opt out, and there is no
+    way to see that from the server, so it is asserted on the markup.
+    """
+    import re
+    from pathlib import Path
+
+    downloads = re.compile(r"<a[^>]*href=\"[^\"]*(?:/pdf|\.csv)[^\"]*\"[^>]*>", re.S)
+
+    missing: list[str] = []
+    for template in sorted(Path("app/templates").rglob("*.html")):
+        for tag in downloads.findall(template.read_text(encoding="utf-8")):
+            if 'hx-boost="false"' not in tag:
+                missing.append(f"{template}: {tag[:70]}")
+    assert not missing, "these download links would be boosted: " + "; ".join(missing)

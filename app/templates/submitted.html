@@ -25,7 +25,7 @@
     </p>
   {% endif %}
   <p class="actions mt-xl">
-    <a class="button light" href="/invoices/{{ invoice.id }}/pdf">Download your copy</a>
+    <a class="button light" hx-boost="false" href="/invoices/{{ invoice.id }}/pdf">Download your copy</a>
     <a class="button ghost" href="/me">See your invoices</a>
   </p>
 </div>
