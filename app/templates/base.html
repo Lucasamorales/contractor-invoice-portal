@@ -13,8 +13,18 @@
      blocks and which then fills the console with violations that hide real
      ones. The rules live in app.css instead. #}
   <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
-  <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/htmx.min.js" defer></script>
+  {# Preloaded so the browser starts fetching them alongside the stylesheet
+     rather than after parsing it and finding text that needs them. That
+     serialised discovery is a whole round trip of fallback text.
+
+     The href must match the url() inside app.css exactly, or the font is
+     fetched twice. Neither carries a hash: see app/web/static.py. #}
+  <link rel="preload" href="/static/fonts/inter-variable.woff2" as="font"
+        type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/unbounded-variable.woff2" as="font"
+        type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ static('app.css') }}">
+  <script src="{{ static('htmx.min.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </head>
 <body{% if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
@@ -60,6 +70,6 @@
      owns the spotlight; the copy stays server-side where it can be reviewed. #}
   {% set steps = tutorial_steps(path) %}
   <script type="application/json" id="tutorial-steps">{{ steps | tojson }}</script>
-  <script src="/static/tutorial.js" defer></script>
+  <script src="{{ static('tutorial.js') }}" defer></script>
 </body>
 </html>

@@ -8,10 +8,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
 from app.config import Environment, assert_production_ready, get_settings
 from app.web import admin, member, tasks
+from app.web.static import CachedStaticFiles
 from app.web.templates import templates
 
 logging.basicConfig(
@@ -64,7 +64,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", CachedStaticFiles(directory="app/static"), name="static")
 # Admin first: every one of its routes carries the finance check (R-ACC-04).
 app.include_router(admin.router)
 app.include_router(member.router)

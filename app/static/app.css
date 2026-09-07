@@ -17,15 +17,33 @@
   font-family: "Inter";
   src: url("/static/fonts/inter-variable.woff2") format("woff2");
   font-weight: 100 900;
-  font-display: swap;
+  /* optional, not swap. swap is designed to show a fallback and then replace
+   * it, which is a reflow in the middle of reading. optional gives the font a
+   * moment and then commits for that page load: correct from the first paint
+   * once cached, and never a change under the reader's eyes. */
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Unbounded";
   src: url("/static/fonts/unbounded-variable.woff2") format("woff2");
   font-weight: 200 900;
-  font-display: swap;
+  font-display: optional;
 }
+
+/* The fallback stack is plain families, not a size-adjust'd @font-face.
+ *
+ * The usual trick is @font-face { src: local("Arial"); size-adjust: 106.3% }
+ * so the fallback occupies the same space as the real font. It was measured
+ * and tried here and it did not work: local() failed to resolve, and the
+ * family then measured identically to a font name that does not exist, which
+ * made the mismatch worse rather than better. Browsers increasingly restrict
+ * local() for fingerprinting reasons, so it is not something to rely on.
+ *
+ * It matters less than it would have: font-display is optional, so there is
+ * no swap part-way through reading. A first, uncached load may render in the
+ * fallback and simply stay there; every load after it is correct from the
+ * first paint. Nothing moves under the reader either way. */
 
 :root {
   --paper: #faf9f7;
@@ -52,8 +70,8 @@
   --inverse-muted: #9a9a97;
   --inverse-faint: #6b6b68;
 
-  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --display: "Unbounded", "Inter", system-ui, sans-serif;
+  --sans: "Inter", Arial, system-ui, sans-serif;
+  --display: "Unbounded", Arial, system-ui, sans-serif;
 
   --radius: 10px;
   --radius-lg: 14px;
