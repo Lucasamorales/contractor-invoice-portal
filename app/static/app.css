@@ -569,6 +569,10 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
    it cannot push the money columns off the edge of the page. */
 .table th.award-col, .table td.award-col { width: 40%; }
 
+/* A prize no longer matching the standings, because somebody settled a tie
+   by hand. Worth seeing before pressing Award. */
+.table td [data-prize].changed { color: var(--red-text); font-weight: 700; }
+
 .row-form { display: flex; align-items: center; gap: 8px; }
 .row-form select { width: auto; padding-right: 30px; }
 .row-form input[type="text"] { flex: 1; min-width: 0; }
@@ -923,6 +927,11 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 .counts .figure { font-size: 20px; }
 
 .tile { text-decoration: none; display: flex; flex-direction: column; gap: 8px; }
+
+/* The Overview's pointer at the Queue. A card that is a link, because the
+   list it summarises can only be acted on there. */
+.stuck-link { display: block; text-decoration: none; color: var(--ink); }
+.stuck-link:hover { background: var(--surface-sunk); }
 .tile:hover { border-color: var(--line-strong); }
 
 @media (max-width: 720px) {

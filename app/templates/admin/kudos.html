@@ -86,7 +86,9 @@
                 {% if row.awarded %}
                   {{ row.awarded.amount_pence | gbp }}
                 {% elif row.place %}
-                  {{ row.cash_pence | gbp }}
+                  {# Follows the place selected beside it, not the standings:
+                     on a tie those differ, and the money is the selection. #}
+                  <span data-prize>{{ row.cash_pence | gbp }}</span>
                 {% else %}
                   <span class="on-faint">&mdash;</span>
                 {% endif %}
@@ -127,4 +129,8 @@
     <p class="hint">Nobody eligible has a kudo this quarter.</p>
   {% endif %}
 </section>
+{# Configuration, formatted once by the server so the script never has to
+   know what a pound looks like. #}
+<script type="application/json" id="kudos-prizes">{{ prizes | tojson }}</script>
+<script src="{{ static('kudos.js') }}" defer></script>
 {% endblock %}

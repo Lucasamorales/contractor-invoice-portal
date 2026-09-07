@@ -30,7 +30,7 @@ from app.db import repo
 from app.db.models import BankDetail, Invoice, Person
 from app.db.session import get_session
 from app.domain.kudos import Quarter
-from app.domain.money import MoneyError, parse_gbp_to_pence
+from app.domain.money import MoneyError, format_gbp, parse_gbp_to_pence
 from app.domain.period import Period, window_state
 from app.services import admin, bank_changes, kudos_admin
 from app.services.crypto import Cipher, field_aad
@@ -694,6 +694,19 @@ async def flag_bank_row(
 
 
 # --------------------------------------------------------------------------
+def _kudos_prizes(settings: Settings) -> dict[str, str]:
+    """What each place pays, formatted, for the script beside the dropdown.
+
+    The prize follows the place somebody selects rather than the place the
+    counts suggest, and on a tie those are different. Sending the amounts
+    rather than the pence keeps money formatting in one place (CLAUDE.md §6).
+    """
+    return {
+        str(place): format_gbp(kudos_admin.cash_for(place, settings))
+        for place in kudos_admin.PLACES
+    }
+
+
 # R-KUD-13 / R-KUD-17 — the two kudos decisions a person has to make
 # --------------------------------------------------------------------------
 
@@ -717,6 +730,7 @@ async def kudos_quarter(
     context["quarter"] = period
     context["unmapped"] = repo.unresolved_kudos_names(session)
     context["kudos_rate_pence"] = settings.kudos_rate_pence
+    context["prizes"] = _kudos_prizes(settings)
     return templates.TemplateResponse(
         request=request, name="admin/kudos.html", context=context
     )
@@ -765,6 +779,7 @@ async def award_quarter(
     context["quarter"] = period
     context["unmapped"] = repo.unresolved_kudos_names(session)
     context["kudos_rate_pence"] = settings.kudos_rate_pence
+    context["prizes"] = _kudos_prizes(settings)
     context["errors"] = errors
     return templates.TemplateResponse(
         request=request,

@@ -38,50 +38,19 @@
   Unfinished and flagged are already counted inside received.
 </p>
 
-<div class="card alarm" data-tut="admin.overview.stuck">
-  <p class="label">Needs fixing</p>
-  <p class="hint mt-s">
-    Things that appear nowhere else. If this panel is empty, nothing is stuck.
-  </p>
-  {% if attention.is_clear %}
-    <p class="hint mt-m">Nothing is stuck.</p>
-  {% else %}
-    <ul class="history mt-m">
-      {% for invoice in attention.stuck_drafts %}
-        <li>
-          <strong class="on-ink">
-            Invoice {{ invoice.number }} took a number and never finished sending
-          </strong>
-          <p class="hint mt-xs flush-x">
-            On Period it counts as received, because a row exists. Nothing has
-            reached you. They see it too, as “Not quite sent”.
-          </p>
-        </li>
-      {% endfor %}
-      {% for row in attention.failed_mail %}
-        <li>
-          <strong class="on-ink">An email gave up after {{ row.attempts }} attempts</strong>
-          <p class="hint mt-xs flush-x">{{ row.kind }}, queued {{ row.created_at.strftime('%d %b') }}.</p>
-        </li>
-      {% endfor %}
-      {% for bank in attention.unconfirmed_bank %}
-        <li>
-          <a href="/admin/people/{{ bank.person_id }}">
-            {{ bank.account_name or "Someone" }}
-          </a>
-          has never confirmed their bank details, so they cannot invoice.
-        </li>
-      {% endfor %}
-      {% for name, count in attention.unmapped_kudos %}
-        <li>
-          <strong class="on-ink">{{ name }}</strong>
-          has {{ count }} kudo{{ '' if count == 1 else 's' }} and is not anybody
-          here, so none of it can be paid.
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-</div>
+{# The list itself lives on the Queue, which is the only screen that can act
+   on it. Two copies with different wording taught nobody where to go. #}
+{% if not attention.is_clear %}
+  <a class="card alarm stuck-link" href="/admin/queue" data-tut="admin.overview.stuck">
+    <span class="label">Needs fixing &mdash; {{ attention.total }}</span>
+    <span class="hint mt-s as-block">
+      {{ 'One thing is' if attention.total == 1 else attention.total ~ ' things are' }}
+      stuck and nothing else reports
+      {{ 'it' if attention.total == 1 else 'them' }}. Fix
+      {{ 'it' if attention.total == 1 else 'them' }} on the Queue.
+    </span>
+  </a>
+{% endif %}
 
 <div class="row-grid">
   <div class="card" data-tut="admin.overview.missing">
@@ -107,7 +76,8 @@
   <div class="card" data-tut="admin.overview.flags">
     <p class="label">Worth a look</p>
     <p class="hint mt-s">
-      Flags never block anything. They tell you where to look.
+      Nothing to do here. Flags never block anything, and they clear
+      themselves when the month rolls over.
     </p>
     {% if view.flagged %}
       <ul class="history mt-m">
@@ -115,11 +85,15 @@
           <li>
             <a href="/admin/people/{{ row.person.id }}">{{ row.person.display_name }}</a>
             {% if row.invoice %}&middot; invoice {{ row.invoice.number }}{% endif %}
-            <span class="as-block mt-xs">
-              {% for flag in row.flags %}
-                <span class="chip{% if flag.kind in ('late',) %} alert{% endif %}">{{ flag.kind.replace('_', ' ') }}</span>
-              {% endfor %}
-            </span>
+            {# The detail is the whole point — "fee changed on 5 Sep — <note>"
+               says what to look at, where the bare chip says only that there
+               is something. It was computed and thrown away. #}
+            {% for flag in row.flags %}
+              <span class="as-block mt-xs">
+                <span class="chip{% if flag.kind == 'late' %} alert{% endif %}">{{ flag.kind.replace('_', ' ') }}</span>
+                <span class="hint">{{ flag.detail }}</span>
+              </span>
+            {% endfor %}
           </li>
         {% endfor %}
       </ul>
@@ -131,7 +105,7 @@
 
 <div class="row-grid" data-tut="admin.overview.waiting">
   <a class="card tile" href="/admin/queue">
-    <span class="figure hero">{{ queue_fee if queue_fee is defined else attention.unconfirmed_bank | length }}</span>
+    <span class="figure hero">{{ attention.unconfirmed_bank | length }}</span>
     <span class="hint">bank never confirmed</span>
   </a>
   <a class="card tile" href="/admin/queue">
@@ -140,7 +114,7 @@
   </a>
   <a class="card tile" href="/admin/queue">
     <span class="figure hero">{{ attention.failed_mail | length }}</span>
-    <span class="hint">emails that gave up</span>
+    <span class="hint">emails still not sent</span>
   </a>
 </div>
 {% endblock %}
