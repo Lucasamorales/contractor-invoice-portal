@@ -218,6 +218,8 @@ def _person_page(
     status_code: int = 200,
 ) -> HTMLResponse:
     """The person page. Shared so every handler that renders it agrees."""
+    now = _now()
+    period = Period.containing(now)
     context = _context(request, identity, settings)
     context.update(
         {
@@ -225,8 +227,16 @@ def _person_page(
             "fees": repo.fee_history(session, person.id),
             "banks": admin.masked_bank_summary(session, person, cipher),
             "invoices": repo.invoice_history(session, person.id),
-            "today": _now().date(),
+            "today": now.date(),
             "errors": errors or [],
+            # The three things somebody opens this page to check, so the
+            # common visit needs no scrolling at all.
+            "current_fee": repo.fee_for(session, person.id, on=now.date()),
+            "current_bank": repo.active_bank_detail(session, person.id),
+            "this_invoice": repo.live_invoice_for_period(
+                session, person.id, period.key
+            ),
+            "period": period,
         }
     )
     return templates.TemplateResponse(

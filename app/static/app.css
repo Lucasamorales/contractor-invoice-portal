@@ -957,6 +957,50 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 .counts > div:first-child { border-left: 0; }
 .counts .figure { font-size: 20px; }
 
+/* Two questions side by side. A person's record used to be one column six
+   sections deep, so reading a bank account meant scrolling past a fee form.
+   Collapses to one column where there is no room for two. */
+.split-cols { display: flex; gap: 26px; align-items: flex-start; }
+.split-cols > .col { flex: 1; min-width: 0; }
+.split-cols > .col > section + section { margin-top: 26px; }
+
+/* Half a page is not a page. The full padding spends 48px per column on
+   whitespace, which in a 460px column left the note nowhere to go. */
+.split-cols .table th, .split-cols .table td { padding: 12px 14px; }
+
+@media (max-width: 860px) {
+  .split-cols { flex-direction: column; gap: 26px; }
+  .split-cols > .col { width: 100%; }
+}
+
+/* One row of a history, closed. Open it for the detail; the current one is
+   open already, because that is the one being paid. */
+.record {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px 16px;
+  margin-top: 10px;
+}
+
+.record > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.record > summary::-webkit-details-marker { display: none; }
+.record-line { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.record[open] > summary { border-bottom: 1px solid var(--line-soft); padding-bottom: 12px; }
+
+/* A disclosure that is a control rather than a warning: same mechanics as
+   .confirm, none of the red. */
+.confirm.quiet-open > summary { color: var(--red-text); }
+.confirm.quiet-open[open] { border-color: var(--line); background: var(--surface); }
+
 .tile { text-decoration: none; display: flex; flex-direction: column; gap: 8px; }
 
 /* The Overview's pointer at the Queue. A card that is a link, because the

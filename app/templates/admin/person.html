@@ -1,9 +1,53 @@
 {% extends "base.html" %}
 {% block title %}{{ person.display_name }}{% endblock %}
+{% block width %}wide{% endblock %}
 {% block content %}
 <a class="back" href="/admin/people">&larr; People</a>
-<h1>{{ person.display_name }}</h1>
-<p class="lead">{{ person.email }} &middot; {{ person.status.value }}</p>
+
+<div class="page-head">
+  <div class="head-row">
+    <h1>{{ person.display_name }}</h1>
+    <span class="hint">
+      {{ person.email }}
+      <span class="chip{% if person.status.value != 'active' %} alert{% endif %}">
+        {{ person.status.value }}
+      </span>
+    </span>
+  </div>
+
+  {# What somebody came to check. Anything below this is a second question. #}
+  <div class="card counts mt-l">
+    <div>
+      <span class="figure">
+        {% if current_fee %}
+          {% with revealed = False, fee_pence = current_fee.fee_pence %}
+            {% include "admin/_fee_value.html" %}
+          {% endwith %}
+        {% else %}
+          <span class="missing">Not set</span>
+        {% endif %}
+      </span>
+      <span class="hint">fee this month</span>
+    </div>
+    <div>
+      <span class="figure{% if not current_bank or not current_bank.verified_at %} on-red{% endif %}">
+        {% if not current_bank %}None
+        {% elif current_bank.verified_at %}Confirmed
+        {% else %}Unconfirmed{% endif %}
+      </span>
+      <span class="hint">bank account</span>
+    </div>
+    <div>
+      <span class="figure">
+        {% if this_invoice %}{{ this_invoice.total_pence | gbp }}{% else %}&mdash;{% endif %}
+      </span>
+      <span class="hint">
+        {% if this_invoice %}invoice {{ this_invoice.number }}
+        {% else %}nothing for {{ period.month_name }}{% endif %}
+      </span>
+    </div>
+  </div>
+</div>
 
 {% if errors %}
   <div class="card attention">
@@ -11,176 +55,209 @@
   </div>
 {% endif %}
 
-<section>
-  <h2>Profile</h2>
-  <table class="kv">
-    <tr><th>Legal name</th><td>{{ person.legal_name or "not set" }}</td></tr>
-    <tr><th>Role</th><td>{{ person.role or "not set" }}</td></tr>
-    <tr>
-      <th>Address</th>
-      <td>{{ person.address.replace("\n", ", ") if person.address else "not set" }}</td>
-    </tr>
-    <tr><th>Phone</th><td>{{ person.phone or "not set" }}</td></tr>
-    <tr><th>Contact email</th><td>{{ person.contact_email or "not set" }}</td></tr>
-    <tr>
-      <th>Payout region</th>
-      <td>{{ person.payout_region.value if person.payout_region else "not set" }}</td>
-    </tr>
-  </table>
-</section>
-
-<section>
-  <h2>Fee history</h2>
-  {% if fees %}
-    <table class="kv">
-      <tr><th>From</th><th>To</th><th>Amount</th><th>Set by</th><th>Note</th></tr>
-      {% for fee in fees %}
-        <tr>
-          <td>{{ fee.valid_from.strftime("%d %b %Y") }}</td>
-          <td>{{ fee.valid_to.strftime("%d %b %Y") if fee.valid_to else "open" }}</td>
-          <td>{{ fee.fee_pence | gbp }}</td>
-          <td>{{ fee.set_by }}</td>
-          <td>{{ fee.note }}</td>
-        </tr>
-      {% endfor %}
-    </table>
-  {% else %}
-    <p class="hint">No fee has ever been set. They cannot invoice until one is.</p>
-  {% endif %}
-
-  <h2>Set a new fee</h2>
-  <form hx-boost="false" method="post" action="/admin/people/{{ person.id }}/fee" class="form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label class="field">
-      <span class="label">Amount</span>
-      <span class="hint">Per month, in pounds.</span>
-      <input type="text" name="amount" inputmode="decimal" data-format="money"
-             autocomplete="off" placeholder="2500.00">
-    </label>
-    <label class="field">
-      <span class="label">Effective from</span>
-      <span class="hint">The current fee is closed the day before this.</span>
-      <input type="date" name="valid_from" value="{{ today.isoformat() }}">
-    </label>
-    <label class="field">
-      <span class="label">Note</span>
-      <span class="hint">Required. Why the fee changed.</span>
-      <input type="text" name="note">
-    </label>
-    <button class="button" type="submit">Set fee</button>
-  </form>
-</section>
-
-<section>
-  <h2>Bank history</h2>
-  <p class="hint">
-    Masked by default. You can reveal a row where you need to pay it, and the
-    reveal is recorded. You cannot make a row payable &mdash; only its owner can.
-  </p>
-  {% for bank in banks %}
-    <div class="card">
+<div class="split-cols">
+  <div class="col">
+    <section>
+      <h2>Profile</h2>
       <table class="kv">
-        <tr><th>Added</th><td>{{ bank.created_at.strftime("%d %b %Y") }}</td></tr>
+        <tr><th>Legal name</th><td>{{ person.legal_name or "not set" }}</td></tr>
+        <tr><th>Role</th><td>{{ person.role or "not set" }}</td></tr>
         <tr>
-          <th>State</th>
-          <td>{{ bank.state }} <span class="chip">{{ bank.source }}</span></td>
+          <th>Address</th>
+          <td>{{ person.address.replace("\n", ", ") if person.address else "not set" }}</td>
         </tr>
-        <tr><th>Account name</th><td>{{ bank.account_name or "not given" }}</td></tr>
-        <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
-        <tr><th>Account number</th><td>{{ bank.account_number or "none" }}</td></tr>
-        <tr><th>IBAN</th><td>{{ bank.iban or "none" }}</td></tr>
+        <tr><th>Phone</th><td>{{ person.phone or "not set" }}</td></tr>
+        <tr><th>Contact email</th><td>{{ person.contact_email or "not set" }}</td></tr>
         <tr>
-          <th>Confirmed by them</th>
-          <td>
-            {{ bank.verified_at.strftime("%d %b %Y") if bank.verified_at
-               else "not yet" }}
-          </td>
+          <th>Payout region</th>
+          <td>{{ person.payout_region.value if person.payout_region else "not set" }}</td>
         </tr>
       </table>
-      <div id="bank-{{ bank.id }}">
-        <button class="quiet" type="button"
-                hx-post="/admin/bank/{{ bank.id }}/reveal"
-                hx-target="#bank-{{ bank.id }}" hx-swap="innerHTML">
-          Reveal full details
-        </button>
-      </div>
-      <form hx-boost="false" method="post" action="/admin/bank/{{ bank.id }}/flag" class="form inline">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <label class="field">
-          <span class="label">Flag this back to them</span>
-          <span class="hint">
-            Emails them what needs fixing. Changes nothing about what is paid.
-          </span>
-          <input type="text" name="reason" placeholder="What needs fixing?">
-        </label>
-        <button class="button ghost" type="submit">Send</button>
-      </form>
-    </div>
-  {% else %}
-    <p class="hint">No bank details on file.</p>
-  {% endfor %}
+    </section>
 
-  <h2>Propose a correction</h2>
-  <p class="hint">
-    This is queued for them to approve. It does not change what gets paid, and
-    you cannot make it do so &mdash; that is deliberate, and it is what stops a
-    stolen admin account redirecting the payroll.
-  </p>
-  <form hx-boost="false" method="post" action="/admin/people/{{ person.id }}/bank/propose"
-        class="form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label class="field">
-      <span class="label">Name on the account</span>
-      <input type="text" name="account_name">
-    </label>
-    <label class="field">
-      <span class="label">Bank</span>
-      <input type="text" name="bank_name">
-    </label>
-    {% if person.payout_region and person.payout_region.value == 'INTL' %}
-      <label class="field">
-        <span class="label">IBAN</span>
-        <input type="text" name="iban" data-format="iban" autocomplete="off"
-               spellcheck="false">
-      </label>
-      <label class="field">
-        <span class="label">Swift/BIC</span>
-        <input type="text" name="swift_bic" data-format="bic" autocomplete="off"
-               spellcheck="false">
-      </label>
-    {% else %}
-      <label class="field">
-        <span class="label">Sort code</span>
-        <input type="text" name="sort_code" inputmode="numeric"
-               data-format="sort-code" maxlength="8" autocomplete="off"
-               placeholder="00-00-00">
-      </label>
-      <label class="field">
-        <span class="label">Account number</span>
-        <input type="text" name="account_number" inputmode="numeric"
-               data-format="account" maxlength="8" autocomplete="off"
-               placeholder="00000000">
-      </label>
-      <label class="field">
-        <span class="label">Account number again</span>
-        <input type="text" name="account_number_again" inputmode="numeric"
-               data-format="account" maxlength="8" autocomplete="off"
-               placeholder="00000000">
-      </label>
-      <label class="field">
-        <span class="label">IBAN <em>(optional)</em></span>
-        <input type="text" name="iban" data-format="iban" autocomplete="off"
-               spellcheck="false">
-      </label>
-      <label class="field">
-        <span class="label">Swift/BIC <em>(optional)</em></span>
-        <input type="text" name="swift_bic" data-format="bic" autocomplete="off"
-               spellcheck="false">
-      </label>
-    {% endif %}
-    <button class="button ghost" type="submit">Propose for them to approve</button>
-  </form>
-</section>
+    <section data-tut="admin.person.fee">
+      <div class="table-head">
+        <h2>Fee</h2>
+        <details class="confirm quiet-open">
+          <summary>Set a new one</summary>
+          <form hx-boost="false" method="post"
+                action="/admin/people/{{ person.id }}/fee" class="form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="field">
+              <span class="label">Amount</span>
+              <span class="hint">Per month, in pounds.</span>
+              <input type="text" name="amount" inputmode="decimal" data-format="money"
+                     autocomplete="off" placeholder="0.00">
+            </label>
+            <label class="field">
+              <span class="label">Effective from</span>
+              <span class="hint">The current fee is closed the day before this.</span>
+              <input type="date" name="valid_from" value="{{ today.isoformat() }}">
+            </label>
+            <label class="field">
+              <span class="label">Note</span>
+              <span class="hint">Required. Why the fee changed.</span>
+              <input type="text" name="note">
+            </label>
+            <button class="button" type="submit">Set fee</button>
+          </form>
+        </details>
+      </div>
+
+      {% if fees %}
+        <div class="table">
+          <table>
+            <thead>
+              <tr>
+                <th class="tight">From</th>
+                <th class="tight">To</th>
+                <th class="tight num">Amount</th>
+                <th>Why, and who</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fee in fees %}
+                <tr>
+                  <td class="tight">{{ fee.valid_from.strftime("%d %b %Y") }}</td>
+                  <td class="tight">
+                    {% if fee.valid_to %}{{ fee.valid_to.strftime("%d %b %Y") }}
+                    {% else %}<span class="chip good">current</span>{% endif %}
+                  </td>
+                  <td class="tight num">{{ fee.fee_pence | gbp }}</td>
+                  {# The note and who set it, stacked. Side by side in a
+                     column this narrow they ran into each other. #}
+                  <td>
+                    {{ fee.note }}
+                    <span class="sub">{{ fee.set_by.split('@')[0] }}</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="hint">No fee has ever been set. They cannot invoice until one is.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="col">
+    <section data-tut="admin.person.bank">
+      <div class="table-head">
+        <h2>Bank</h2>
+        <details class="confirm quiet-open">
+          <summary>Propose a change</summary>
+          <p class="hint mt-s">Queued for them to accept. You cannot make it payable.</p>
+          <form hx-boost="false" method="post"
+                action="/admin/people/{{ person.id }}/bank/propose" class="form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="field">
+              <span class="label">Name on the account</span>
+              <input type="text" name="account_name">
+            </label>
+            <label class="field">
+              <span class="label">Bank</span>
+              <input type="text" name="bank_name">
+            </label>
+            {% if person.payout_region and person.payout_region.value == 'INTL' %}
+              <label class="field">
+                <span class="label">IBAN</span>
+                <input type="text" name="iban" data-format="iban" autocomplete="off"
+                       spellcheck="false">
+              </label>
+              <label class="field">
+                <span class="label">Swift/BIC</span>
+                <input type="text" name="swift_bic" data-format="bic" autocomplete="off"
+                       spellcheck="false">
+              </label>
+            {% else %}
+              <label class="field">
+                <span class="label">Sort code</span>
+                <input type="text" name="sort_code" inputmode="numeric"
+                       data-format="sort-code" maxlength="8" autocomplete="off"
+                       placeholder="00-00-00">
+              </label>
+              <label class="field">
+                <span class="label">Account number</span>
+                <input type="text" name="account_number" inputmode="numeric"
+                       data-format="account" maxlength="8" autocomplete="off"
+                       placeholder="00000000">
+              </label>
+              <label class="field">
+                <span class="label">Account number again</span>
+                <input type="text" name="account_number_again" inputmode="numeric"
+                       data-format="account" maxlength="8" autocomplete="off"
+                       placeholder="00000000">
+              </label>
+              <label class="field">
+                <span class="label">IBAN <em>(optional)</em></span>
+                <input type="text" name="iban" data-format="iban" autocomplete="off"
+                       spellcheck="false">
+              </label>
+              <label class="field">
+                <span class="label">Swift/BIC <em>(optional)</em></span>
+                <input type="text" name="swift_bic" data-format="bic" autocomplete="off"
+                       spellcheck="false">
+              </label>
+            {% endif %}
+            <button class="button ghost" type="submit">Propose</button>
+          </form>
+        </details>
+      </div>
+
+      {% for bank in banks %}
+        {# The account being paid stays open. Superseded ones fold away: three
+           expanded cards is a history nobody reads. #}
+        <details class="record" {% if loop.first %}open{% endif %}>
+          <summary>
+            <span class="record-line">
+              <strong class="on-ink">{{ bank.account_name or "No name" }}</strong>
+              <span class="hint">
+                {{ bank.account_number or bank.iban or "no number" }}
+                &middot; {{ bank.created_at.strftime("%d %b %Y") }}
+              </span>
+            </span>
+            <span class="chip{% if bank.state == 'active' %} good{% elif bank.state == 'unverified' %} alert{% endif %}">
+              {{ bank.state }}
+            </span>
+          </summary>
+
+          <table class="kv mt-s">
+            <tr><th>Bank</th><td>{{ bank.bank_name or "not given" }}</td></tr>
+            <tr><th>Account number</th><td>{{ bank.account_number or "none" }}</td></tr>
+            <tr><th>IBAN</th><td>{{ bank.iban or "none" }}</td></tr>
+            <tr>
+              <th>Confirmed by them</th>
+              <td>
+                {{ bank.verified_at.strftime("%d %b %Y") if bank.verified_at
+                   else "not yet" }}
+              </td>
+            </tr>
+          </table>
+
+          <div id="bank-{{ bank.id }}" class="mt-s">
+            <button class="quiet" type="button"
+                    hx-post="/admin/bank/{{ bank.id }}/reveal"
+                    hx-target="#bank-{{ bank.id }}" hx-swap="innerHTML">
+              Reveal full details
+            </button>
+          </div>
+
+          <form hx-boost="false" method="post"
+                action="/admin/bank/{{ bank.id }}/flag" class="row-form mt-s">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="text" name="reason"
+                   placeholder="Flag back to them &mdash; what needs fixing?"
+                   aria-label="Flag this account back to them">
+            <button class="button ghost small" type="submit">Flag</button>
+          </form>
+        </details>
+      {% else %}
+        <p class="hint">No bank details on file.</p>
+      {% endfor %}
+    </section>
+  </div>
+</div>
 
 <section data-tut="admin.person.invoices">
   <h2>Invoices</h2>
@@ -212,8 +289,8 @@
                 {% if invoice.is_late %}<span class="chip">late</span>{% endif %}
               </td>
               <td class="tight">
-                {{ invoice.issued_at.strftime("%d %b %Y") if invoice.issued_at
-                   else "&mdash;" | safe }}
+                {% if invoice.issued_at %}{{ invoice.issued_at.strftime("%d %b %Y") }}
+                {% else %}&mdash;{% endif %}
               </td>
               <td class="tight">
                 <span class="row-actions">
@@ -231,8 +308,8 @@
                             action="/admin/invoices/{{ invoice.id }}/void"
                             class="row-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <input type="text" name="reason" required
-                               placeholder="Why" aria-label="Why invoice {{ invoice.number }} is void">
+                        <input type="text" name="reason" required placeholder="Why"
+                               aria-label="Why invoice {{ invoice.number }} is void">
                         <button class="button small" type="submit">Void {{ invoice.number }}</button>
                       </form>
                       <p class="hint mt-xs">
@@ -253,19 +330,22 @@
 </section>
 
 {% if person.status.value != "inactive" %}
-<section>
-  <h2>Deactivate</h2>
-  <p class="hint">
-    No reminders, cannot invoice, history kept. Nothing is deleted.
-  </p>
-  <form hx-boost="false" method="post" action="/admin/people/{{ person.id }}/deactivate" class="form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label class="field">
-      <span class="label">Reason</span>
-      <input type="text" name="reason">
-    </label>
-    <button class="button ghost" type="submit">Deactivate</button>
-  </form>
-</section>
+  {# The other irreversible thing on this page, so it gets the same treatment
+     as a void and sits out of the way of everything somebody reads. #}
+  <div class="page-foot">
+    <details class="confirm">
+      <summary>Deactivate</summary>
+      <form hx-boost="false" method="post"
+            action="/admin/people/{{ person.id }}/deactivate" class="row-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="reason" required placeholder="Why"
+               aria-label="Why {{ person.display_name }} is being deactivated">
+        <button class="button small" type="submit">Deactivate</button>
+      </form>
+      <p class="hint mt-xs">
+        They stop being chased and cannot invoice. Nothing is deleted.
+      </p>
+    </details>
+  </div>
 {% endif %}
 {% endblock %}
