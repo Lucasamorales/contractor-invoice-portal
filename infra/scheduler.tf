@@ -31,8 +31,13 @@ locals {
       description = "Send queued mail with backoff"
     }
     sync-kudos = {
-      # R-JOB-01. Daily through the window.
-      schedule    = "0 7 20-28 * *"
+      # R-JOB-01. Every day, not only through the window. The snapshot this
+      # writes is what lets a screen state somebody's kudos at all: without
+      # one, zero and "we do not know" are indistinguishable and the app
+      # refuses to show a figure (R-KUD-06). Running only from the 20th left
+      # every quarter month with nineteen days where nobody could be told
+      # their kudos, and a queue full of people who were not actually stuck.
+      schedule    = "0 7 * * *"
       path        = "/tasks/sync-kudos"
       description = "Read the kudos sheet"
     }

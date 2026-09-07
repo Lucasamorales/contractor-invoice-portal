@@ -25,6 +25,7 @@ from app.db.models import (
     KudosAlias,
     KudosAward,
     KudosEvent,
+    KudosSnapshot,
     Outbox,
     OutboxStatus,
     Person,
@@ -389,6 +390,31 @@ def pending_bank_rows(session: Session) -> list[BankDetail]:
             select(BankDetail)
             .where(BankDetail.state == BankState.PENDING)
             .order_by(BankDetail.created_at.desc())
+        )
+    )
+
+
+def people_missing_kudos_snapshot(session: Session, period_key: str) -> list[Person]:
+    """Who we cannot state a kudos count for this period (R-KUD-06).
+
+    A snapshot records that the count was read successfully. Without one, zero
+    and "we do not know" are indistinguishable, so their screen refuses to show
+    a figure. Nothing else reports that, and it blocks a payment, so it belongs
+    on the queue where somebody sees it.
+
+    Only asked in a quarter-end month, and only about people who could be paid
+    kudos at all.
+    """
+    known = select(KudosSnapshot.person_id).where(KudosSnapshot.period == period_key)
+    return list(
+        session.scalars(
+            select(Person)
+            .where(
+                Person.kudos_eligible.is_(True),
+                Person.status != PersonStatus.INACTIVE,
+                Person.id.not_in(known),
+            )
+            .order_by(Person.display_name)
         )
     )
 

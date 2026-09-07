@@ -231,8 +231,9 @@ def gather_kudos(
     if snapshot is None and not kudos_zero_acknowledged:
         raise SubmissionBlocked(
             "kudos_unavailable",
-            "We couldn't read your kudos count. Confirm you want to invoice "
-            "without it, or try again shortly.",
+            "Your kudos count is not available yet. Accounts have been told. "
+            "Try again shortly, or confirm you want to invoice without it — "
+            "they will go on your next quarterly invoice instead.",
         )
     if snapshot is None:
         return (), (), settings.kudos_rate_pence
@@ -818,6 +819,14 @@ def readiness(
         )
     elif not due:
         kudos_count = 0
+
+    if due and snapshot is None:
+        # Their screen tells them accounts have been told. This, and the queue
+        # entry beside it, is what makes that true. No count and no fee in the
+        # line (CLAUDE.md 2.8) — the person and the period are enough to act on.
+        logger.warning(
+            "kudos count unavailable for person %s in %s", person.id, period.key
+        )
 
     blocks: list[tuple[str, str]] = []
     if fee is None:

@@ -63,6 +63,21 @@
         </li>
       {% endfor %}
 
+      {% for person in attention.kudos_unreadable %}
+        <li>
+          <strong class="on-ink">
+            <a href="/admin/people/{{ person.id }}">{{ person.display_name }}</a>
+            cannot be told their kudos
+          </strong>
+          <p class="hint mt-xs flush-x">
+            Their screen shows no figure rather than a wrong one, and says you
+            have been told. Kudos are due this quarter, so this holds up their
+            invoice.
+          </p>
+          <p class="hint mt-xs flush-x on-red">Clears on the next kudos sync.</p>
+        </li>
+      {% endfor %}
+
       {# The one item with its control beside it, which is why it is the only
          one that reliably gets dealt with. #}
       {% for name, count in attention.unmapped_kudos %}

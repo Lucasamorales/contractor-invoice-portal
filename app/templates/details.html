@@ -9,14 +9,16 @@
   <p class="lead">All five print on the invoice.</p>
 </div>
 
-{% macro field(name, label, hint, value, type='text') %}
+{% macro field(name, label, hint, value, type='text', format='', mode='') %}
   <label class="field">
     <span class="label">{{ label }}</span>
     {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
     {% if type == 'textarea' %}
       <textarea name="{{ name }}" rows="3">{{ value or '' }}</textarea>
     {% else %}
-      <input type="{{ type }}" name="{{ name }}" value="{{ value or '' }}">
+      <input type="{{ type }}" name="{{ name }}" value="{{ value or '' }}"
+             {% if format %}data-format="{{ format }}"{% endif %}
+             {% if mode %}inputmode="{{ mode }}"{% endif %}>
     {% endif %}
     {% if errors.get(name) %}<span class="field-error">{{ errors[name] }}</span>{% endif %}
   </label>
@@ -29,7 +31,8 @@
   {{ field('role', 'Role', 'Printed under your name.',
            submitted.role if submitted else person.role) }}
   {{ field('address', 'Address', '', submitted.address if submitted else person.address, 'textarea') }}
-  {{ field('phone', 'Phone', '', submitted.phone if submitted else person.phone, 'tel') }}
+  {{ field('phone', 'Phone', '', submitted.phone if submitted else person.phone,
+           'tel', 'phone', 'tel') }}
   {{ field('contact_email', 'Email address', 'Where accounts replies to you.',
            submitted.contact_email if submitted else person.contact_email, 'email') }}
   <button class="button" type="submit">Save{% include "_arrow.html" %}</button>

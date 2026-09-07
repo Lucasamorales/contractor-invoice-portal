@@ -68,7 +68,7 @@
       <span class="name">Kudos</span>
       <span class="right">
         {% if not state.kudos_eligible %}
-          <span class="hint">Not payable on your invoices</span>
+          <span class="hint">Not paid on your invoices</span>
         {% elif not state.kudos_due_this_period %}
           <span class="figure">{{ 0 | gbp }}</span>
           <span class="hint as-block mt-xs">
@@ -77,10 +77,17 @@
             {% elif period.month < 9 %}September{% else %}December{% endif %}
             invoice
           </span>
-        {% elif state.kudos_count is not none %}
+        {% elif state.kudos_count %}
           <span class="figure">{{ state.kudos_pence | gbp }}</span>
+          <span class="hint as-block mt-xs">
+            {{ state.kudos_count }} this quarter, at {{ state.kudos_rate_pence | gbp }} each
+          </span>
+        {% elif state.kudos_count is not none %}
+          <span class="figure">{{ 0 | gbp }}</span>
+          <span class="hint as-block mt-xs">None this quarter</span>
         {% else %}
-          <span class="missing">Unavailable &mdash; the IT department has been notified</span>
+          <span class="missing">Not available yet</span>
+          <span class="hint as-block mt-xs">Accounts have been told.</span>
         {% endif %}
       </span>
     </div>

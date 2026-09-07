@@ -22,23 +22,25 @@
 {% endif %}
 
 <div class="card" data-tut="member.additional.kudos">
-  <p class="label">Kudos &mdash; read from the sheet</p>
+  <p class="label">Kudos</p>
   <div class="card-row mt-m no-rule">
     <span class="figure">
       {% if not state.kudos_eligible %}
-        <span class="hint">Not payable on your invoices</span>
+        <span class="hint">Not paid on your invoices</span>
       {% elif not state.kudos_due_this_period %}
         {{ 0 | gbp }}
       {% elif state.kudos_count is not none %}
         {{ state.kudos_count }} &times; {{ state.kudos_rate_pence | gbp }}
         = {{ state.kudos_pence | gbp }}
       {% else %}
-        <span class="missing">Unavailable</span>
+        <span class="missing">Not available yet</span>
       {% endif %}
     </span>
     <span class="hint note-right">
-      {% if state.kudos_due_this_period %}
-        You cannot change them here.
+      {% if not state.kudos_eligible %}
+        Prizes and kudos do not go on your invoice.
+      {% elif state.kudos_due_this_period %}
+        Added for you. Nothing to do.
       {% else %}
         Paid quarterly, on your March, June, September and December invoice.
       {% endif %}

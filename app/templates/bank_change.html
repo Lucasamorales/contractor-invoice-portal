@@ -51,45 +51,52 @@
   {% if person.payout_region and person.payout_region.value == 'INTL' %}
     <label class="field">
       <span class="label">IBAN</span>
-      <input type="text" name="iban" value="">
+      <input type="text" name="iban" value="" data-format="iban"
+             autocomplete="off" spellcheck="false">
     </label>
     <label class="field">
       <span class="label">Swift/BIC</span>
-      <input type="text" name="swift_bic" value="{{ entry.swift_bic or '' }}">
+      <input type="text" name="swift_bic" value="{{ entry.swift_bic or '' }}"
+             data-format="bic" autocomplete="off" spellcheck="false">
     </label>
   {% else %}
     <label class="field">
       <span class="label">Sort code</span>
-      <span class="hint">Six digits. Dashes are fine.</span>
+      <span class="hint">Six digits.</span>
       <input type="text" name="sort_code" value="{{ entry.sort_code or '' }}"
-             inputmode="numeric">
+             inputmode="numeric" data-format="sort-code" maxlength="8"
+             autocomplete="off" placeholder="23-08-01">
     </label>
     <label class="field">
       <span class="label">Account number</span>
       <span class="hint">Eight digits.</span>
       <input type="text" name="account_number" value="" inputmode="numeric"
-             autocomplete="off">
+             data-format="account" maxlength="8" autocomplete="off"
+             placeholder="12345678">
     </label>
     <label class="field">
       <span class="label">Account number again</span>
       <span class="hint">
-        Typed twice on purpose. 12345678 and 12435678 are both valid account
-        numbers, and only one of them is yours.
+        Typed twice on purpose &mdash; 12345678 and 12435678 are both valid,
+        and only one of them is yours.
       </span>
       <input type="text" name="account_number_again" value="" inputmode="numeric"
-             autocomplete="off">
+             data-format="account" maxlength="8" autocomplete="off"
+             placeholder="12345678">
     </label>
     <label class="field">
       <span class="label">IBAN <em>(optional)</em></span>
       <span class="hint">
-        If your bank gives you one &mdash; Wise does &mdash; we check it against
-        the sort code and account number above.
+        If your bank gives you one. We check it against the sort code and
+        account number above.
       </span>
-      <input type="text" name="iban" value="">
+      <input type="text" name="iban" value="" data-format="iban"
+             autocomplete="off" spellcheck="false">
     </label>
     <label class="field">
       <span class="label">Swift/BIC <em>(optional)</em></span>
-      <input type="text" name="swift_bic" value="{{ entry.swift_bic or '' }}">
+      <input type="text" name="swift_bic" value="{{ entry.swift_bic or '' }}"
+             data-format="bic" autocomplete="off" spellcheck="false">
     </label>
   {% endif %}
 

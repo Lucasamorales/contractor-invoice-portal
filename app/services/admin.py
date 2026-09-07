@@ -28,6 +28,7 @@ from app.db.models import (
 )
 from app.domain.formatting import format_sort_code
 from app.domain.iban import mask
+from app.domain.kudos import is_quarter_end
 from app.domain.money import format_gbp
 from app.domain.period import Period
 from app.services.crypto import Cipher, field_aad
@@ -525,6 +526,10 @@ class Attention:
     # Kudos whose receiver nobody has mapped to a person (R-KUD-14). Money
     # sitting in the sheet with nowhere to go, which nothing else reports.
     unmapped_kudos: list[tuple[str, int]] = field(default_factory=list)
+    # People whose kudos count could not be stated this quarter (R-KUD-06).
+    # Their screen says accounts have been told, and this is what makes that
+    # true rather than a sentence that sounds reassuring.
+    kudos_unreadable: list[Person] = field(default_factory=list)
 
     @property
     def total(self) -> int:
@@ -533,6 +538,7 @@ class Attention:
             + len(self.failed_mail)
             + len(self.unconfirmed_bank)
             + len(self.unmapped_kudos)
+            + len(self.kudos_unreadable)
         )
 
     @property
@@ -544,6 +550,12 @@ def needs_attention(
     session: Session, *, now: datetime, stuck_after_minutes: int = STUCK_DRAFT_MINUTES
 ) -> Attention:
     """Everything quietly broken, in one place."""
+    period = Period.containing(now)
+    unreadable = (
+        repo.people_missing_kudos_snapshot(session, period.key)
+        if is_quarter_end(period.year, period.month)
+        else []
+    )
     return Attention(
         stuck_drafts=repo.stuck_drafts(
             session, older_than=now - timedelta(minutes=stuck_after_minutes)
@@ -551,4 +563,5 @@ def needs_attention(
         failed_mail=repo.failed_outbox(session),
         unconfirmed_bank=repo.unverified_bank_rows(session),
         unmapped_kudos=repo.unresolved_kudos_names(session),
+        kudos_unreadable=unreadable,
     )

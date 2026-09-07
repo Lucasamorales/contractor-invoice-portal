@@ -6,7 +6,8 @@
          value="{{ item.description if item else '' }}"
          placeholder="What was it for?">
   <input type="text" name="amount" class="amount" inputmode="decimal"
-         value="{{ value }}" placeholder="0.00">
+         data-format="money" value="{{ value }}" placeholder="0.00"
+         autocomplete="off">
   <label class="receipt-drop">
     <input type="file" data-receipt hidden
            accept=".jpg,.jpeg,.png,.heic,.pdf">

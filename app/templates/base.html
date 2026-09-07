@@ -85,5 +85,6 @@
   {% set steps = tutorial_steps(path) %}
   <script type="application/json" id="tutorial-steps">{{ steps | tojson }}</script>
   <script src="{{ static('tutorial.js') }}" defer></script>
+  <script src="{{ static('forms.js') }}" defer></script>
 </body>
 </html>

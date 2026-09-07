@@ -53,8 +53,9 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label class="field">
       <span class="label">Amount</span>
-      <span class="hint">Per month, in pounds: 2500 or 2500.00</span>
-      <input type="text" name="amount" inputmode="decimal">
+      <span class="hint">Per month, in pounds.</span>
+      <input type="text" name="amount" inputmode="decimal" data-format="money"
+             autocomplete="off" placeholder="2500.00">
     </label>
     <label class="field">
       <span class="label">Effective from</span>
@@ -63,9 +64,7 @@
     </label>
     <label class="field">
       <span class="label">Note</span>
-      <span class="hint">
-        Required. In December this is how the change explains itself.
-      </span>
+      <span class="hint">Required. Why the fee changed.</span>
       <input type="text" name="note">
     </label>
     <button class="button" type="submit">Set fee</button>
@@ -141,34 +140,42 @@
     {% if person.payout_region and person.payout_region.value == 'INTL' %}
       <label class="field">
         <span class="label">IBAN</span>
-        <input type="text" name="iban">
+        <input type="text" name="iban" data-format="iban" autocomplete="off"
+               spellcheck="false">
       </label>
       <label class="field">
         <span class="label">Swift/BIC</span>
-        <input type="text" name="swift_bic">
+        <input type="text" name="swift_bic" data-format="bic" autocomplete="off"
+               spellcheck="false">
       </label>
     {% else %}
       <label class="field">
         <span class="label">Sort code</span>
-        <input type="text" name="sort_code" inputmode="numeric">
+        <input type="text" name="sort_code" inputmode="numeric"
+               data-format="sort-code" maxlength="8" autocomplete="off"
+               placeholder="23-08-01">
       </label>
       <label class="field">
         <span class="label">Account number</span>
         <input type="text" name="account_number" inputmode="numeric"
-               autocomplete="off">
+               data-format="account" maxlength="8" autocomplete="off"
+               placeholder="12345678">
       </label>
       <label class="field">
         <span class="label">Account number again</span>
         <input type="text" name="account_number_again" inputmode="numeric"
-               autocomplete="off">
+               data-format="account" maxlength="8" autocomplete="off"
+               placeholder="12345678">
       </label>
       <label class="field">
         <span class="label">IBAN <em>(optional)</em></span>
-        <input type="text" name="iban">
+        <input type="text" name="iban" data-format="iban" autocomplete="off"
+               spellcheck="false">
       </label>
       <label class="field">
         <span class="label">Swift/BIC <em>(optional)</em></span>
-        <input type="text" name="swift_bic">
+        <input type="text" name="swift_bic" data-format="bic" autocomplete="off"
+               spellcheck="false">
       </label>
     {% endif %}
     <button class="button ghost" type="submit">Propose for them to approve</button>
