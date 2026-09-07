@@ -790,3 +790,95 @@ def test_there_is_no_way_to_dismiss_an_unsent_email() -> None:
     queue = Path("app/templates/admin/queue.html").read_text(encoding="utf-8")
     for wording in ("Give up", "Dismiss", "Ignore this email"):
         assert wording not in queue
+
+
+def test_only_one_panel_opens_and_an_unknown_one_opens_nothing(
+    admin_client, factory
+) -> None:
+    """Disclosure is a single scalar in the URL, so "one at a time" is free and
+    a parameter can never put arbitrary text on the page."""
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+
+    plain = client.get(f"/admin/people/{person_id}").text
+    assert 'id="panel-propose"' not in plain
+    assert 'id="panel-flag"' not in plain
+
+    opened = client.get(f"/admin/people/{person_id}?panel=propose").text
+    assert 'id="panel-propose"' in opened
+    assert 'id="panel-flag"' not in opened
+
+    # Not in the allowed set, so nothing opens and nothing is echoed back.
+    junk = client.get(f"/admin/people/{person_id}?panel=<script>alert(1)</script>")
+    assert junk.status_code == 200
+    assert "alert(1)" not in junk.text
+    assert 'id="panel-propose"' not in junk.text
+
+
+def test_the_void_panel_only_names_this_persons_own_live_invoice(
+    admin_client, factory
+) -> None:
+    """The heading names an invoice, so the number is looked up rather than
+    printed from the query string."""
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    with factory() as session:
+        session.add(
+            Invoice(
+                person_id=person_id,
+                period="2026-09",
+                number=7,
+                status=InvoiceStatus.SUBMITTED,
+                remuneration_pence=100000,
+                additional_pence=0,
+                total_pence=100000,
+                idempotency_key="panel-void",
+            )
+        )
+        session.commit()
+
+    opened = client.get(f"/admin/people/{person_id}?void=7").text
+    assert "Void invoice 7" in opened
+
+    # A number they do not have opens nothing at all.
+    missing = client.get(f"/admin/people/{person_id}?void=999").text
+    assert 'id="panel-void"' not in missing
+
+    unreal = client.get(f"/admin/people/{person_id}?void=nine")
+    assert unreal.status_code == 200
+    assert 'id="panel-void"' not in unreal.text
+
+
+def test_a_failed_fee_reopens_its_own_panel_with_the_error(
+    admin_client, factory
+) -> None:
+    """A validation failure used to put its error in a list at the top of the
+    page, which scrolls away from the field that is wrong."""
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    page = client.get(f"/admin/people/{person_id}")
+
+    response = client.post(
+        f"/admin/people/{person_id}/fee",
+        data={
+            "csrf_token": token_from(page.text),
+            "amount": "not money",
+            "valid_from": "2026-09-01",
+            "note": "trying",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 422
+    assert 'class="panel-error"' in response.text
+    assert 'id="panel-fee"' in response.text
+
+
+def test_the_page_offers_no_way_to_make_a_bank_row_payable() -> None:
+    """R-BANK-*, CLAUDE.md 2.2. The layout changed; the boundary did not."""
+    from pathlib import Path
+
+    markup = Path("app/templates/admin/person.html").read_text(encoding="utf-8")
+    assert "/bank/confirm" not in markup
+    for wording in ("Make payable", "Confirm the account", "Approve"):
+        assert wording not in markup
+    assert "You may read, never confirm" in markup

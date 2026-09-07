@@ -485,7 +485,8 @@ def test_flagging_emails_the_person_and_changes_nothing(wired, factory) -> None:
     person_id = seed(factory, cipher)
 
     with as_user(ROBIN, finance=True) as client:
-        page = client.get(f"/admin/people/{person_id}")
+        # The flag form opens from the URL now, so ask for its panel.
+        page = client.get(f"/admin/people/{person_id}?panel=flag")
         bank_id = re.search(r'action="/admin/bank/([0-9a-f-]+)/flag"', page.text).group(
             1
         )
@@ -522,7 +523,8 @@ def test_flagging_without_a_reason_is_refused(wired, factory) -> None:
     person_id = seed(factory, cipher)
 
     with as_user(ROBIN, finance=True) as client:
-        page = client.get(f"/admin/people/{person_id}")
+        # The flag form opens from the URL now, so ask for its panel.
+        page = client.get(f"/admin/people/{person_id}?panel=flag")
         bank_id = re.search(r'action="/admin/bank/([0-9a-f-]+)/flag"', page.text).group(
             1
         )

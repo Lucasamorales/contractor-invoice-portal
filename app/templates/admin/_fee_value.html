@@ -6,7 +6,10 @@
 {% elif revealed %}
   <span class="figure sm">{{ fee_pence | gbp }}</span>
 {% else %}
+  {# The people table wraps this in a cell; the person page does not, and
+     passes the element to replace instead. #}
   <button class="quiet" type="button"
           hx-post="/admin/people/{{ person.id }}/reveal-fee"
-          hx-target="closest td" hx-swap="innerHTML">&pound;&bull;&bull;&bull;</button>
+          hx-target="{{ fee_target | default('closest td', true) }}"
+          hx-swap="innerHTML">&pound;&bull;&bull;&bull;</button>
 {% endif %}

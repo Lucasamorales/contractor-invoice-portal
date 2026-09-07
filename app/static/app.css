@@ -609,6 +609,135 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 .row-form input[type="text"] { flex: 1; min-width: 0; }
 .row-form .button { flex: none; }
 
+/* ------------------------------------------------------- opened panels -- */
+
+/* A form opened from the card it belongs to. In flow, full width, and visibly
+ * attached to its section — never floating over the figures below it, for the
+ * same reason .confirm[open] does not: covering a number while somebody
+ * decides about it is exactly the wrong moment to hide it. */
+.panel-inset {
+  margin-top: 18px;
+  padding: 20px 22px;
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  border-radius: var(--radius);
+  animation: panel-in 160ms ease-out;
+}
+
+.panel-inset.warn { border-color: var(--red); border-left-color: var(--red); }
+.panel-inset .panel-head {
+  font: 700 11.5px var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.panel-inset.warn .panel-head { color: var(--red-text); }
+
+/* An error belongs beside the field that caused it, not in a list at the top
+ * of the page that scrolls away from it. */
+.panel-error {
+  font: 600 12.5px var(--sans);
+  color: var(--red-text);
+  margin: 12px 0 0;
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-inset { animation: none; }
+}
+
+/* A panel's fields wrap instead of stacking, so seven of them are about 200px
+ * tall rather than 800px and never push the thing they describe off screen. */
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px 16px;
+}
+
+.field-grid .field { margin-bottom: 0; }
+
+/* The double-entry pair, kept together in its own box. Separated by other
+ * fields, the second entry stops being a check and becomes a chore
+ * (R-BANK-03). */
+.pair-box {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.pair-box .field-grid { gap: 12px 16px; }
+
+/* Label over value, read across. Replaces a .kv table wherever the values are
+ * short and there are four or more of them: four facts in one glance rather
+ * than eight rows read downwards. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px 30px;
+}
+
+/* As a flex child it has no width of its own, so auto-fit collapses the
+   whole grid to one column and the four facts read downwards again. */
+.head-row > .facts { flex: 1; min-width: 0; }
+
+.facts .label { display: block; margin-bottom: 6px; }
+.facts .figure { font-size: 17px; }
+.facts.wide-facts { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+/* A row of pill actions under the thing they act on. */
+.pill-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* The result of an action, left where the action was. */
+.result-note {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--red);
+  border-radius: var(--radius);
+}
+
+.result-note.pending { border: 1px solid var(--red); }
+
+/* Confirmation that something happened, under the back link, dismissible and
+ * never a toast that vanishes before it is read. */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--good);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.notice a { color: var(--muted); text-decoration: none; font-weight: 600; }
+.notice a:hover { color: var(--ink); }
+
+/* A green dot paired with the word, never colour carrying the meaning alone. */
+.dot-good {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 100px;
+  background: var(--good);
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
 /* ---------------------------------------------------------------- steps -- */
 
 .steps {

@@ -27,7 +27,15 @@ from sqlalchemy.orm import Session
 from app.auth import FinanceIdentity
 from app.config import Settings, get_settings
 from app.db import repo
-from app.db.models import BankDetail, Invoice, Outbox, OutboxStatus, Person
+from app.db.models import (
+    BankDetail,
+    BankState,
+    Invoice,
+    InvoiceStatus,
+    Outbox,
+    OutboxStatus,
+    Person,
+)
 from app.db.session import get_session
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, format_gbp, parse_gbp_to_pence
@@ -206,6 +214,32 @@ async def reveal_fee(
 # --------------------------------------------------------------------------
 
 
+# The panels a person's record can have open. A scalar in the URL rather than
+# a set of booleans, which is what makes "one at a time" free, keeps the page
+# refresh- and back-button-safe, and lets a failed submit re-render with its
+# own panel still open.
+PERSON_PANELS = frozenset({"fee", "propose", "flag", "deactivate"})
+
+# What just happened, said in the app's voice rather than by interpolating a
+# query parameter into the page. Never carries a fee or an account number.
+PERSON_NOTICES = {
+    "fee": "Fee set. The previous row was closed the day before, not overwritten.",
+    "proposed": (
+        "Proposal sent. It is pending until they accept it — nothing about "
+        "what is payable has changed."
+    ),
+    "flagged": (
+        "Flag emailed. Still active, still payable — a flag changes nothing on its own."
+    ),
+    "void": "That invoice is void. They can invoice again; its number is not reused.",
+}
+
+
+def _panel(value: str | None) -> str | None:
+    """The requested panel, or nothing. Never echoed back unvalidated."""
+    return value if value in PERSON_PANELS else None
+
+
 def _person_page(
     request: Request,
     identity: FinanceIdentity,
@@ -216,6 +250,9 @@ def _person_page(
     *,
     errors: list[str] | None = None,
     status_code: int = 200,
+    panel: str | None = None,
+    void_no: str | None = None,
+    done: str | None = None,
 ) -> HTMLResponse:
     """The person page. Shared so every handler that renders it agrees."""
     now = _now()
@@ -239,6 +276,35 @@ def _person_page(
             "period": period,
         }
     )
+
+    invoices = context["invoices"]
+    banks = context["banks"]
+    live = [i for i in invoices if i.status is not InvoiceStatus.VOID]
+
+    # Only ever one of this person's own live invoice numbers, so the panel
+    # heading cannot be made to say something a parameter chose.
+    wanted = None
+    if void_no:
+        wanted = next((i for i in live if str(i.number) == str(void_no)), None)
+
+    context.update(
+        {
+            "panel": _panel(panel),
+            "void_invoice": wanted,
+            "notice": PERSON_NOTICES.get(done or ""),
+            "issued_count": len(live),
+            "current_row": banks[0] if banks else None,
+            "earlier_rows": banks[1:],
+            "pending_row": next(
+                (b for b in banks if b["state"] == BankState.PENDING.value), None
+            ),
+            "last_flag": (
+                repo.last_flag_for_bank(session, uuid.UUID(banks[0]["id"]))
+                if banks
+                else None
+            ),
+        }
+    )
     return templates.TemplateResponse(
         request=request,
         name="admin/person.html",
@@ -255,9 +321,22 @@ async def person_detail(
     session: DbSession,
     settings: Config,
     cipher: Box,
+    panel: str | None = None,
+    void: str | None = None,
+    done: str | None = None,
 ) -> HTMLResponse:
     person = _get_person(session, person_id)
-    return _person_page(request, identity, session, settings, cipher, person)
+    return _person_page(
+        request,
+        identity,
+        session,
+        settings,
+        cipher,
+        person,
+        panel=panel,
+        void_no=void,
+        done=done,
+    )
 
 
 # response_model=None: the handler re-renders the page on a validation
@@ -303,7 +382,8 @@ async def set_fee(
             )
             session.commit()
             return RedirectResponse(
-                f"/admin/people/{person_id}", status_code=status.HTTP_303_SEE_OTHER
+                f"/admin/people/{person_id}?done=fee",
+                status_code=status.HTTP_303_SEE_OTHER,
             )
         except admin.AdminError as exc:
             session.rollback()
@@ -318,6 +398,7 @@ async def set_fee(
         person,
         errors=errors,
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        panel="fee",
     )
 
 
@@ -416,7 +497,8 @@ async def void_invoice(
     )
     session.commit()
     return RedirectResponse(
-        f"/admin/people/{invoice.person_id}", status_code=status.HTTP_303_SEE_OTHER
+        f"/admin/people/{invoice.person_id}?done=void",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
@@ -725,11 +807,13 @@ async def propose_bank_change(
             person,
             errors=[exc.message, *exc.errors],
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            panel="propose",
         )
 
     session.commit()
     return RedirectResponse(
-        f"/admin/people/{person_id}", status_code=status.HTTP_303_SEE_OTHER
+        f"/admin/people/{person_id}?done=proposed",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
@@ -773,11 +857,13 @@ async def flag_bank_row(
             person,
             errors=[exc.message],
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            panel="flag",
         )
 
     session.commit()
     return RedirectResponse(
-        f"/admin/people/{person.id}", status_code=status.HTTP_303_SEE_OTHER
+        f"/admin/people/{person.id}?done=flagged",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
