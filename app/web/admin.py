@@ -32,7 +32,7 @@ from app.db.session import get_session
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, format_gbp, parse_gbp_to_pence
 from app.domain.period import Period, window_state
-from app.services import admin, bank_changes, kudos_admin
+from app.services import admin, bank_changes, invoicing, kudos_admin
 from app.services.crypto import Cipher, field_aad
 from app.services.storage import ObjectStore, StorageError
 from app.web import csrf
@@ -329,6 +329,46 @@ async def deactivate(
     session.commit()
     return RedirectResponse(
         f"/admin/people/{person_id}", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.post("/invoices/{invoice_id}/void")
+async def void_invoice(
+    invoice_id: uuid.UUID,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    reason: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    """R-SUB-10. The other half of "an invoice is immutable" (CLAUDE.md 2.3).
+
+    Figures are never updated, so a wrong invoice is voided and reissued. The
+    number is not released (R-NUM-05) and the row is not deleted: the gap in
+    somebody's sequence is a fact, and the reason is what explains it later.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    invoice = session.get(Invoice, invoice_id)
+    if invoice is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="We have no such invoice."
+        )
+    if not reason.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A void needs a reason.",
+        )
+
+    invoicing.void(
+        session,
+        invoice,
+        actor_email=identity.email,
+        now=_now(),
+        reason=reason.strip(),
+    )
+    session.commit()
+    return RedirectResponse(
+        f"/admin/people/{invoice.person_id}", status_code=status.HTTP_303_SEE_OTHER
     )
 
 

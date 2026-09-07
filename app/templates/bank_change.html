@@ -65,14 +65,14 @@
       <span class="hint">Six digits.</span>
       <input type="text" name="sort_code" value="{{ entry.sort_code or '' }}"
              inputmode="numeric" data-format="sort-code" maxlength="8"
-             autocomplete="off" placeholder="23-08-01">
+             autocomplete="off" placeholder="00-00-00">
     </label>
     <label class="field">
       <span class="label">Account number</span>
       <span class="hint">Eight digits.</span>
       <input type="text" name="account_number" value="" inputmode="numeric"
              data-format="account" maxlength="8" autocomplete="off"
-             placeholder="12345678">
+             placeholder="00000000">
     </label>
     <label class="field">
       <span class="label">Account number again</span>
@@ -82,7 +82,7 @@
       </span>
       <input type="text" name="account_number_again" value="" inputmode="numeric"
              data-format="account" maxlength="8" autocomplete="off"
-             placeholder="12345678">
+             placeholder="00000000">
     </label>
     <label class="field">
       <span class="label">IBAN <em>(optional)</em></span>

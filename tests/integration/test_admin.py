@@ -461,7 +461,7 @@ def test_payment_run_splits_uk_and_international(admin_client, factory) -> None:
         )
 
     html = client.get("/admin/payment-run?month=2026-09").text
-    assert "UK &mdash; 1 payments" in html or "UK — 1 payments" in html
+    assert "1 payment" in html and "payments" not in html
     assert "International" in html
     # Masked on screen.
     assert "12345678" not in html
@@ -538,7 +538,7 @@ def test_queue_lists_people_without_a_fee(admin_client, factory) -> None:
     client, _, cipher = admin_client
     seed_person(factory, cipher, fee=False)
     html = client.get("/admin/queue").text
-    assert "Waiting for a fee" in html and "&mdash; 1" in html
+    assert "Waiting for you" in html and "&mdash; 1" in html
 
 
 def test_deactivating_preserves_history_and_audits(admin_client, factory) -> None:
@@ -659,3 +659,85 @@ def test_an_invoice_with_no_pdf_says_so(admin_client, factory) -> None:
     response = client.get(f"/admin/invoices/{invoice_id}/pdf")
     assert response.status_code == 404
     assert "never finished sending" in response.text
+
+
+def test_voiding_frees_the_month_but_never_the_number(admin_client, factory) -> None:
+    """R-SUB-10, R-NUM-05, CLAUDE.md 2.3.
+
+    Figures are never edited, so a wrong invoice is voided and reissued. The
+    void is the only correction there is, and until this route existed the
+    service that performs it could not be reached from the app at all.
+    """
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    with factory() as session:
+        invoice = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=4,
+            status=InvoiceStatus.SUBMITTED,
+            remuneration_pence=100000,
+            additional_pence=0,
+            total_pence=100000,
+            idempotency_key="to-be-voided",
+        )
+        session.add(invoice)
+        session.commit()
+        invoice_id = invoice.id
+
+    page = client.get(f"/admin/people/{person_id}")
+    assert "Void" in page.text
+
+    response = client.post(
+        f"/admin/invoices/{invoice_id}/void",
+        data={"csrf_token": token_from(page.text), "reason": "wrong month"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    with factory() as session:
+        voided = session.get(Invoice, invoice_id)
+        assert voided.status is InvoiceStatus.VOID
+        assert voided.voided_at is not None
+        # The row stays, and so does its number.
+        assert voided.number == 4
+        entry = session.scalars(
+            select(AuditLog).where(AuditLog.action == "invoice.void")
+        ).one()
+        assert entry.after["reason"] == "wrong month"
+
+    # The month is free again, which is what makes a reissue possible.
+    from app.db import repo
+
+    with factory() as session:
+        assert repo.live_invoice_for_period(session, person_id, "2026-09") is None
+
+
+def test_a_void_without_a_reason_is_refused(admin_client, factory) -> None:
+    """In six months the reason is the only thing that explains the gap."""
+    client, _, cipher = admin_client
+    person_id = seed_person(factory, cipher)
+    with factory() as session:
+        invoice = Invoice(
+            person_id=person_id,
+            period="2026-09",
+            number=5,
+            status=InvoiceStatus.SUBMITTED,
+            remuneration_pence=1,
+            additional_pence=0,
+            total_pence=1,
+            idempotency_key="no-reason",
+        )
+        session.add(invoice)
+        session.commit()
+        invoice_id = invoice.id
+
+    page = client.get(f"/admin/people/{person_id}")
+    response = client.post(
+        f"/admin/invoices/{invoice_id}/void",
+        data={"csrf_token": token_from(page.text), "reason": "  "},
+        follow_redirects=False,
+    )
+    assert response.status_code == 422
+    with factory() as session:
+        assert session.get(Invoice, invoice_id).status is InvoiceStatus.SUBMITTED

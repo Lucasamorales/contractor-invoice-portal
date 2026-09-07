@@ -37,7 +37,7 @@ MEMBER_MONTH = (
     Step(
         "member.month.kudos",
         "Kudos",
-        "Read from the kudos sheet at £20 each, and paid quarterly — they land "
+        "Worth £20 each and paid quarterly — they land "
         "on your March, June, September and December invoice. Two months in "
         "three this line says when, not how much. That is the policy, not a "
         "fault.",
@@ -213,6 +213,13 @@ ADMIN_PERSON = (
         "agrees. There is no button here that makes a row payable.",
     ),
     Step(
+        "admin.person.invoices",
+        "Fixing a wrong invoice",
+        "Figures are never edited. Void the invoice and let them send a new "
+        "one — the void keeps its number and its reason, so the gap in their "
+        "sequence explains itself later.",
+    ),
+    Step(
         "admin.person.fee",
         "The note is required",
         "Fees are effective-dated: setting a new one closes the old row rather "
@@ -245,9 +252,9 @@ ADMIN_QUEUE = (
     ),
     Step(
         "admin.queue.unconfirmed",
-        "They may not realise",
-        "Imported bank rows nobody has confirmed. These people cannot invoice "
-        "and often have not noticed. Flagging emails them what needs fixing.",
+        "Everything stuck, in one list",
+        "Each item says who it is waiting for and what takes it off the list. "
+        "An empty panel means nothing is stuck.",
     ),
 )
 

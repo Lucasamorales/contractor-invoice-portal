@@ -170,7 +170,7 @@ def test_kudos_unavailable_is_said_out_loud(wizard, factory) -> None:
     # R-KUD-06: never quietly show zero.
     client, _, box = wizard
     seed_ready(factory, box, kudos=None)
-    assert "Unavailable" in client.get("/").text
+    assert "Not available yet" in client.get("/").text
 
 
 # --------------------------------------------------------------------------

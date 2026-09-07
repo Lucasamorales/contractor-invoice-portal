@@ -17,7 +17,8 @@
 {# Every item says who it is waiting for and what removes it from the list.
    Without that a panel is only a complaint, and a list nobody can empty is a
    list people stop reading. #}
-<div class="card {{ 'alarm' if not attention.is_clear else '' }}">
+<div class="card {{ 'alarm' if not attention.is_clear else '' }}"
+     data-tut="admin.queue.unconfirmed">
   <p class="label">Needs fixing &mdash; {{ attention.total }}</p>
   <p class="hint mt-s">Nothing else in the app reports these.</p>
 

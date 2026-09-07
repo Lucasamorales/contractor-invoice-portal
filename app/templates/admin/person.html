@@ -153,19 +153,19 @@
         <span class="label">Sort code</span>
         <input type="text" name="sort_code" inputmode="numeric"
                data-format="sort-code" maxlength="8" autocomplete="off"
-               placeholder="23-08-01">
+               placeholder="00-00-00">
       </label>
       <label class="field">
         <span class="label">Account number</span>
         <input type="text" name="account_number" inputmode="numeric"
                data-format="account" maxlength="8" autocomplete="off"
-               placeholder="12345678">
+               placeholder="00000000">
       </label>
       <label class="field">
         <span class="label">Account number again</span>
         <input type="text" name="account_number_again" inputmode="numeric"
                data-format="account" maxlength="8" autocomplete="off"
-               placeholder="12345678">
+               placeholder="00000000">
       </label>
       <label class="field">
         <span class="label">IBAN <em>(optional)</em></span>
@@ -182,34 +182,71 @@
   </form>
 </section>
 
-<section>
+<section data-tut="admin.person.invoices">
   <h2>Invoices</h2>
   {% if invoices %}
-    <table class="kv">
-      <tr><th>No.</th><th>Period</th><th>Total</th><th>Status</th><th>Issued</th><th>PDF</th></tr>
-      {% for invoice in invoices %}
-        <tr>
-          <td>{{ invoice.number }}</td>
-          <td>{{ invoice.period }}</td>
-          <td>{{ invoice.total_pence | gbp }}</td>
-          <td>
-            {{ invoice.status.value }}
-            {% if invoice.is_late %}<span class="chip">late</span>{% endif %}
-          </td>
-          <td>
-            {{ invoice.issued_at.strftime("%d %b %Y") if invoice.issued_at
-               else "not issued" }}
-          </td>
-          <td>
-            {% if invoice.pdf_uri %}
-              <a hx-boost="false" href="/admin/invoices/{{ invoice.id }}/pdf">Download</a>
-            {% else %}
-              <span class="hint">none</span>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </table>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th class="tight num">No.</th>
+            <th class="tight">Period</th>
+            <th class="tight num">Total</th>
+            <th>Status</th>
+            <th class="tight">Issued</th>
+            <th class="tight">{{ '' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td class="tight num">{{ invoice.number }}</td>
+              <td class="tight">{{ invoice.period }}</td>
+              <td class="tight num">{{ invoice.total_pence | gbp }}</td>
+              <td>
+                {% if invoice.status.value == 'void' %}
+                  <span class="chip alert">void</span>
+                {% else %}
+                  {{ invoice.status.value }}
+                {% endif %}
+                {% if invoice.is_late %}<span class="chip">late</span>{% endif %}
+              </td>
+              <td class="tight">
+                {{ invoice.issued_at.strftime("%d %b %Y") if invoice.issued_at
+                   else "&mdash;" | safe }}
+              </td>
+              <td class="tight">
+                <span class="row-actions">
+                  {% if invoice.pdf_uri %}
+                    <a class="quiet" hx-boost="false"
+                       href="/admin/invoices/{{ invoice.id }}/pdf">PDF</a>
+                  {% endif %}
+                  {% if invoice.status.value != 'void' %}
+                    {# A <details> rather than a dialog: the confirmation is the
+                       reason field, which is required anyway, and this needs no
+                       script under the CSP. #}
+                    <details class="confirm">
+                      <summary>Void</summary>
+                      <form hx-boost="false" method="post"
+                            action="/admin/invoices/{{ invoice.id }}/void"
+                            class="row-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="text" name="reason" required
+                               placeholder="Why" aria-label="Why invoice {{ invoice.number }} is void">
+                        <button class="button small" type="submit">Void {{ invoice.number }}</button>
+                      </form>
+                      <p class="hint mt-xs">
+                        They can invoice again. {{ invoice.number }} is not reused.
+                      </p>
+                    </details>
+                  {% endif %}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
     <p class="hint">None yet.</p>
   {% endif %}
