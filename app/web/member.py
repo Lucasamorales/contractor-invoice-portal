@@ -935,7 +935,10 @@ async def preview(
     except SubmissionBlocked as blocked:
         context.update({"state": state, "period": period, "blocked": blocked.message})
         return templates.TemplateResponse(
-            request=request, name="blocked.html", context=context
+            request=request,
+            name="blocked.html",
+            context=context,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     bank_block = decrypt_bank_block(
@@ -1038,7 +1041,10 @@ async def do_submit(
     if errors:
         context["blocked"] = " ".join(errors)
         return templates.TemplateResponse(
-            request=request, name="blocked.html", context=context
+            request=request,
+            name="blocked.html",
+            context=context,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     person_id = person.id
@@ -1059,9 +1065,15 @@ async def do_submit(
             render=render,
         )
     except SubmissionBlocked as blocked:
+        # 422, not 200. A refusal that answers 200 is indistinguishable from a
+        # success in a log, and a submit that wrote nothing looked exactly like
+        # one that worked — which cost a database query to find out.
         context["blocked"] = blocked.message
         return templates.TemplateResponse(
-            request=request, name="blocked.html", context=context
+            request=request,
+            name="blocked.html",
+            context=context,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     with factory() as fresh:

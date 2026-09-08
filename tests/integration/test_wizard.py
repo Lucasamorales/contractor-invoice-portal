@@ -925,3 +925,31 @@ def test_changing_an_account_later_stays_on_the_bank_screen(
         follow_redirects=False,
     )
     assert changed.headers["location"] == "/bank"
+
+
+def test_a_refused_submit_says_so_in_its_status(wizard, factory) -> None:
+    """It answered 200, so a submit that wrote nothing looked exactly like one
+    that worked — in the logs and to anything watching them. Finding out what
+    had happened took a query against the database."""
+    client, _, cipher = wizard
+    seed_ready(factory, cipher, kudos=None)  # no snapshot: the count is unknown
+
+    preview = client.post(
+        "/preview",
+        data={"csrf_token": token_from(client.get("/additional").text)},
+    )
+    assert preview.status_code == 422
+    assert "not available yet" in preview.text
+
+    refused = client.post(
+        "/submit",
+        data={
+            "csrf_token": token_from(client.get("/additional").text),
+            "idempotency_key": str(uuid.uuid4()),
+        },
+    )
+    assert refused.status_code == 422
+
+    with factory() as session:
+        # And it wrote nothing, which is the point of the refusal.
+        assert session.scalars(select(Invoice)).all() == []
