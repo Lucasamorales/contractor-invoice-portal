@@ -28,6 +28,12 @@
         type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/unbounded-variable.woff2" as="font"
         type="font/woff2" crossorigin>
+  {# The mark from the top bar, rendered from the same Unbounded the bar uses
+     rather than approximated in a system font. Hashed like every other static
+     file, so a change cannot sit in a cache for a year. #}
+  <link rel="icon" href="{{ static('favicon.ico') }}" sizes="48x48">
+  <link rel="icon" href="{{ static('favicon-32.png') }}" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="{{ static('apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ static('app.css') }}">
   <script src="{{ static('htmx.min.js') }}" defer></script>
   {% block scripts %}{% endblock %}

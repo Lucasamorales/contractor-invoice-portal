@@ -207,3 +207,14 @@ def test_the_two_night_blocks_agree() -> None:
     assert set(followed) == set(picked), (
         f"only in one block: {set(followed) ^ set(picked)}"
     )
+
+
+def test_the_tab_icon_is_present_and_hashed() -> None:
+    """A missing favicon is a 404 on every first page load, and a favicon with
+    no hash in its URL is one that cannot be changed for a year."""
+    from pathlib import Path
+
+    base = Path("app/templates/base.html").read_text(encoding="utf-8")
+    for name in ("favicon.ico", "favicon-32.png", "apple-touch-icon.png"):
+        assert (Path("app/static") / name).exists(), f"{name} is missing"
+        assert f"static('{name}')" in base, f"{name} is not linked, or not hashed"
