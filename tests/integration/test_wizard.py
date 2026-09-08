@@ -686,6 +686,24 @@ def test_the_theme_is_a_cookie_and_survives_a_navigation(wizard, factory) -> Non
     assert 'data-theme="day"' in client.get("/").text
 
 
+def test_the_toggle_still_works_without_scripting(wizard, factory) -> None:
+    """theme.js makes the press instant by flipping the page and writing the
+    cookie in the background. It is an enhancement, not the mechanism: the
+    form has to stay a real post that a browser with no scripting can make.
+    """
+    client, _, cipher = wizard
+    seed_ready(factory, cipher)
+    page = client.get("/")
+
+    # A real form with a real action, not a button wired up by script.
+    assert '<form method="post" action="/theme"' in page.text
+    assert 'type="submit"' in page.text
+    # And the enhancement is a separate file, never inline (the CSP forbids
+    # inline, which is the whole reason the theme is server-rendered).
+    assert "/static/theme.js" in page.text
+    assert "onclick" not in page.text
+
+
 def test_the_theme_form_cannot_redirect_off_the_app(wizard, factory) -> None:
     client, _, cipher = wizard
     seed_ready(factory, cipher)
