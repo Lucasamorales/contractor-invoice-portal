@@ -276,7 +276,7 @@ def test_the_summary_email_names_what_is_broken(
         mailer.dispatch(session, client=client, settings=settings, store=store)
 
     body = next(m for m in client.sent if "Invoices for" in m.subject).text
-    assert "NEEDS FIXING" in body
+    assert "Needs fixing" in body
     assert "never finished sending" in body
 
 

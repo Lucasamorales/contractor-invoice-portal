@@ -62,6 +62,9 @@ def production(**overrides) -> Settings:
         "csrf_secret": "x" * 64,
         "gcs_bucket": "portal-invoices-production",
         "finance_emails": ("julian@example.com",),
+        # Every email links back to the portal, so production will not start
+        # without somewhere for those links to go.
+        "app_url": "https://portal.example",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)

@@ -688,6 +688,7 @@ def test_production_refuses_to_start_with_a_redirect_set() -> None:
         bank_encryption_key="key",
         csrf_secret="csrf",
         gcs_bucket="bucket",
+        app_url="https://portal.example",
         finance_emails="robin@example.com",
         mail_redirect_to="leo@example.com",
     )
@@ -762,3 +763,59 @@ def test_the_tasks_service_serves_nothing_but_tasks() -> None:
         real_app.dependency_overrides.clear()
         get_settings.cache_clear()
         del original
+
+
+def test_every_message_is_laid_out_and_points_back_at_the_portal() -> None:
+    """One description, rendered twice. Writing each message out in both plain
+    text and HTML is how the two drift apart, and a wrong plain-text fallback
+    is invisible until somebody reads mail in a client that prefers it.
+    """
+    from app.config import Settings
+    from app.db.models import Outbox
+
+    settings = Settings(
+        _env_file=None,
+        environment="staging",
+        app_url="https://portal.example",
+    )
+    cases = {
+        "invoice_submitted": {
+            "number": 3,
+            "heading": "September 2026 invoice.",
+            "remuneration_pence": 104000,
+            "additional_pence": 0,
+            "total_pence": 104000,
+        },
+        "window_open": {"period_label": "September 2026"},
+        "reminder": {"period_label": "September 2026"},
+        "bank_changed": {"old_account": "1234", "new_account": "5678"},
+        "bank_proposed": {"proposed_account": "5678"},
+        "bank_flagged": {"reason": "sort code does not match"},
+        "summary": {"period_label": "September 2026", "received": 1, "expected": 2},
+    }
+
+    for kind, payload in cases.items():
+        message = mailer.build_message(
+            None, Outbox(kind=kind, payload=payload), settings=settings, store=None
+        )
+        assert message.text.strip(), f"{kind} has no plain text"
+        assert message.html, f"{kind} has no html"
+        assert "https://portal.example" in message.text, f"{kind} text has no link"
+        assert "https://portal.example" in message.html, f"{kind} html has no link"
+        # No image can be hosted by the app — it is behind IAP, and a mail
+        # client fetching one is not signed in.
+        assert "<img" not in message.html, f"{kind} would show a broken image"
+
+
+def test_no_message_names_a_person_who_might_leave() -> None:
+    """Roles outlive the people holding them: accounts and the IT department,
+    never a first name (CLAUDE.md, and the same rule the screens follow)."""
+    import re
+    from pathlib import Path
+
+    source = Path("app/services/mailer.py").read_text(encoding="utf-8")
+    # Strings only: a docstring explaining the reasoning to a developer is
+    # not something a contractor ever reads.
+    for literal in re.findall(r'"([^"\n]{12,})"', source):
+        for name in ("Leo", "Robin", "Julian", "Charlie"):
+            assert name not in literal, f"{name} appears in: {literal}"

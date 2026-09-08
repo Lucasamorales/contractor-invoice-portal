@@ -78,6 +78,9 @@ class Message:
     subject: str
     text: str
     attachments: tuple[Attachment, ...] = ()
+    # The same message laid out. Sent alongside the text, never instead of it:
+    # a client that prefers plain text still gets something readable.
+    html: str | None = None
 
     def recipients(self) -> str:
         return ", ".join(address for address in self.to if address)
@@ -111,6 +114,8 @@ class ResendClient:
             "subject": message.subject,
             "text": message.text,
         }
+        if message.html:
+            payload["html"] = message.html
         if message.attachments:
             payload["attachments"] = [
                 {
@@ -180,11 +185,24 @@ class RedirectingClient:
             "",
             "",
         ]
+        # The HTML has to carry the banner too, or a redirected message read in
+        # any ordinary client looks exactly like a real one.
+        html = message.html
+        if html:
+            html = html.replace(
+                '<table role="presentation"',
+                '<div style="font:600 13px Helvetica,Arial,sans-serif;'
+                "color:#c11f1f;background:#ffe9e9;padding:12px 16px;"
+                'text-align:center;">[ REDIRECTED ] This would have gone to: '
+                f'{message.recipients()}</div><table role="presentation"',
+                1,
+            )
         redirected = Message(
             to=(self._address,),
             subject=f"[redirected] {message.subject}",
             text="\n".join(banner) + message.text,
             attachments=message.attachments,
+            html=html,
         )
         logger.warning(
             "mail redirected to %s: %r was addressed to %d recipients",
@@ -373,6 +391,167 @@ def _recipients(*addresses: object) -> tuple[str, ...]:
     return tuple(seen)
 
 
+# --------------------------------------------------------------------------
+# Composing a message
+#
+# Every email is described once, as a short list of parts, and rendered twice
+# — plain text and HTML. Writing each message out in both forms is how the two
+# drift apart, and a wrong plain-text fallback is invisible until somebody
+# reads mail in a client that prefers it.
+#
+# The HTML is deliberately old-fashioned: tables, inline styles, no web fonts
+# and no images. An image would have to be hosted by the app, the app is
+# behind IAP, and a mail client fetching it is not signed in — so it would
+# render as a broken box in every inbox.
+# --------------------------------------------------------------------------
+
+
+def para(text: str) -> tuple[str, object]:
+    return ("para", text)
+
+
+def rows(pairs: list[tuple[str, str]]) -> tuple[str, object]:
+    """A label/figure table. Right-aligned in HTML, aligned in text."""
+    return ("rows", pairs)
+
+
+def note(text: str) -> tuple[str, object]:
+    """Smaller, quieter. For a caveat, not for the point of the email."""
+    return ("note", text)
+
+
+def action(label: str, path: str = "/") -> tuple[str, object]:
+    """The link back to the portal, deep-linked at the screen in question."""
+    return ("action", (label, path))
+
+
+def _escape(text: str) -> str:
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def _link(settings: Settings, path: str) -> str:
+    base = (settings.app_url or "").rstrip("/")
+    if not base:
+        return ""
+    return f"{base}{path if path.startswith('/') else '/' + path}"
+
+
+def render_text(parts: list[tuple[str, object]], settings: Settings) -> str:
+    out: list[str] = []
+    for kind, value in parts:
+        if kind == "para" or kind == "note":
+            out += [str(value), ""]
+        elif kind == "rows":
+            width = max((len(label) for label, _ in value), default=0)
+            out += [f"  {label.ljust(width)}   {figure}" for label, figure in value]
+            out.append("")
+        elif kind == "action":
+            label, path = value
+            url = _link(settings, path)
+            if url:
+                out += [f"{label}: {url}", ""]
+    return "\n".join(out).strip() + "\n"
+
+
+def render_html(parts: list[tuple[str, object]], settings: Settings) -> str:
+    """The same message, laid out.
+
+    Colours are the day tokens from app.css. Email has no theme and no
+    prefers-color-scheme worth relying on, so it stays on paper.
+    """
+    body: list[str] = []
+    for kind, value in parts:
+        if kind == "para":
+            body.append(
+                '<p style="margin:0 0 16px;font-size:15px;line-height:1.6;'
+                f'color:#55554f;">{_escape(value)}</p>'
+            )
+        elif kind == "note":
+            body.append(
+                '<p style="margin:0 0 16px;font-size:13px;line-height:1.55;'
+                f'color:#8a8a82;">{_escape(value)}</p>'
+            )
+        elif kind == "rows":
+            cells = "".join(
+                "<tr>"
+                '<td style="padding:9px 0;border-top:1px solid #eeebe5;'
+                f'font-size:14px;color:#8a8a82;">{_escape(label)}</td>'
+                '<td style="padding:9px 0;border-top:1px solid #eeebe5;'
+                "font-size:15px;color:#0a0a0a;font-weight:600;text-align:right;"
+                f'white-space:nowrap;">{_escape(figure)}</td>'
+                "</tr>"
+                for label, figure in value
+            )
+            body.append(
+                '<table role="presentation" cellpadding="0" cellspacing="0" '
+                f'width="100%" style="margin:0 0 20px;">{cells}</table>'
+            )
+        elif kind == "action":
+            label, path = value
+            url = _link(settings, path)
+            if not url:
+                continue
+            body.append(
+                '<table role="presentation" cellpadding="0" cellspacing="0" '
+                'style="margin:4px 0 20px;"><tr><td style="border-radius:100px;'
+                'background:#ff2b2b;">'
+                f'<a href="{_escape(url)}" style="display:inline-block;'
+                "padding:12px 22px;font-size:14px;font-weight:600;color:#ffffff;"
+                f'text-decoration:none;border-radius:100px;">{_escape(label)}</a>'
+                "</td></tr></table>"
+            )
+
+    home = _link(settings, "/")
+    footer = (
+        f'<a href="{_escape(home)}" style="color:#8a8a82;">{_escape(home)}</a>'
+        if home
+        else "Your Company"
+    )
+
+    return (
+        '<!doctype html><html><body style="margin:0;padding:24px 0;'
+        'background:#f7f6f4;">'
+        '<table role="presentation" cellpadding="0" cellspacing="0" width="100%">'
+        '<tr><td align="center">'
+        '<table role="presentation" cellpadding="0" cellspacing="0" width="560" '
+        'style="width:560px;max-width:100%;background:#ffffff;'
+        "border:1px solid #e5e2dc;border-radius:10px;overflow:hidden;"
+        'font-family:Helvetica,Arial,sans-serif;">'
+        '<tr><td style="background:#0a0a0a;padding:16px 28px;">'
+        '<span style="font-size:13px;font-weight:700;letter-spacing:0.14em;'
+        'color:#ffffff;">your-company</span>'
+        '<span style="font-size:13px;letter-spacing:0.14em;color:#8a8a82;">'
+        "&nbsp;&nbsp;INVOICES</span>"
+        "</td></tr>"
+        f'<tr><td style="padding:28px;">{"".join(body)}</td></tr>'
+        '<tr><td style="padding:16px 28px;border-top:1px solid #eeebe5;'
+        f'font-size:12px;color:#8a8a82;">{footer}</td></tr>'
+        "</table></td></tr></table></body></html>"
+    )
+
+
+def compose(
+    to: tuple[str, ...],
+    subject: str,
+    parts: list[tuple[str, object]],
+    settings: Settings,
+    attachments: tuple[Attachment, ...] = (),
+) -> Message:
+    return Message(
+        to=to,
+        subject=subject,
+        text=render_text(parts, settings),
+        html=render_html(parts, settings),
+        attachments=attachments,
+    )
+
+
 def _money(pence: object) -> str:
     from app.domain.money import format_gbp
 
@@ -389,27 +568,23 @@ def _invoice_submitted(
     carries a fee (R-SEC-05).
     """
     payload = row.payload
-    lines = [
-        f"{payload.get('heading', '')}",
-        "",
-        f"Invoice {payload.get('number')}",
-        "",
-        f"  Remuneration   {_money(payload.get('remuneration_pence'))}",
-        f"  Additional     {_money(payload.get('additional_pence'))}",
+    breakdown = [
+        ("Remuneration", _money(payload.get("remuneration_pence"))),
+        ("Additional", _money(payload.get("additional_pence"))),
     ]
-    # detail_note is newline separated, so it lays out under Additional here
-    # exactly as it does on the invoice.
+    # detail_note is newline separated, so each expense lands on its own line
+    # here exactly as it does on the invoice.
     for part in str(payload.get("detail") or "").splitlines():
         if part.strip():
-            lines.append(f"                 {part}")
-    lines += [
-        f"  Total          {_money(payload.get('total_pence'))}",
-        "",
+            breakdown.append(("", part.strip()))
+    breakdown.append(("Total", _money(payload.get("total_pence"))))
+
+    parts: list[tuple[str, object]] = [
+        para(str(payload.get("heading", ""))),
+        rows(breakdown),
     ]
     if payload.get("is_late"):
-        lines.append("Submitted after the 28th, so it is marked late.")
-        lines.append("")
-    lines.append("The invoice is attached.")
+        parts.append(note("Submitted after the 28th, so it is marked late."))
 
     attachments: list[Attachment] = []
     missing: list[str] = []
@@ -417,21 +592,25 @@ def _invoice_submitted(
         attachments, missing = _invoice_attachments(session, payload, store)
 
     if missing:
-        # Said out loud rather than left to a log nobody reads. Robin can ask
-        # for a file; he cannot ask for an email he never got.
-        lines += [
-            "",
-            "Could not be attached:",
-            *(f"  {item}" for item in missing),
-            "",
-            "The figures above are complete and correct — only the files are",
-            "missing. Tell Leo.",
-        ]
+        # Said out loud rather than left to a log nobody reads. Accounts can
+        # ask for a file; they cannot ask for an email they never got.
+        parts.append(para("Could not be attached: " + ", ".join(missing)))
+        parts.append(
+            note(
+                "The figures above are complete and correct — only the files "
+                "are missing. Tell the IT department."
+            )
+        )
+    else:
+        parts.append(note("The invoice is attached."))
 
-    return Message(
+    parts.append(action("Open the portal", "/me"))
+
+    return compose(
         to=_recipients(payload.get("to_finance"), payload.get("to_person")),
         subject=str(payload.get("subject", "Invoice")),
-        text="\n".join(lines),
+        parts=parts,
+        settings=settings,
         attachments=tuple(attachments),
     )
 
@@ -528,56 +707,62 @@ def _encoded_size(attachments: list[Attachment]) -> int:
 def _bank_changed(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
-    """R-BANK-05. Last four digits only, to the person and to Robin."""
-    del session, settings, store
+    """R-BANK-05. Last four digits only, to the person and to accounts."""
+    del session, store
     payload = row.payload
     old = payload.get("old_account") or payload.get("old_iban") or "nothing on file"
     new = payload.get("new_account") or payload.get("new_iban") or ""
-    return Message(
+    return compose(
         to=_recipients(payload.get("to_person"), payload.get("to_finance")),
         subject=str(payload.get("subject", "Bank details changed")),
-        text=(
-            f"The bank details for {payload.get('person_name', 'someone')} have "
-            f"changed.\n\n"
-            f"  Was  {old}\n"
-            f"  Now  {new}\n\n"
-            "If this was not you, tell Leo straight away."
-        ),
+        parts=[
+            para(
+                f"The bank details for {payload.get('person_name', 'someone')} "
+                "have changed."
+            ),
+            rows([("Was", str(old)), ("Now", str(new))]),
+            action("Check the account", "/bank"),
+            note("If this was not you, tell the IT department straight away."),
+        ],
+        settings=settings,
     )
 
 
 def _bank_proposed(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
-    del session, settings, store
+    del session, store
     payload = row.payload
-    ending = payload.get("proposed_account")
-    return Message(
+    return compose(
         to=_recipients(payload.get("to_person")),
         subject=str(payload.get("subject", "Your bank details need your approval")),
-        text=(
-            f"{payload.get('proposed_by', 'An administrator')} has suggested a "
-            f"correction to your bank details, ending {ending}.\n\n"
-            "It is not in use and cannot be until you approve it. Open the "
-            "portal and check it against your own records.\n\n"
-            "Nobody but you can make this change take effect."
-        ),
+        parts=[
+            para(
+                "Accounts have suggested a correction to your bank details. It "
+                "is not in use, and cannot be until you accept it."
+            ),
+            rows([("Proposed", str(payload.get("proposed_account", "")))]),
+            action("Check it against your records", "/bank"),
+            note("Nobody but you can make this change take effect."),
+        ],
+        settings=settings,
     )
 
 
 def _bank_flagged(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
-    del session, settings, store
+    del session, store
     payload = row.payload
-    return Message(
+    return compose(
         to=_recipients(payload.get("to_person")),
         subject=str(payload.get("subject", "Your bank details need a look")),
-        text=(
-            "Your bank details need correcting before your next invoice:\n\n"
-            f"  {payload.get('reason')}\n\n"
-            "Open the portal and update them."
-        ),
+        parts=[
+            para("Your bank details need correcting before your next invoice."),
+            rows([("What to look at", str(payload.get("reason", "")))]),
+            action("Update them", "/bank"),
+        ],
+        settings=settings,
     )
 
 
@@ -585,18 +770,21 @@ def _window_open(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
     """R-JOB-02, the 24th."""
-    del session, settings, store
+    del session, store
     payload = row.payload
-    return Message(
+    return compose(
         to=_recipients(payload.get("to_person")),
         subject=str(payload.get("subject", "Time to invoice")),
-        text=(
-            f"The invoice window for {payload.get('period_label')} is open until "
-            "the 28th.\n\n"
-            "It takes a couple of minutes: check your details, add anything "
-            "extra, and send.\n\n"
-            "If you miss the 28th you can still send it — it is just marked late."
-        ),
+        parts=[
+            para(
+                f"The invoice window for {payload.get('period_label')} is open "
+                "until the 28th."
+            ),
+            para("Check your figures, add anything extra, and send."),
+            action("Make your invoice"),
+            note("Miss the 28th and you can still send it. It is marked late."),
+        ],
+        settings=settings,
     )
 
 
@@ -604,17 +792,23 @@ def _reminder(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
     """R-JOB-02, the 27th, only to those with nothing submitted."""
-    del session, settings, store
+    del session, store
     payload = row.payload
-    return Message(
+    return compose(
         to=_recipients(payload.get("to_person")),
         subject=str(payload.get("subject", "Your invoice is not in yet")),
-        text=(
-            f"There is no invoice from you for {payload.get('period_label')} yet, "
-            "and the window closes on the 28th.\n\n"
-            "You will not be locked out if you miss it, but Robin would rather "
-            "not have to ask."
-        ),
+        parts=[
+            para(
+                f"There is no invoice from you for {payload.get('period_label')} "
+                "yet, and the window closes on the 28th."
+            ),
+            action("Make your invoice"),
+            note(
+                "You will not be locked out if you miss it, but accounts would "
+                "rather not have to ask."
+            ),
+        ],
+        settings=settings,
     )
 
 
@@ -622,34 +816,37 @@ def _summary(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
     """R-JOB-03, the 29th, to the finance group."""
-    del session, settings, store
+    del session, store
     payload = row.payload
     missing = payload.get("missing") or []
     flagged = payload.get("flagged") or []
-    lines = [
-        f"{payload.get('period_label')} — {payload.get('received')} of "
-        f"{payload.get('expected')} invoices received.",
-        "",
+    broken = payload.get("broken") or []
+
+    parts: list[tuple[str, object]] = [
+        para(
+            f"{payload.get('period_label')} — {payload.get('received')} of "
+            f"{payload.get('expected')} invoices received."
+        )
     ]
     if missing:
-        lines.append("Not in:")
-        lines += [f"  {name}" for name in missing]
-        lines.append("")
+        parts.append(para("Not in:"))
+        parts.append(rows([("", str(name)) for name in missing]))
     if flagged:
-        lines.append("Flagged:")
-        lines += [f"  {item}" for item in flagged]
-        lines.append("")
-    broken = payload.get("broken") or []
+        parts.append(para("Flagged:"))
+        parts.append(rows([("", str(item)) for item in flagged]))
     if broken:
-        lines.append("NEEDS FIXING — these did not complete:")
-        lines += [f"  {item}" for item in broken]
-        lines.append("")
+        parts.append(para("Needs fixing — these did not complete:"))
+        parts.append(rows([("", str(item)) for item in broken]))
     if not missing and not flagged and not broken:
-        lines.append("Everyone is in and nothing is flagged.")
-    return Message(
+        parts.append(para("Everyone is in and nothing is flagged."))
+
+    parts.append(action("Open the month", "/admin/period"))
+
+    return compose(
         to=_recipients(payload.get("to_finance")),
         subject=str(payload.get("subject", "Invoice summary")),
-        text="\n".join(lines),
+        parts=parts,
+        settings=settings,
     )
 
 

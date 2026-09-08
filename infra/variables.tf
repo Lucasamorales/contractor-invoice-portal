@@ -149,3 +149,13 @@ variable "mail_redirect_to" {
   type        = string
   default     = ""
 }
+
+# Where the portal answers, so an email can link to the thing it is about.
+# Cloud Run generates the host, so this cannot be derived here without a
+# cycle: set it from the service_url output after the first apply. Production
+# refuses to start without it (assert_production_ready).
+variable "app_url" {
+  description = "Public URL of the portal, e.g. https://portal-invoices-staging-xxxx.a.run.app"
+  type        = string
+  default     = ""
+}

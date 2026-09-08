@@ -160,6 +160,11 @@ class Settings(BaseSettings):
     finance_inbox: str = ""
     drive_folder_id: str = ""
 
+    # Where the portal lives, so an email can point at the thing it is about.
+    # Set from the Cloud Run URL; behind IAP, so a link only opens for somebody
+    # who is already allowed in.
+    app_url: str = ""
+
     # --- Uploads (R-WIZ-04) ----------------------------------------------------
     max_receipt_bytes: int = 10 * 1024 * 1024
     max_receipts_per_invoice: int = 10
@@ -217,6 +222,9 @@ def assert_production_ready(settings: Settings) -> None:
         "csrf_secret": settings.csrf_secret.get_secret_value(),
         "gcs_bucket": settings.gcs_bucket,
         "finance_emails": settings.finance_emails,
+        # Every email links back to the portal; a link to nowhere is worse
+        # than no link.
+        "app_url": settings.app_url,
     }
     missing = sorted(name for name, value in required.items() if not value)
     if missing:

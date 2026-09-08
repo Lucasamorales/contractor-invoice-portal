@@ -141,6 +141,14 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.mail_from
       }
 
+      # Every email links back to the portal. Its own URL is not known to the
+      # service at runtime, and hardcoding one would send staging's mail to
+      # production, so Terraform passes the address it just created.
+      env {
+        name  = "PORTAL_APP_URL"
+        value = var.app_url
+      }
+
       # Every email goes to one address instead of its recipients. This is
       # what lets staging send at all: R-ENV-03 says staging must not reach a
       # real contractor, and a redirect makes that impossible rather than
