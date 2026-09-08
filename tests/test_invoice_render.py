@@ -8,6 +8,7 @@ WeasyPrint's native libraries and lives in tests/integration.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -277,6 +278,14 @@ def test_the_preview_hides_the_frames_scrollbars() -> None:
         ),
         for_preview=True,
     )
-    assert "scrollbar-width:none" in previewed
-    assert "overflow:hidden" not in previewed
+    assert "/static/preview-sheet.css" in previewed
+    # A <style> here would be dropped by the CSP without a word, so the rules
+    # have to arrive as a file.
+    assert "<style>" not in previewed
     assert previewed.count("</head>") == 1
+
+    sheet = Path("app/static/preview-sheet.css").read_text(encoding="utf-8")
+    assert "scrollbar-width: none" in sheet
+    # Hidden, not clipped: overflow:hidden would lose the bottom of a long
+    # invoice, and preview.js grows the frame instead.
+    assert "overflow: hidden" not in sheet

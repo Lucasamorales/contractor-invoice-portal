@@ -104,11 +104,11 @@ def build_context(
 # It goes in here rather than in invoice.css because invoice.css is the print
 # document (R-PDF-*, CLAUDE.md §8) and nothing about the PDF may change to
 # suit a screen.
-PREVIEW_STYLE = (
-    "<style>html{scrollbar-width:none;-ms-overflow-style:none}"
-    "html::-webkit-scrollbar{display:none}"
-    "body{margin:0}</style>"
-)
+# A stylesheet, not an inline block. The iframe inherits the app's CSP —
+# style-src 'self' with no unsafe-inline — so a <style> injected here is
+# dropped silently and the sheet renders as though nothing was added.
+# preview-sheet.css says what it does and why.
+PREVIEW_STYLE = '<link rel="stylesheet" href="/static/preview-sheet.css">'
 
 
 def render_html(

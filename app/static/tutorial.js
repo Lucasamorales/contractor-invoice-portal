@@ -90,18 +90,17 @@
     var below = window.innerHeight - rect.bottom - GAP - EDGE;
     var above = rect.top - GAP - EDGE;
 
-    card.style.maxHeight = "";
+    // Whole or not at all. A card clamped to the space beside its element
+    // scrolls, and a step you have to scroll through is a step half of which
+    // nobody reads. If neither side has room the card leaves the element and
+    // sits in the middle of the window, where it always has room.
     var top;
     if (height <= below) {
       top = rect.bottom + GAP;
     } else if (height <= above) {
       top = rect.top - GAP - height;
-    } else if (below >= above) {
-      top = rect.bottom + GAP;
-      card.style.maxHeight = Math.max(below, 140) + "px";
     } else {
-      card.style.maxHeight = Math.max(above, 140) + "px";
-      top = Math.max(EDGE, rect.top - GAP - Math.min(height, above));
+      top = Math.max(EDGE, (window.innerHeight - height) / 2);
     }
 
     var left = rect.left;

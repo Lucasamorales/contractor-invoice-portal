@@ -1,0 +1,38 @@
+/* The invoice, shown on screen inside the preview frame.
+ *
+ * A separate file rather than a <style> injected into the document: the CSP
+ * is style-src 'self' with no unsafe-inline, and the iframe inherits it, so
+ * an inline block is dropped without a word. The same rule that decides how
+ * the theme works.
+ *
+ * invoice.css is untouched by design — it is what prints (R-PDF-*,
+ * CLAUDE.md §8), and nothing about the PDF may change to suit a screen.
+ * Everything here only ever applies to the copy rendered for the preview.
+ */
+
+/* No scrollbar over a picture of a piece of paper. preview.js sizes the
+ * frame to the document, so there is nothing to scroll to — this only stops
+ * the bar appearing for a moment while that happens. */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* invoice.css puts 24px above and below the sheet and a shadow under it — a
+ * page lying on a desk. Inside the frame that desk already exists, and the
+ * padding was the whole reason the frame scrolled: 297mm is 1122px, the frame
+ * held 1134, and 24 + 1122 + 24 does not fit. */
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.sheet {
+  margin: 0 auto;
+  box-shadow: none;
+}

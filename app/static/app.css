@@ -1204,21 +1204,19 @@ input[readonly] { background: var(--surface-sunk); color: var(--muted); }
 .tut-card {
   position: fixed;
   z-index: 60;
-  width: 360px;
+  /* Wider than it was: the steps carry the explanations the screens no
+     longer do, and 360px turned several of them into something you had to
+     scroll. Nothing here scrolls — place() moves the card rather than
+     clamping it. */
+  width: 420px;
   max-width: calc(100vw - 48px);
-  /* Scrollable when a step is long and the window short, but without the bar:
-     a scrollbar down the side of a 360px card is most of its right edge. */
-  overflow: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow: visible;
   background: var(--panel-invert);
   color: var(--on-panel-invert);
   border-radius: var(--radius-lg);
   padding: 24px 26px;
   box-shadow: 0 30px 70px -24px var(--shadow-card);
 }
-
-.tut-card::-webkit-scrollbar { display: none; }
 
 .tut-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 
