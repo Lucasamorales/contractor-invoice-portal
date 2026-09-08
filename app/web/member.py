@@ -578,11 +578,14 @@ async def toggle_theme(
     response = RedirectResponse(
         theme.safe_next(next), status_code=status.HTTP_303_SEE_OTHER
     )
+    # Not httponly. It holds the word "day" or "night" and nothing else, so
+    # there is nothing for a script to steal — and a browser refuses a
+    # document.cookie write over an httponly cookie of the same name, which is
+    # what theme.js does so that pressing the toggle needs no request at all.
     response.set_cookie(
         theme.COOKIE,
         chosen,
         max_age=theme.MAX_AGE,
-        httponly=True,
         samesite="lax",
         secure=settings.is_production,
         path="/",

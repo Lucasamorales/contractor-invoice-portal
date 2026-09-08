@@ -706,6 +706,34 @@ def test_the_toggle_still_works_without_scripting(wizard, factory) -> None:
     assert "onclick" not in page.text
 
 
+def test_the_theme_cookie_is_readable_by_the_script_that_owns_it(
+    wizard, factory
+) -> None:
+    """The toggle writes the cookie itself so that pressing it needs no
+    request — the page changes on the press, and a request would have to
+    finish afterwards, so leaving the page cancelled it and the next screen
+    came back the way it was.
+
+    A browser refuses a document.cookie write over an httponly cookie of the
+    same name, so this one must not be httponly. It holds the word "day" or
+    "night" and nothing else.
+    """
+    client, _, cipher = wizard
+    seed_ready(factory, cipher)
+    page = client.get("/")
+
+    response = client.post(
+        "/theme",
+        data={"csrf_token": token_from(page.text), "next": "/"},
+        follow_redirects=False,
+    )
+    header = response.headers["set-cookie"]
+    assert "theme=night" in header
+    assert "HttpOnly" not in header
+    assert "samesite=lax" in header.lower()
+    assert "path=/" in header.lower()
+
+
 def test_the_theme_form_cannot_redirect_off_the_app(wizard, factory) -> None:
     client, _, cipher = wizard
     seed_ready(factory, cipher)

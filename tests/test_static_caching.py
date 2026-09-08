@@ -248,3 +248,21 @@ def test_scripts_in_the_body_bind_their_global_listeners_once() -> None:
                 f"{name} binds {lasting} on document or window with no guard, "
                 "so a boosted navigation will bind them again"
             )
+
+
+def test_the_toggle_does_not_depend_on_a_request_finishing() -> None:
+    """It used to: the page changed on the press and a POST wrote the cookie
+    afterwards, so pressing the toggle and then leaving the page cancelled the
+    write and the next screen came back the way it was.
+
+    The script writes the cookie itself now. The POST is only the fallback —
+    for a browser that refuses the write, or an httponly cookie left over from
+    before — and keepalive is what lets that one survive leaving the page.
+    """
+    from pathlib import Path
+
+    source = Path("app/static/theme.js").read_text(encoding="utf-8")
+    assert "document.cookie =" in source, "the press must not need a request"
+    assert "keepalive: true" in source, "the fallback must survive a navigation"
+    # Painted first, so the page never waits on anything.
+    assert source.index("paint(root, button, next)") < source.index("document.cookie =")

@@ -66,24 +66,37 @@
     event.preventDefault();
     paint(root, button, next);
 
+    // Written here rather than asked of the server. The page changes on the
+    // press and a request would have to finish afterwards — so pressing the
+    // toggle and then leaving the page cancelled it, and the next page came
+    // back the way it was. Nothing to cancel if there is no request.
+    var year = 60 * 60 * 24 * 365;
+    var secure = location.protocol === "https:" ? ";Secure" : "";
+    document.cookie =
+      "theme=" + next + ";Path=/;Max-Age=" + year + ";SameSite=Lax" + secure;
+
+    if (document.cookie.indexOf("theme=" + next) !== -1) return;
+
+    // The write did not take. A browser refuses a script write over an
+    // httponly cookie of the same name, and anybody who used the toggle
+    // before this file changed still has one — the server can replace it, and
+    // this is also the path when cookies are refused outright. keepalive so
+    // that leaving the page does not cancel it, which is the whole point.
     fetch(form.action, {
       method: "POST",
       body: new FormData(form),
       credentials: "same-origin",
-      // The 303 goes to a page we are already on and would only be thrown
-      // away, so do not follow it.
       redirect: "manual",
+      keepalive: true,
     })
       .then(function (response) {
-        // An opaque redirect is the 303 arriving as expected; both mean the
-        // cookie was written.
         if (!response.ok && response.type !== "opaqueredirect") {
           throw new Error("theme not saved");
         }
       })
       .catch(function () {
-        // The cookie was not written, so the next page would come back the
-        // way it was. Say so now rather than surprising somebody later.
+        // Nothing recorded it, so the next page would come back the way it
+        // was. Say so now rather than surprising somebody later.
         paint(root, button, was);
       });
   });
