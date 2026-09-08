@@ -191,6 +191,8 @@ def test_all_five_letterhead_fields_are_required(wizard, factory) -> None:
 
 
 def test_saving_details_records_them_and_moves_on(wizard, factory) -> None:
+    """Nothing was outstanding, so this is an edit rather than a first run:
+    it goes back to My details instead of starting an invoice."""
     client, _, box = wizard
     seed_ready(factory, box)
     form = client.get("/details")
@@ -207,7 +209,7 @@ def test_saving_details_records_them_and_moves_on(wizard, factory) -> None:
         follow_redirects=False,
     )
     assert response.status_code == 303
-    assert response.headers["location"] == "/bank"
+    assert response.headers["location"] == "/me"
     with factory() as session:
         person = session.scalars(select(Person)).one()
         assert person.role == "Creative Director"
@@ -718,3 +720,157 @@ def test_the_theme_form_cannot_redirect_off_the_app(wizard, factory) -> None:
         follow_redirects=False,
     )
     assert response.headers["location"] == "/"
+
+
+def _day_one(factory, cipher) -> None:
+    """Somebody as they are on their first visit: accounts has set a fee, the
+    bank rows came across unconfirmed, the letterhead is empty."""
+    with factory() as session, session.begin():
+        person = make_person(session, complete_profile=False)
+        give_fee(session, person)
+        give_counter(session, person, 1)
+        give_bank(session, person, cipher, state=BankState.UNVERIFIED, verified=False)
+
+
+LETTERHEAD = {
+    "legal_name": "Jane Smith",
+    "role": "Engineer",
+    "address": "1 Invented Street",
+    "phone": "+44 7700 900000",
+    "contact_email": "jane@example.com",
+}
+
+
+@pytest.fixture
+def window_open(wizard):
+    """The submission window forced open.
+
+    Where the chain ends depends on it: with the window shut there is nothing
+    to go on to, so it stops at This month, which says when it opens.
+    """
+    client, settings, cipher = wizard
+    app.dependency_overrides[get_settings] = lambda: settings.model_copy(
+        update={"window_always_open": True}
+    )
+    yield client, settings, cipher
+
+
+def test_the_first_run_is_one_run_whichever_order_you_start_in(
+    window_open, factory
+) -> None:
+    """Each screen used to name its own successor, which worked in one order
+    and not the other. Nothing decides what comes next now — it is asked."""
+    client, _, cipher = window_open
+
+    # Bank first, which is what This month used to offer first. This is the
+    # order that dropped somebody into the wizard with no letterhead.
+    _day_one(factory, cipher)
+    page = client.get("/bank")
+    confirmed = client.post(
+        "/bank/confirm",
+        data={"csrf_token": token_from(page.text)},
+        follow_redirects=False,
+    )
+    assert confirmed.headers["location"] == "/details"
+
+    saved = client.post(
+        "/details",
+        data={"csrf_token": token_from(client.get("/details").text), **LETTERHEAD},
+        follow_redirects=False,
+    )
+    assert saved.headers["location"] == "/additional"
+
+
+def test_the_other_order_ends_up_in_the_same_place(window_open, factory) -> None:
+    client, _, cipher = window_open
+    _day_one(factory, cipher)
+
+    saved = client.post(
+        "/details",
+        data={"csrf_token": token_from(client.get("/details").text), **LETTERHEAD},
+        follow_redirects=False,
+    )
+    assert saved.headers["location"] == "/bank"
+
+    page = client.get("/bank")
+    confirmed = client.post(
+        "/bank/confirm",
+        data={"csrf_token": token_from(page.text)},
+        follow_redirects=False,
+    )
+    assert confirmed.headers["location"] == "/additional"
+
+
+def test_the_wizard_refuses_anyone_who_is_not_ready(window_open, factory) -> None:
+    """It had no guard at all, so somebody could build an invoice the submit
+    would then refuse."""
+    client, _, cipher = window_open
+    _day_one(factory, cipher)
+
+    blocked = client.get("/additional", follow_redirects=False)
+    assert blocked.status_code == 303
+    assert blocked.headers["location"] == "/details"
+
+    client.post(
+        "/details",
+        data={"csrf_token": token_from(client.get("/details").text), **LETTERHEAD},
+        follow_redirects=False,
+    )
+    still_blocked = client.get("/additional", follow_redirects=False)
+    assert still_blocked.headers["location"] == "/bank"
+
+    page = client.get("/bank")
+    client.post(
+        "/bank/confirm",
+        data={"csrf_token": token_from(page.text)},
+        follow_redirects=False,
+    )
+    assert client.get("/additional").status_code == 200
+
+
+def test_this_month_numbers_the_steps(wizard, factory) -> None:
+    """Everything pending is still shown; it just reads as a sequence."""
+    client, _, cipher = wizard
+    _day_one(factory, cipher)
+
+    html = client.get("/").text
+    assert "Step 1 of 2" in html
+    assert "Step 2 of 2" in html
+    # Only the first carries a button; the rest arrive as each is finished.
+    assert html.count('class="button"') == 1
+
+
+def test_a_shut_window_ends_the_chain_at_this_month(wizard, factory) -> None:
+    """There is nowhere to go on to, and This month is what says when it
+    opens."""
+    client, _, cipher = wizard
+    _day_one(factory, cipher)
+
+    client.post(
+        "/details",
+        data={"csrf_token": token_from(client.get("/details").text), **LETTERHEAD},
+        follow_redirects=False,
+    )
+    page = client.get("/bank")
+    confirmed = client.post(
+        "/bank/confirm",
+        data={"csrf_token": token_from(page.text)},
+        follow_redirects=False,
+    )
+    assert confirmed.headers["location"] == "/"
+
+
+def test_editing_your_details_later_does_not_start_an_invoice(
+    window_open, factory
+) -> None:
+    """The chain is for the first run. Somebody who is already set up and
+    changes their phone number wants to go back to where they were."""
+    client, _, cipher = window_open
+    seed_ready(factory, cipher)
+
+    saved = client.post(
+        "/details",
+        data={"csrf_token": token_from(client.get("/details").text), **LETTERHEAD},
+        follow_redirects=False,
+    )
+    assert saved.headers["location"] == "/me"

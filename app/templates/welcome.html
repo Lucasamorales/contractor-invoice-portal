@@ -106,22 +106,33 @@
   </div>
 
   {% if state.blocks %}
-    {% for reason, message in state.blocks %}
+    {# Ordered by state.outstanding, which is the order somebody works
+       through them, not the order the reasons happen to be listed in.
+       Finishing one now leads to the next rather than back here. #}
+    {% set messages = dict(state.blocks) %}
+    {% for reason in state.outstanding %}
       <div class="card attention" {% if loop.first %}data-tut="member.month.blocks"{% endif %}>
-        <p class="eyebrow"><span class="dot"></span>One thing first</p>
+        <p class="eyebrow">
+          <span class="dot"></span>
+          {% if state.outstanding | length > 1 %}
+            Step {{ loop.index }} of {{ state.outstanding | length }}
+          {% else %}One thing first{% endif %}
+        </p>
         <h2>
           {% if reason == 'bank_unconfirmed' %}Confirm the account we pay
           {% elif reason == 'profile_incomplete' %}Add your letterhead details
           {% else %}Your fee is not set yet{% endif %}
         </h2>
-        <p class="lead">{{ message }}</p>
-        {% if reason == 'bank_unconfirmed' %}
+        <p class="lead">{{ messages[reason] }}</p>
+        {# Only the first carries a button. The rest come to you as you
+           finish each one. #}
+        {% if loop.first and reason == 'profile_incomplete' %}
+          <p class="actions mt-l">
+            <a class="button" href="/details">Start{% include "_arrow.html" %}</a>
+          </p>
+        {% elif loop.first and reason == 'bank_unconfirmed' %}
           <p class="actions mt-l">
             <a class="button" href="/bank">Check the account{% include "_arrow.html" %}</a>
-          </p>
-        {% elif reason == 'profile_incomplete' %}
-          <p class="actions mt-l">
-            <a class="button" href="/details">Add them{% include "_arrow.html" %}</a>
           </p>
         {% endif %}
       </div>

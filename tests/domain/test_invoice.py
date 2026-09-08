@@ -135,3 +135,34 @@ def test_the_stored_note_is_the_same_items_newline_separated() -> None:
     )
     assert detail_note(totals).splitlines() == list(detail_parts(totals))
     assert detail_note(totals) == "3 kudos × £20\ntravel £34.50\nhotel £120"
+
+
+def test_what_is_outstanding_comes_back_in_the_order_to_do_it() -> None:
+    """Not the order the reasons are listed in.
+
+    The letterhead is about them and takes a minute; the bank account is the
+    consequential one and is better as the last deliberate act. A missing fee
+    is last because it is the only one nobody on this side can fix.
+    """
+    from app.services.invoicing import Readiness
+
+    def state(*reasons: str) -> Readiness:
+        return Readiness(
+            fee_pence=None,
+            kudos_count=0,
+            kudos_rate_pence=2000,
+            bank=None,
+            bank_confirmed=False,
+            profile_complete=False,
+            existing_invoice=None,
+            blocks=tuple((reason, "") for reason in reasons),
+        )
+
+    # Listed fee-first, done letterhead-first.
+    assert state("no_fee", "bank_unconfirmed", "profile_incomplete").outstanding == (
+        "profile_incomplete",
+        "bank_unconfirmed",
+        "no_fee",
+    )
+    assert state("bank_unconfirmed").outstanding == ("bank_unconfirmed",)
+    assert state().outstanding == ()

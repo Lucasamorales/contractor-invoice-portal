@@ -149,6 +149,32 @@ def _base_context(
     }
 
 
+# Where each outstanding thing is dealt with. A missing fee has no entry
+# because there is no screen here that fixes it — only accounts can.
+STEP_PATHS = {
+    "profile_incomplete": "/details",
+    "bank_unconfirmed": "/bank",
+}
+
+
+def _next_step(state: Readiness, *, open_now: bool) -> str:
+    """Where to go after finishing something, so the first run is one run.
+
+    Each screen used to name its own successor, which worked in one order and
+    not the other: confirming the bank before filling in the letterhead landed
+    somebody in the wizard with an incomplete profile, and the wizard let them
+    build an invoice they could not send. Nothing decides what comes next any
+    more — it is asked.
+    """
+    for reason in state.outstanding:
+        # The first thing they can act on. A missing fee stops the chain,
+        # because the answer is to wait for accounts, not to go anywhere.
+        return STEP_PATHS.get(reason, "/")
+    if state.existing_invoice is not None or not open_now:
+        return "/"
+    return "/additional"
+
+
 def _read_state(
     session: Session, person: Person, settings: Settings
 ) -> tuple[Period, Readiness]:
@@ -248,12 +274,26 @@ async def save_details(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
+    # Was anything outstanding before this? If so they are working through
+    # the first run and should be carried to whatever is left. If not, this is
+    # somebody editing their phone number, and dropping them into the wizard
+    # would be starting an invoice they never asked to start.
+    _, before = _read_state(session, person, settings)
+    first_run = bool(before.outstanding)
+
     for name, value in fields.items():
         setattr(person, name, value)
     person.profile_confirmed_at = _now()
     session.commit()
 
-    return RedirectResponse("/bank", status_code=status.HTTP_303_SEE_OTHER)
+    if not first_run:
+        return RedirectResponse("/me", status_code=status.HTTP_303_SEE_OTHER)
+
+    _, state = _read_state(session, person, settings)
+    return RedirectResponse(
+        _next_step(state, open_now=can_submit(_now()) or settings.window_always_open),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -399,7 +439,12 @@ async def confirm_bank(
         ) from exc
 
     session.commit()
-    return RedirectResponse("/additional", status_code=status.HTTP_303_SEE_OTHER)
+
+    _, state = _read_state(session, person, settings)
+    return RedirectResponse(
+        _next_step(state, open_now=can_submit(_now()) or settings.window_always_open),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.get("/bank/change", response_class=HTMLResponse)
@@ -670,16 +715,28 @@ async def download_invoice(
 # --------------------------------------------------------------------------
 
 
-@router.get("/additional", response_class=HTMLResponse)
+# response_model=None: it renders the wizard or sends somebody to whatever
+# is still outstanding, a union FastAPI cannot model.
+@router.get("/additional", response_model=None)
 async def additional_form(
     request: Request,
     identity: CurrentIdentity,
     person: CurrentPerson,
     session: DbSession,
     settings: Config,
-) -> HTMLResponse:
-    """Kudos read-only; the person adds any number of items. Empty means £0."""
+) -> HTMLResponse | RedirectResponse:
+    """Kudos read-only; the person adds any number of items. Empty means £0.
+
+    Guarded, because it was not: somebody who confirmed their bank before
+    filling in their letterhead was sent straight here, and could build an
+    invoice the submit would then refuse.
+    """
     period, state = _read_state(session, person, settings)
+    if state.outstanding:
+        return RedirectResponse(
+            _next_step(state, open_now=True),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     context = _base_context(request, person, identity, settings)
     context.update(
         {

@@ -750,6 +750,11 @@ def void(
     )
 
 
+# The order somebody works through what is outstanding, which is not the order
+# the reasons are listed on screen. See Readiness.outstanding.
+STEP_ORDER = ("profile_incomplete", "bank_unconfirmed", "no_fee")
+
+
 @dataclass(frozen=True, slots=True)
 class Readiness:
     """What the wizard needs to know to render, without refusing anything.
@@ -778,6 +783,18 @@ class Readiness:
     @property
     def can_submit(self) -> bool:
         return not self.blocks and self.existing_invoice is None
+
+    @property
+    def outstanding(self) -> tuple[str, ...]:
+        """What is left to do, in the order to do it.
+
+        Not the order ``blocks`` lists them in. The letterhead is about them
+        and takes a minute; the bank account is the consequential one and is
+        better as the last deliberate act before invoicing. A missing fee is
+        last because it is the only one nobody on this side can fix.
+        """
+        reasons = {reason for reason, _ in self.blocks}
+        return tuple(reason for reason in STEP_ORDER if reason in reasons)
 
     @property
     def kudos_pence(self) -> int:
