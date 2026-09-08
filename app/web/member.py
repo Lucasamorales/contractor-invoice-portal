@@ -913,7 +913,7 @@ async def preview(
             # The real invoice, rendered by the template that produces the PDF
             # (R-WIZ-06, R-PDF-01). It goes into an isolated iframe so the app's
             # own stylesheet cannot change how the invoice looks.
-            "invoice_html": render_html(invoice_context),
+            "invoice_html": render_html(invoice_context, for_preview=True),
             # The rail beside the sheet shows the same two figures the sheet
             # does, so a mismatch would be visible rather than plausible.
             "number": counter.next_number if counter else 1,

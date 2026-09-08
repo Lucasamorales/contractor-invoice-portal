@@ -227,3 +227,56 @@ def test_inlining_the_stylesheet_removes_the_external_link() -> None:
     )
     assert "<link rel=" not in html
     assert "size: A4 portrait" in html
+
+
+def test_the_preview_style_never_reaches_the_printed_document() -> None:
+    """The screen hides the frame's scrollbars; the PDF must not know.
+
+    invoice.css is the print document (R-PDF-*). Anything added to suit a
+    screen goes on the preview copy only, and the two paths are never both
+    asked for at once.
+    """
+    from app.services.pdf import PREVIEW_STYLE
+
+    printed = render()
+    assert "scrollbar-width" not in printed
+    assert PREVIEW_STYLE not in printed
+
+    inlined = render_html(
+        build_context(
+            number=34,
+            period=PERIOD,
+            issued_at=ISSUED,
+            letterhead=LETTERHEAD,
+            bill_to_lines=BILL_TO,
+            bank=UK_BANK,
+            payout_region="UK",
+            totals=compose(fee_pence=250000, kudos_count=0, kudos_rate_pence=RATE),
+        ),
+        inline_css=True,
+    )
+    assert "scrollbar-width" not in inlined
+
+
+def test_the_preview_hides_the_frames_scrollbars() -> None:
+    """Two grey bars across a piece of paper that is meant to look like paper.
+
+    Hidden, not clipped: overflow:hidden would silently lose the bottom of a
+    long invoice.
+    """
+    previewed = render_html(
+        build_context(
+            number=34,
+            period=PERIOD,
+            issued_at=ISSUED,
+            letterhead=LETTERHEAD,
+            bill_to_lines=BILL_TO,
+            bank=UK_BANK,
+            payout_region="UK",
+            totals=compose(fee_pence=250000, kudos_count=0, kudos_rate_pence=RATE),
+        ),
+        for_preview=True,
+    )
+    assert "scrollbar-width:none" in previewed
+    assert "overflow:hidden" not in previewed
+    assert previewed.count("</head>") == 1

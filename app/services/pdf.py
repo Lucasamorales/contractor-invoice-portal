@@ -94,12 +94,37 @@ def build_context(
     }
 
 
-def render_html(context: dict[str, Any], *, inline_css: bool = False) -> str:
+# Scrollbars inside the preview frame, and nowhere else. The sheet is shown
+# at a fixed size, so the browser paints its own chrome over the document —
+# two grey bars across a piece of paper that is meant to look like paper.
+#
+# Hidden rather than clipped: overflow:hidden on a long invoice would lose the
+# bottom of it silently. The wheel and the keyboard still scroll.
+#
+# It goes in here rather than in invoice.css because invoice.css is the print
+# document (R-PDF-*, CLAUDE.md §8) and nothing about the PDF may change to
+# suit a screen.
+PREVIEW_STYLE = (
+    "<style>html{scrollbar-width:none;-ms-overflow-style:none}"
+    "html::-webkit-scrollbar{display:none}"
+    "body{margin:0}</style>"
+)
+
+
+def render_html(
+    context: dict[str, Any],
+    *,
+    inline_css: bool = False,
+    for_preview: bool = False,
+) -> str:
     """Render the invoice to HTML.
 
     ``inline_css`` embeds the stylesheet, which is what the PDF path needs:
     WeasyPrint would otherwise have to resolve a URL, and the renderer should
     not be making requests.
+
+    ``for_preview`` adds the screen-only style above. The two are never both
+    set: one produces a document to print, the other one to look at.
     """
     template = templates.get_template(TEMPLATE)
     html = template.render(**context)
@@ -109,6 +134,8 @@ def render_html(context: dict[str, Any], *, inline_css: bool = False) -> str:
             '<link rel="stylesheet" href="/static/invoice.css">',
             f"<style>{css}</style>",
         )
+    if for_preview:
+        html = html.replace("</head>", f"{PREVIEW_STYLE}</head>", 1)
     return html
 
 
