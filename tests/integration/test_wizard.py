@@ -874,3 +874,54 @@ def test_editing_your_details_later_does_not_start_an_invoice(
         follow_redirects=False,
     )
     assert saved.headers["location"] == "/me"
+
+
+def test_adding_a_first_account_carries_on_rather_than_looping(
+    window_open, factory
+) -> None:
+    """Somebody created fresh has no bank rows at all, so the bank screen
+    offers "Add them" rather than a confirmation. Saving them used to come
+    straight back to that screen, which by then had nothing left to do on it
+    — the same dead end the chain exists to remove."""
+    client, _, _cipher = window_open
+    with factory() as session, session.begin():
+        person = make_person(session, complete_profile=True)
+        give_fee(session, person)
+        give_counter(session, person, 1)
+
+    added = client.post(
+        "/bank/change",
+        data={
+            "csrf_token": token_from(client.get("/bank/change").text),
+            "account_name": "Jane Smith",
+            "bank_name": "Monzo",
+            "sort_code": "23-08-01",
+            "account_number": "12345678",
+            "account_number_again": "12345678",
+        },
+        follow_redirects=False,
+    )
+    assert added.status_code == 303
+    assert added.headers["location"] == "/additional"
+
+
+def test_changing_an_account_later_stays_on_the_bank_screen(
+    window_open, factory
+) -> None:
+    """Not a first run: they want to see what they just saved."""
+    client, _, cipher = window_open
+    seed_ready(factory, cipher)
+
+    changed = client.post(
+        "/bank/change",
+        data={
+            "csrf_token": token_from(client.get("/bank/change").text),
+            "account_name": "Jane Smith",
+            "bank_name": "Monzo",
+            "sort_code": "23-08-01",
+            "account_number": "87654321",
+            "account_number_again": "87654321",
+        },
+        follow_redirects=False,
+    )
+    assert changed.headers["location"] == "/bank"

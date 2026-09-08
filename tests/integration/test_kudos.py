@@ -511,3 +511,105 @@ def _submit(
         store=LocalObjectStore(tmp_path / f"objects-{key}"),
         render=lambda context: b"%PDF-1.7 test",
     )
+
+
+def test_joining_after_the_sync_is_not_the_same_as_an_unreadable_sheet(
+    factory, settings, cipher
+) -> None:
+    """R-KUD-06 distinguishes "no kudos" from "we could not read them". It
+    must not also catch "you were created after this morning's sync".
+
+    The snapshot is stored per person because the count is, but what it
+    records — that the sheet was read — is true for the whole period. Asking
+    per person told a new joiner their kudos were unavailable while their
+    events sat there, attached and claimable, and parked them on the queue.
+    """
+    from app.db import repo
+    from app.domain.period import Period
+    from app.services.invoicing import readiness
+
+    period = Period(2026, 9)
+    now = datetime(2026, 9, 8, 12, tzinfo=UTC)
+
+    with factory() as session, session.begin():
+        synced = make_person(session, email="synced@example.com")
+        joiner = make_person(session, email="joiner@example.com")
+        session.flush()
+        # The sync ran and wrote a row for everybody it knew about.
+        session.add(
+            KudosSnapshot(
+                person_id=synced.id,
+                period=period.key,
+                kudos_count=0,
+                rate_pence=settings.kudos_rate_pence,
+            )
+        )
+        # The joiner has kudos of their own, matched by alias — ledger rows
+        # and no snapshot, which is exactly the state a sync cannot produce
+        # for somebody who did not exist when it ran.
+        for index in range(2):
+            session.add(
+                KudosEvent(
+                    event_key=f"joiner-{index}",
+                    person_id=joiner.id,
+                    receiver_name=joiner.display_name,
+                    giver_name="Riley Garner",
+                    value_text="Own it",
+                    awarded_on=date(2026, 9, 1),
+                    claimable=True,
+                )
+            )
+        joiner_id = joiner.id
+
+    with factory() as session:
+        assert repo.kudos_sheet_was_read(session, period.key) is True
+        assert repo.people_missing_kudos_snapshot(session, period.key) == []
+
+        joiner = session.get(Person, joiner_id)
+        state = readiness(
+            session, person=joiner, period=period, now=now, settings=settings
+        )
+        # Stated, not refused, and at the configured rate.
+        assert state.kudos_count == 2
+        assert state.kudos_rate_pence == settings.kudos_rate_pence
+
+
+def test_a_sheet_that_was_never_read_still_refuses_to_guess(
+    factory, settings, cipher
+) -> None:
+    """The protection it exists for is unchanged."""
+    from app.db import repo
+    from app.domain.period import Period
+    from app.services.invoicing import readiness
+
+    period = Period(2026, 9)
+    now = datetime(2026, 9, 8, 12, tzinfo=UTC)
+
+    with factory() as session, session.begin():
+        person = make_person(session)
+        session.flush()
+        session.add(
+            KudosEvent(
+                event_key="never-read",
+                person_id=person.id,
+                receiver_name=person.display_name,
+                giver_name="Riley Garner",
+                value_text="Own it",
+                awarded_on=date(2026, 9, 1),
+                claimable=True,
+            )
+        )
+        person_id = person.id
+
+    with factory() as session:
+        assert repo.kudos_sheet_was_read(session, period.key) is False
+        assert repo.people_missing_kudos_snapshot(session, period.key) != []
+
+        state = readiness(
+            session,
+            person=session.get(Person, person_id),
+            period=period,
+            now=now,
+            settings=settings,
+        )
+        assert state.kudos_count is None

@@ -495,6 +495,9 @@ async def submit_bank_change(
     # sends, so it cannot be sidestepped by varying a header.
     bank_limiter.check(identity.email)
 
+    _, before = _read_state(session, person, settings)
+    first_run = bool(before.outstanding)
+
     entry = bank_changes.Entry(
         account_name=account_name,
         bank_name=bank_name,
@@ -539,7 +542,18 @@ async def submit_bank_change(
         )
 
     session.commit()
-    return RedirectResponse("/bank", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Adding an account is the last step of the first run for anybody who had
+    # none on file, so it joins the chain like the others. A later change is
+    # not a first run and belongs back on the bank screen, showing the result.
+    if not first_run:
+        return RedirectResponse("/bank", status_code=status.HTTP_303_SEE_OTHER)
+
+    _, state = _read_state(session, person, settings)
+    return RedirectResponse(
+        _next_step(state, open_now=can_submit(_now()) or settings.window_always_open),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/theme")

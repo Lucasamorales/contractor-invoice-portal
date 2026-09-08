@@ -394,6 +394,25 @@ def pending_bank_rows(session: Session) -> list[BankDetail]:
     )
 
 
+def kudos_sheet_was_read(session: Session, period_key: str) -> bool:
+    """Was the kudos sheet read at all this period? (R-KUD-06)
+
+    The snapshot is stored per person because the count is, but what it
+    records is not: the sheet is read once for everybody. Asking per person
+    meant somebody who joined after the last sync had no row of their own and
+    was told their kudos were unavailable — when the sheet had been read
+    perfectly well, and their events were sitting there attached.
+    """
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(KudosSnapshot)
+            .where(KudosSnapshot.period == period_key)
+        )
+        or 0
+    ) > 0
+
+
 def people_missing_kudos_snapshot(session: Session, period_key: str) -> list[Person]:
     """Who we cannot state a kudos count for this period (R-KUD-06).
 
@@ -405,14 +424,16 @@ def people_missing_kudos_snapshot(session: Session, period_key: str) -> list[Per
     Only asked in a quarter-end month, and only about people who could be paid
     kudos at all.
     """
-    known = select(KudosSnapshot.person_id).where(KudosSnapshot.period == period_key)
+    # If the sheet was read at all this period then nobody is unreadable:
+    # a person without a row of their own simply joined after the sync.
+    if kudos_sheet_was_read(session, period_key):
+        return []
     return list(
         session.scalars(
             select(Person)
             .where(
                 Person.kudos_eligible.is_(True),
                 Person.status != PersonStatus.INACTIVE,
-                Person.id.not_in(known),
             )
             .order_by(Person.display_name)
         )

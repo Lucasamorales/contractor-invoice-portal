@@ -224,18 +224,20 @@ def gather_kudos(
     if not is_quarter_end(period.year, period.month) or not person.kudos_eligible:
         return (), (), settings.kudos_rate_pence
 
-    # R-KUD-06: a missing snapshot means the sheet could not be read. Zero and
-    # "we don't know" look identical on an invoice, so we refuse to guess
-    # between them unless the person says which they meant.
+    # R-KUD-06: if the sheet could not be read then zero and "we don't know"
+    # look identical on an invoice, and we refuse to guess between them unless
+    # the person says which they meant. Read once for everybody, so it is
+    # asked of the period; the person's own row only carries the rate it was
+    # read at, and settings answer when they joined after the last sync.
     snapshot = session.get(KudosSnapshot, (person.id, period.key))
-    if snapshot is None and not kudos_zero_acknowledged:
-        raise SubmissionBlocked(
-            "kudos_unavailable",
-            "Your kudos count is not available yet. Accounts have been told. "
-            "Try again shortly, or confirm you want to invoice without it — "
-            "they will go on your next quarterly invoice instead.",
-        )
-    if snapshot is None:
+    if not repo.kudos_sheet_was_read(session, period.key):
+        if not kudos_zero_acknowledged:
+            raise SubmissionBlocked(
+                "kudos_unavailable",
+                "Your kudos count is not available yet. Accounts have been told. "
+                "Try again shortly, or confirm you want to invoice without it — "
+                "they will go on your next quarterly invoice instead.",
+            )
         return (), (), settings.kudos_rate_pence
 
     # Bounded at the quarter end so an invoice raised late does not sweep in
@@ -246,7 +248,8 @@ def gather_kudos(
     fetch_awards = repo.lock_unclaimed_awards if lock else repo.unclaimed_awards
     events = tuple(fetch(session, person.id, on_or_before=quarter_end))
     awards = tuple(fetch_awards(session, person.id))
-    return events, awards, snapshot.rate_pence
+    rate = snapshot.rate_pence if snapshot else settings.kudos_rate_pence
+    return events, awards, rate
 
 
 def _quarter_end(period: Period) -> date:
@@ -824,10 +827,14 @@ def readiness(
     # The ledger is the count, because only the ledger knows what has already
     # been billed. The snapshot says whether the sheet could be read at all.
     due = is_quarter_end(period.year, period.month) and person.kudos_eligible
+    # Per person for the rate it was read at; per period for whether it was
+    # read at all. Somebody who joined after the last sync has no row of their
+    # own and is not unreadable (R-KUD-06).
     snapshot = session.get(KudosSnapshot, (person.id, period.key)) if due else None
+    readable = due and repo.kudos_sheet_was_read(session, period.key)
     kudos_count: int | None = None
     awards_pence = 0
-    if due and snapshot is not None:
+    if readable:
         kudos_count = len(
             repo.unclaimed_kudos(session, person.id, on_or_before=_quarter_end(period))
         )
@@ -837,7 +844,7 @@ def readiness(
     elif not due:
         kudos_count = 0
 
-    if due and snapshot is None:
+    if due and not readable:
         # Their screen tells them accounts have been told. This, and the queue
         # entry beside it, is what makes that true. No count and no fee in the
         # line (CLAUDE.md 2.8) — the person and the period are enough to act on.
