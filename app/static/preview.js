@@ -40,9 +40,14 @@
         fit(frame);
       });
     }
-    window.addEventListener("resize", function () {
-      fit(frame);
-    });
+    // On window, which survives a body swap, so it is bound once even though
+    // hx-boost re-runs this file on every navigation.
+    if (!window.__portalPreviewBound) {
+      window.__portalPreviewBound = true;
+      window.addEventListener("resize", function () {
+        document.querySelectorAll("iframe.sheet-scale").forEach(fit);
+      });
+    }
   }
 
   function init() {

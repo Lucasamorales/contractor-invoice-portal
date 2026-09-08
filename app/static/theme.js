@@ -41,6 +41,17 @@
     button.setAttribute("title", label(value));
   }
 
+  // Bound once, however many times this file runs.
+  //
+  // These scripts sit at the end of <body>, and hx-boost swaps the body — so
+  // htmx re-executes every one of them on every navigation. A delegated
+  // listener on document is not replaced with the body, so without this each
+  // navigation added another: after four, one press toggled the theme four
+  // times and landed back where it started, which looks exactly like a button
+  // that does nothing.
+  if (window.__portalThemeBound) return;
+  window.__portalThemeBound = true;
+
   // Delegated, because hx-boost replaces the body on every navigation and a
   // listener bound to the button would go with it.
   document.addEventListener("submit", function (event) {

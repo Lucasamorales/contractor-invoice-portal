@@ -218,3 +218,33 @@ def test_the_tab_icon_is_present_and_hashed() -> None:
     for name in ("favicon.ico", "favicon-32.png", "apple-touch-icon.png"):
         assert (Path("app/static") / name).exists(), f"{name} is missing"
         assert f"static('{name}')" in base, f"{name} is not linked, or not hashed"
+
+
+def test_scripts_in_the_body_bind_their_global_listeners_once() -> None:
+    """hx-boost swaps the body, so htmx re-executes every script inside it on
+    every navigation. A listener on document or window is not replaced with
+    the body, so each navigation added another copy: after four, one press of
+    the theme toggle fired four handlers, flipped four times and landed back
+    where it started — a button that appeared to do nothing, on whichever
+    tabs happened to land on an even count.
+
+    Anything bound per element is fine, because the elements are new. This is
+    only about the ones that outlive the swap.
+    """
+    import re
+    from pathlib import Path
+
+    for name in ("theme.js", "tutorial.js", "preview.js", "forms.js", "kudos.js"):
+        source = Path("app/static") / name
+        text = source.read_text(encoding="utf-8")
+        globals_bound = re.findall(
+            r"(?:document|window)\.addEventListener\(\s*\"(\w+)\"", text
+        )
+        # DOMContentLoaded is the entry point and is harmless twice: it has
+        # already fired by the time a swapped script runs, so it never binds.
+        lasting = [event for event in globals_bound if event != "DOMContentLoaded"]
+        if lasting:
+            assert "__portal" in text, (
+                f"{name} binds {lasting} on document or window with no guard, "
+                "so a boosted navigation will bind them again"
+            )

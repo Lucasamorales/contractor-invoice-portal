@@ -252,15 +252,23 @@
       else start();
     });
 
-    document.addEventListener("keydown", function (event) {
-      if (!on) return;
-      if (event.key === "Escape") stop();
-      if (card.hidden) return;
-      if (event.key === "ArrowRight") show(index + 1);
-      if (event.key === "ArrowLeft") show(index - 1);
-    });
-
-    window.addEventListener("resize", place);
+    // The toggle and the card belong to this page and go when the body is
+    // swapped, so they are bound every time. These two are not: they are on
+    // document and window, which survive, and hx-boost re-runs this file on
+    // every navigation. Without the guard each navigation added another copy.
+    if (!window.__portalTutorialBound) {
+      window.__portalTutorialBound = true;
+      document.addEventListener("keydown", function (event) {
+        if (!on) return;
+        if (event.key === "Escape") stop();
+        if (card.hidden) return;
+        if (event.key === "ArrowRight") show(index + 1);
+        if (event.key === "ArrowLeft") show(index - 1);
+      });
+      window.addEventListener("resize", function () {
+        place();
+      });
+    }
     // Pins live inside swapped fragments (the fee reveal, for one), so they
     // have to be put back after HTMX replaces a chunk of the page.
     document.body.addEventListener("htmx:afterSwap", function () {
