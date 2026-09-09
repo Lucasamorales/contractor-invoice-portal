@@ -139,12 +139,15 @@
     {% endfor %}
   {% else %}
     <div class="card" data-tut="member.month.blocks">
-      <h2>Nothing is in your way.</h2>
-      <p class="actions mt-l">
+      {# The one action on the screen, beside the line that says it is
+         available. It wraps under the heading rather than squeezing into it
+         when the two do not fit on a line together. #}
+      <div class="head-row">
+        <h2>Nothing is in your way.</h2>
         <a class="button" href="{{ '/additional' if person.profile_confirmed_at else '/details' }}">
           Generate invoice{% include "_arrow.html" %}
         </a>
-      </p>
+      </div>
     </div>
   {% endif %}
 {% endif %}

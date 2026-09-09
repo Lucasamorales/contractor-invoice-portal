@@ -531,6 +531,10 @@ main.sheet-page { max-width: 1080px; }
 .head-row h1 { margin: 0; }
 .head-row form { margin: 0; }
 
+/* When the pair does not fit on one line the action wraps underneath, and
+   stays on the same side it was on rather than jumping to the left. */
+.head-row > .button { margin-left: auto; }
+
 /* Stepping between quarters, instead of telling somebody to edit the URL. */
 .quarter-nav { display: flex; gap: 16px; font-size: 13px; font-weight: 600; }
 .quarter-nav a { text-decoration: none; }
