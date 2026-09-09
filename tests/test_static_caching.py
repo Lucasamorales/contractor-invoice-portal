@@ -266,3 +266,28 @@ def test_the_toggle_does_not_depend_on_a_request_finishing() -> None:
     assert "keepalive: true" in source, "the fallback must survive a navigation"
     # Painted first, so the page never waits on anything.
     assert source.index("paint(root, button, next)") < source.index("document.cookie =")
+
+
+def test_the_repeated_account_number_is_checked_as_it_is_typed() -> None:
+    """The field says it is typed twice to catch a transposition (R-BANK-03),
+    so it has to say when the two differ while there is still a cursor in it —
+    not after a round trip.
+
+    The server still decides: banking.parse_bank_fields compares them again,
+    and nothing here is trusted.
+    """
+    from pathlib import Path
+
+    forms = Path("app/static/forms.js").read_text(encoding="utf-8")
+    assert "data-match" in forms
+    # setCustomValidity is what makes the browser refuse the submit and move
+    # focus, the same as it already does for a malformed email address.
+    assert "setCustomValidity" in forms
+
+    for name in ("bank_change.html", "admin/person.html"):
+        markup = (Path("app/templates") / name).read_text(encoding="utf-8")
+        assert 'name="account_number_again"' in markup, name
+        pair = markup[markup.index('name="account_number_again"') :][:400]
+        assert 'data-match="account_number"' in pair, (
+            f"{name}: the repeated field is not checked against the first"
+        )

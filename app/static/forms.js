@@ -96,8 +96,70 @@
     });
   }
 
+  // ----------------------------------------------------------- matching --
+  //
+  // The second account number exists to catch a transposition (R-BANK-03),
+  // and the field says so — so it should say when they differ, while there is
+  // still a cursor in it, rather than after a round trip.
+  //
+  // Declared as data-match="<name of the other field>", like data-format.
+
+  function message(input) {
+    var next = input.nextElementSibling;
+    if (next && next.classList.contains("field-error")) return next;
+    var span = document.createElement("span");
+    span.className = "field-error";
+    span.hidden = true;
+    input.insertAdjacentElement("afterend", span);
+    return span;
+  }
+
+  function compare(input, other) {
+    var typed = input.value;
+    var target = other.value;
+    var error = message(input);
+
+    // Nothing to say while either is empty — that is what required is for —
+    // and nothing to say while what is typed could still become the other
+    // one. Complaining at the first character is how a form becomes noise.
+    var wrong = Boolean(typed) && Boolean(target) && target.indexOf(typed) !== 0;
+
+    if (wrong) {
+      error.textContent = "The two numbers are different.";
+      error.hidden = false;
+      // The browser refuses the submit and moves focus here, which is what
+      // it already does for a malformed email address.
+      input.setCustomValidity("The two numbers are different.");
+    } else {
+      error.hidden = true;
+      input.setCustomValidity("");
+    }
+  }
+
+  function match(input) {
+    var form = input.form;
+    var other = form && form.elements[input.getAttribute("data-match")];
+    if (!other) return;
+
+    var check = function () {
+      compare(input, other);
+    };
+    input.addEventListener("input", check);
+    input.addEventListener("blur", function () {
+      // On the way out, a value that is merely a prefix is still wrong.
+      if (input.value && other.value && input.value !== other.value) {
+        message(input).textContent = "The two numbers are different.";
+        message(input).hidden = false;
+        input.setCustomValidity("The two numbers are different.");
+      }
+    });
+    // Correcting the first field has to clear an error on the second.
+    other.addEventListener("input", check);
+  }
+
   function init() {
     document.querySelectorAll("input[data-format]").forEach(apply);
+    document.querySelectorAll("input[data-match]").forEach(match);
   }
 
   if (document.readyState === "loading") {
