@@ -84,14 +84,15 @@ def validate_iban(
     warnings: list[str] = []
 
     if not iban:
-        return IbanCheck(iban="", valid=False, errors=("iban is empty",))
+        return IbanCheck(iban="", valid=False, errors=("Enter your IBAN.",))
 
     if not _IBAN_SHAPE.match(iban):
         return IbanCheck(
             iban=iban,
             valid=False,
             errors=(
-                "iban shape is not two letters, two check digits, then alphanumerics",
+                "An IBAN starts with two letters, then two digits, then the rest. "
+                "That one does not.",
             ),
         )
 
@@ -100,10 +101,12 @@ def validate_iban(
     if expected is None:
         warnings.append(f"unknown IBAN country {country}; length not checked")
     elif len(iban) != expected:
-        errors.append(f"{country} IBAN must be {expected} characters, got {len(iban)}")
+        errors.append(
+            f"A {country} IBAN is {expected} characters. That one has {len(iban)}."
+        )
 
     if mod97(iban) != 1:
-        errors.append("iban checksum (mod-97) failed")
+        errors.append("That IBAN did not pass its check. Usually one character is out.")
 
     gb_sort: str | None = None
     gb_account: str | None = None
@@ -111,17 +114,20 @@ def validate_iban(
         gb_sort = iban[8:14]
         gb_account = iban[14:22]
         if not gb_sort.isdigit() or not gb_account.isdigit():
-            errors.append("GB IBAN does not carry a numeric sort code and account")
+            errors.append(
+                "That UK IBAN does not contain a sort code and account number. "
+                "Check it against your statement."
+            )
         else:
             if sort_code and sort_code != gb_sort:
                 warnings.append(
-                    f"sort code {mask(sort_code)} does not match the IBAN's "
-                    f"{mask(gb_sort)}"
+                    f"The sort code {mask(sort_code)} does not match the one inside "
+                    f"the IBAN, {mask(gb_sort)}."
                 )
             if account_number and account_number != gb_account:
                 warnings.append(
-                    f"account number {mask(account_number)} does not match the "
-                    f"IBAN's {mask(gb_account)}"
+                    f"The account number {mask(account_number)} does not match the one "
+                    f"inside the IBAN, {mask(gb_account)}."
                 )
 
     return IbanCheck(

@@ -262,7 +262,7 @@ async def save_details(
         if not value
     }
     if "@" not in fields["contact_email"] and not errors.get("contact_email"):
-        errors["contact_email"] = "That doesn't look like an email address."
+        errors["contact_email"] = "That does not look like an email address."
 
     if errors:
         context = _base_context(request, person, identity, settings)

@@ -172,7 +172,7 @@ def test_intl_row_requires_iban_and_bic() -> None:
     parsed = parse_bank_blob("Name: Bridge Building\nBank: Wise")
     errors = validate_bank(parsed, PayoutRegion.INTL)
     assert any("IBAN" in error for error in errors)
-    assert any("SWIFT/BIC" in error for error in errors)
+    assert any("Swift/BIC" in error for error in errors)
 
 
 def test_iban_is_uppercased_and_despaced() -> None:

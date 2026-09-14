@@ -398,7 +398,7 @@ def test_the_owner_confirming_a_proposal_makes_it_payable(wired, factory) -> Non
 
     with as_user(JANE, finance=False) as client:
         bank_page = client.get("/bank")
-        assert "Accounts has suggested a change" in bank_page.text
+        assert "Accounts have suggested a change" in bank_page.text
         assert "••••4321" in bank_page.text
 
         with factory() as session:

@@ -117,7 +117,7 @@ def normalise_sort_code(raw: str) -> str:
     """Six digits, no separators. The file holds both 230801 and 23-08-01."""
     digits = re.sub(r"[^0-9]", "", raw)
     if len(digits) != 6:
-        raise BankingError(f"sort code must be six digits, got {len(digits)}")
+        raise BankingError(f"A sort code is six digits. That one has {len(digits)}.")
     return digits
 
 
@@ -201,21 +201,21 @@ def validate_bank(parsed: ParsedBank, region: PayoutRegion) -> list[str]:
 
     if region is PayoutRegion.UK:
         if not parsed.sort_code:
-            errors.append("UK payee requires a sort code")
+            errors.append("A UK account needs a sort code.")
         elif len(parsed.sort_code) != 6:
-            errors.append("sort code must be six digits")
+            errors.append("A sort code is six digits.")
         if not parsed.account_number:
-            errors.append("UK payee requires an account number")
+            errors.append("A UK account needs an account number.")
         elif len(parsed.account_number) != 8:
             errors.append(
-                "UK account number must be eight digits, got "
-                f"{len(parsed.account_number)}"
+                "A UK account number is eight digits. "
+                f"That one has {len(parsed.account_number)}."
             )
     else:
         if not parsed.iban:
-            errors.append("international payee requires an IBAN")
+            errors.append("An account outside the UK needs an IBAN.")
         if not parsed.swift_bic:
-            errors.append("international payee requires a SWIFT/BIC")
+            errors.append("An account outside the UK needs a Swift/BIC.")
 
     if parsed.iban:
         check = validate_iban(
@@ -227,7 +227,9 @@ def validate_bank(parsed: ParsedBank, region: PayoutRegion) -> list[str]:
         parsed.warnings.extend(check.warnings)
 
     if parsed.swift_bic and not validate_bic(parsed.swift_bic):
-        errors.append("swift/bic is not a valid 8 or 11 character BIC")
+        errors.append(
+            "A Swift/BIC is either 8 or 11 characters. Check it against your statement."
+        )
 
     return errors
 

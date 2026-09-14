@@ -142,7 +142,7 @@ def prepare(
     fee = repo.fee_for(session, person.id, on=now.date())
     if fee is None:
         raise SubmissionBlocked(
-            "no_fee", "Accounts hasn't set your fee yet — they have been notified."
+            "no_fee", "Accounts have not set your fee yet — they have been told."
         )
 
     bank = repo.active_bank_detail(session, person.id)
@@ -652,7 +652,8 @@ def submit(
                 person = session.get(Person, person_id)
                 if person is None:
                     raise SubmissionBlocked(
-                        "unknown_person", "We don't know who you are."
+                        "unknown_person",
+                        "We cannot tell who you are. Reload the page and try again.",
                     )
 
                 live = repo.live_invoice_for_period(session, person_id, period.key)
@@ -855,7 +856,7 @@ def readiness(
     blocks: list[tuple[str, str]] = []
     if fee is None:
         blocks.append(
-            ("no_fee", "Accounts hasn't set your fee yet — they have been notified.")
+            ("no_fee", "Accounts have not set your fee yet — they have been told.")
         )
     if not bank_confirmed:
         blocks.append(("bank_unconfirmed", "Confirm your bank details first."))

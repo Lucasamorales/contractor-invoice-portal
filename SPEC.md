@@ -351,7 +351,7 @@ below are permitted.
   *Amended 3 September 2026 (Leo):* these were originally one run-on line
   separated by `·`. Three or four items that way is hard to read, and this is
   the part of the invoice an expense claim gets checked against.
-- **R-PDF-10** `Please pay within 14 days of date of invoice` — constant, and
+- **R-PDF-10** `Please pay within 14 days of the invoice date.` — constant, and
   `due_at = issued_at + 14 days`.
 - **R-PDF-11** Bank Details block, rendered **conditionally by `payout_region`**
   (the template already carries both captions):

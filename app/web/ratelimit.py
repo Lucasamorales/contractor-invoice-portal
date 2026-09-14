@@ -45,7 +45,7 @@ class RateLimiter:
                 retry_after = max(1, int(hits[0] + self.window - moment) + 1)
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="That was a lot of attempts. Wait a moment and retry.",
+                    detail="That was a lot of attempts. Wait a moment and try again.",
                     headers={"Retry-After": str(retry_after)},
                 )
             hits.append(moment)

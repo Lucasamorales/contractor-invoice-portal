@@ -151,7 +151,7 @@ def test_detail_line_is_absent_when_additional_is_zero() -> None:
 
 
 def test_payment_terms_are_constant(uk_html: str) -> None:
-    assert "Please pay within 14 days of date of invoice" in uk_html
+    assert "Please pay within 14 days of the invoice date." in uk_html
 
 
 def test_uk_block_prints_sort_code_grouped_and_the_uk_caption(uk_html: str) -> None:

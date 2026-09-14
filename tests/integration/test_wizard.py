@@ -163,7 +163,7 @@ def test_welcome_lists_what_is_blocking(wizard, factory) -> None:
     html = client.get("/").text
     assert "Confirm your bank details first." in html
     assert "We need a few details for your invoice letterhead." in html
-    assert "set your fee yet" in html  # the apostrophe is HTML-escaped
+    assert "set your fee yet" in html
 
 
 def test_kudos_unavailable_is_said_out_loud(wizard, factory) -> None:

@@ -87,7 +87,13 @@ def validate_entry(entry: Entry, region: PayoutRegion) -> ParsedBank:
     )
     errors = validate_bank(parsed, region)
     if parsed.unparsed:
-        errors.extend(f"could not read {line}" for line in parsed.unparsed)
+        # Each entry is "field_name: value". The value is left out: it is what
+        # they just typed, and a message has no business repeating bank digits.
+        errors.extend(
+            f"We could not read the {line.partition(':')[0].replace('_', ' ')} "
+            "you typed."
+            for line in parsed.unparsed
+        )
     if errors:
         raise BankChangeError("These details are not right yet.", errors)
     return parsed
@@ -329,13 +335,15 @@ def confirm(
     """
     detail = session.get(BankDetail, detail_id)
     if detail is None or detail.person_id != person.id:
-        raise BankChangeError("That is not your bank row.")
+        raise BankChangeError("Those are not your bank details.")
     if actor_email.strip().lower() != person.email.strip().lower():
         raise BankChangeError("Only the account holder can confirm these details.")
     if detail.state is BankState.ACTIVE:
         return detail
     if detail.state in (BankState.SUPERSEDED, BankState.REJECTED):
-        raise BankChangeError("That row has been replaced. Refresh and try again.")
+        raise BankChangeError(
+            "Those details have been replaced. Refresh and try again."
+        )
 
     previous = repo.active_bank_detail(session, person.id)
     replacing = previous is not None and previous.id != detail.id
@@ -384,7 +392,9 @@ def flag_back(
     payable — flagging is a request, not an edit.
     """
     if not reason.strip():
-        raise BankChangeError("Say what needs fixing, or the email is no use.")
+        raise BankChangeError(
+            "Say what needs fixing, otherwise the email gives them nothing to act on."
+        )
 
     detail = session.get(BankDetail, detail_id)
     if detail is None:

@@ -431,7 +431,7 @@ def test_no_fee_blocks_with_the_specified_message(
         do_submit(factory, settings, cipher, store, fake_pdf, person_id)
     assert caught.value.reason == "no_fee"
     assert caught.value.message == (
-        "Accounts hasn't set your fee yet — they have been notified."
+        "Accounts have not set your fee yet — they have been told."
     )
 
 

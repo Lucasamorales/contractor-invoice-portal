@@ -150,7 +150,7 @@ def test_the_uk_pdf_says_what_it_should(uk_pdf) -> None:
     for part in ("3 kudos × £20", "travel £34.50", "hotel £120"):
         assert part in text  # R-PDF-09
     assert "Total Invoice: £2,714.50" in text
-    assert "Please pay within 14 days of date of invoice" in text  # R-PDF-10
+    assert "Please pay within 14 days of the invoice date." in text  # R-PDF-10
     assert "VAT" not in text  # R-PDF-14
 
 

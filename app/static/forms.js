@@ -125,11 +125,11 @@
     var wrong = Boolean(typed) && Boolean(target) && target.indexOf(typed) !== 0;
 
     if (wrong) {
-      error.textContent = "The two numbers are different.";
+      error.textContent = "The two account numbers do not match.";
       error.hidden = false;
       // The browser refuses the submit and moves focus here, which is what
       // it already does for a malformed email address.
-      input.setCustomValidity("The two numbers are different.");
+      input.setCustomValidity("The two account numbers do not match.");
     } else {
       error.hidden = true;
       input.setCustomValidity("");
@@ -148,9 +148,9 @@
     input.addEventListener("blur", function () {
       // On the way out, a value that is merely a prefix is still wrong.
       if (input.value && other.value && input.value !== other.value) {
-        message(input).textContent = "The two numbers are different.";
+        message(input).textContent = "The two account numbers do not match.";
         message(input).hidden = false;
-        input.setCustomValidity("The two numbers are different.");
+        input.setCustomValidity("The two account numbers do not match.");
       }
     });
     // Correcting the first field has to clear an error on the second.

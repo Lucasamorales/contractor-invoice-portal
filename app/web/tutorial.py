@@ -32,7 +32,7 @@ MEMBER_MONTH = (
         "member.month.fee",
         "Your fee",
         "Set by finance, never by you, and nobody else can see it. If it says "
-        "not set, accounts has already been told automatically.",
+        "not set, accounts have already been told automatically.",
     ),
     Step(
         "member.month.kudos",

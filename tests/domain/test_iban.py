@@ -28,7 +28,10 @@ def test_transposed_digits_fail_the_checksum() -> None:
     assert mod97(bad) != 1
     check = validate_iban(bad)
     assert check.valid is False
-    assert "iban checksum (mod-97) failed" in check.errors
+    assert (
+        "That IBAN did not pass its check. Usually one character is out."
+        in check.errors
+    )
 
 
 def test_short_gb_iban_is_rejected() -> None:
