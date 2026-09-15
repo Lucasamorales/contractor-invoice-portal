@@ -77,7 +77,7 @@ variable "iap_members" {
 variable "window_always_open" {
   description = <<-EOT
     Staging only. Forces the submission window open so the wizard can be tested
-    on any day of the month rather than only the 24th to the 28th.
+    on any day of the month rather than only the 22nd to the 28th.
 
     The application refuses to start in production with this set, so a stray
     true here fails loudly rather than quietly letting somebody invoice for the

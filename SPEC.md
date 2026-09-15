@@ -23,7 +23,7 @@ Companion documents:
 | **Finance group** | Robin, Charlie, Remy. The only people who may see fees. |
 | **Kudos** | Internal reward. **1 kudo = £20.** Counts live in an existing Google Sheet, semi-public. |
 | **Fee** | A person's monthly remuneration. Sensitive. Only the finance group and the person may see it. |
-| **Period** | One calendar month, `YYYY-MM`. The submission window is the 24th–28th. |
+| **Period** | One calendar month, `YYYY-MM`. The submission window is the 22nd–28th. |
 | **Additional** | One combined figure on the invoice: kudos + expenses + any other item the person adds. |
 | **Payout region** | `UK` or `INTL`. How Robin pays them, **not** a currency. Everything is invoiced in GBP. |
 
@@ -212,8 +212,8 @@ Columns: `NAME, TEAM, EMAIL, REMUNERATION, NOTES, BANK ACCOUNTS, INVOICE N°`.
 ## 5. The period
 
 - **R-PER-01** A period is `YYYY-MM`, evaluated in Europe/London.
-- **R-PER-02** The submission window opens on the **24th** and closes on the
-  **28th** of that month, inclusive.
+- **R-PER-02** The submission window opens on the **22nd** and closes on the
+  **28th** of that month, inclusive. *(Moved from the 24th on 15 September 2026.)*
 - **R-PER-03** An invoice submitted during the window belongs to the month the
   window is in.
 - **R-PER-04** **Nobody is ever locked out.** After the 28th the portal still
@@ -222,9 +222,9 @@ Columns: `NAME, TEAM, EMAIL, REMUNERATION, NOTES, BANK ACCOUNTS, INVOICE N°`.
   door just becomes a phone call to Robin, which is what this system removes.
 - **R-PER-05** A late submission still receives that person's next number in
   sequence.
-- **R-PER-06** Before the 24th the wizard is readable (profile, bank, history)
+- **R-PER-06** Before the 22nd the wizard is readable (profile, bank, history)
   but the submit action is disabled with: *"The window for {Month} opens on the
-  24th."*
+  22nd."*
 
 ---
 
@@ -432,7 +432,7 @@ All are `POST /tasks/*`, called by Cloud Scheduler with an OIDC token, verified
 by the app. All are idempotent — a double fire must not double-send.
 
 - **R-JOB-01** `sync-kudos` — daily during the window, and on demand.
-- **R-JOB-02** `remind` — **24th**: everyone active gets the window-open email
+- **R-JOB-02** `remind` — **22nd**: everyone active gets the window-open email
   with a link. **27th**: only those with no submitted invoice get a nudge.
 - **R-JOB-03** `summary` — **29th**: reconciliation email to the finance group —
   expected vs received, who is missing, what is flagged.
@@ -533,7 +533,7 @@ by the app. All are idempotent — a double fire must not double-send.
 
 ## 17. Build order
 
-Only fixed date: the window opens on the 24th.
+Only fixed date: the window opens on the 22nd.
 
 1. **Skeleton** — FastAPI on Cloud Run behind IAP, Neon connected, Alembic,
    `config.py`, CI. Someone logs in and sees their own name.
@@ -545,7 +545,7 @@ Only fixed date: the window opens on the 24th.
 4. **The wizard** — R-WIZ-*, R-BANK-*.
 5. **Admin** — R-ADM-*, built and demoed in staging against invented data.
 6. **Plumbing** — R-JOB-*, R-STO-*, mailer, Drive mirror, backups.
-7. **Dry run** — R-TEST-06, before the 24th.
+7. **Dry run** — R-TEST-06, before the 22nd.
 
 ---
 
@@ -562,7 +562,7 @@ Leo first.
 | PDF | WeasyPrint. |
 | Currency | GBP for everyone. `payout_region` is routing, not currency. |
 | Numbering | Per person, continuing existing sequence, plain unpadded. |
-| Period | 24th–28th, never locked out. |
+| Period | 22nd–28th, never locked out. |
 | Fees | Admin screen only. Never in a spreadsheet, never in Drive. |
 | Kudos | Sheet stays as it is, read-only, £20 each. |
 | Who sees fees | Robin, Charlie, Remy. |

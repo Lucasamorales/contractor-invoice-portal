@@ -133,7 +133,7 @@ def _base_context(
     settings: Settings,
 ) -> dict[str, object]:
     now = _now()
-    # R-PER-06 shuts submission before the 24th. Staging can override that, or
+    # R-PER-06 shuts submission before the window. Staging can override that, or
     # the whole thing is untestable for three weeks in four; production refuses
     # to start with the override on.
     open_now = can_submit(now) or settings.window_always_open

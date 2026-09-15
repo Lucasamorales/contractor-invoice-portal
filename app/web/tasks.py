@@ -125,7 +125,7 @@ async def run_outbox(
 async def run_remind(
     caller: Scheduler, session: DbSession, settings: Config
 ) -> dict[str, object]:
-    """R-JOB-02. The 24th to everyone, the 27th to those still missing."""
+    """R-JOB-02. Opening day to everyone, the 27th to those still missing."""
     del caller
     with session.begin():
         report = jobs.remind(session, settings=settings, now=_now())

@@ -809,7 +809,7 @@ def _bank_flagged(
 def _window_open(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
-    """R-JOB-02, the 24th."""
+    """R-JOB-02, the day the window opens."""
     del session, store
     payload = row.payload
     return compose(

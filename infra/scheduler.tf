@@ -43,10 +43,11 @@ locals {
     }
     remind = {
       # R-JOB-02. The endpoint decides which of the two emails the day calls
-      # for, so one job covers the 24th and the 27th.
-      schedule    = "0 9 24,27 * *"
+      # for, so one job covers the 22nd and the 27th. The 22nd is
+      # WINDOW_OPENS_DAY in app/domain/period.py, and a test keeps them in step.
+      schedule    = "0 9 22,27 * *"
       path        = "/tasks/remind"
-      description = "Window open on the 24th, nudge the stragglers on the 27th"
+      description = "Window open on the 22nd, nudge the stragglers on the 27th"
     }
     summary = {
       # R-JOB-03. The 29th, after the window has closed.
@@ -62,7 +63,7 @@ locals {
     }
     drive-mirror = {
       # R-JOB-06. Through the window and just after it.
-      schedule    = "30 * 24-29 * *"
+      schedule    = "30 * 22-29 * *"
       path        = "/tasks/drive-mirror"
       description = "Copy submitted PDFs to the Drive folder"
     }

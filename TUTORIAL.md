@@ -146,8 +146,8 @@ to keep the email.
 
 ## Dates: when you can send
 
-- The window is the **24th to the 28th** of the month, inclusive.
-- **Before the 24th** you can use everything — details, bank, history — but
+- The window is the **22nd to the 28th** of the month, inclusive.
+- **Before the 22nd** you can use everything — details, bank, history — but
   **Send to Robin** is disabled and says when it opens.
 - **After the 28th nobody is locked out.** The portal still takes your invoice.
   It is marked *late* and shows up on Robin's screen as late, and it still gets
@@ -197,7 +197,7 @@ in staging. The messages are written and queued; the sending account is not set
 up. Anything below marked with this will start working the day it is.**]**
 
 - **[not yet built]** A copy of your own invoice, when you send it.
-- **[not yet built]** *"Time to invoice"* on the 24th.
+- **[not yet built]** *"Time to invoice"* on the 22nd.
 - **[not yet built]** *"Your invoice is not in yet"* on the 27th, only if it isn't.
 - **[not yet built]** *"Your bank details need your approval"* if Robin proposes
   a change, and *"...need a look"* if he flags one back to you.
@@ -286,7 +286,7 @@ exactly as it was.
 
 ## Period — `/admin/period`
 
-The month at a glance, and the screen you live on between the 24th and the 29th.
+The month at a glance, and the screen you live on between the 22nd and the 29th.
 
 - **X of Y received.**
 - **Not yet in** — who has not invoiced. This is the chasing list, and it is
@@ -360,11 +360,11 @@ Scheduled jobs, no button to press:
 |---|---|
 | Every 5 minutes | Queued email is sent, with retries and backoff. |
 | Daily, 20th–28th | Kudos read from the sheet. **[not yet built: sheet not connected.]** |
-| 24th, 09:00 | *"Time to invoice"* to everyone. **[not yet built: email.]** |
+| 22nd, 09:00 | *"Time to invoice"* to everyone. **[not yet built: email.]** |
 | 27th, 09:00 | Nudge to whoever has not invoiced. **[not yet built: email.]** |
 | 29th, 09:00 | Reconciliation summary to finance. **[not yet built: email.]** |
 | Nightly, 02:00 | Database backup, thirty days kept. |
-| Hourly, 24th–29th | Submitted PDFs mirrored to the Drive folder. **[not yet built: folder not chosen.]** |
+| Hourly, 22nd–29th | Submitted PDFs mirrored to the Drive folder. **[not yet built: folder not chosen.]** |
 
 All times are London time.
 

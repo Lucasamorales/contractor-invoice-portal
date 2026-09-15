@@ -117,8 +117,8 @@ async def overview(
 ) -> HTMLResponse:
     """The landing screen: who has not invoiced, and what is stuck.
 
-    People used to be here, which is a directory rather than a task. Between
-    the 24th and the 29th those are the only two questions.
+    People used to be here, which is a directory rather than a task. From the
+    day the window opens to the 29th those are the only two questions.
 
     Introduces no new metric. Every figure comes from ``period_view`` (R-ADM-04)
     or ``needs_attention``, so nothing on it can disagree with the screen it

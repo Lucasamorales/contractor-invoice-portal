@@ -158,7 +158,7 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.mail_redirect_to
       }
 
-      # R-PER-06 shuts submission before the 24th, which makes the thing
+      # R-PER-06 shuts submission before the 22nd, which makes the thing
       # untestable for three weeks in four. Staging can force it open;
       # assert_production_ready refuses to let production start with it, so
       # this cannot cross over even if someone sets the variable.

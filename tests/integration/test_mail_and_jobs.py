@@ -38,6 +38,8 @@ pytestmark = pytest.mark.integration
 
 ROBIN = "robin@example.com"
 IN_WINDOW = datetime(2026, 9, 24, 10, 0, tzinfo=UTC)
+# The day the window opens: the only day remind() sends the window-open email.
+OPENING_DAY = datetime(2026, 9, 22, 9, 0, tzinfo=UTC)
 PERIOD = Period.parse("2026-09")
 
 
@@ -433,10 +435,12 @@ def make_people(factory, cipher, count: int = 3) -> list:
     return ids
 
 
-def test_the_24th_tells_everyone_the_window_is_open(factory, settings, cipher) -> None:
+def test_opening_day_tells_everyone_the_window_is_open(
+    factory, settings, cipher
+) -> None:
     make_people(factory, cipher, 3)
     with factory() as session, session.begin():
-        report = jobs.remind(session, settings=settings, now=IN_WINDOW)
+        report = jobs.remind(session, settings=settings, now=OPENING_DAY)
     assert report.queued == 3
     with factory() as session:
         kinds = session.scalars(select(Outbox.kind)).all()
@@ -474,7 +478,7 @@ def test_reminders_are_idempotent(factory, settings, cipher) -> None:
     make_people(factory, cipher, 3)
     for _ in range(3):
         with factory() as session, session.begin():
-            jobs.remind(session, settings=settings, now=IN_WINDOW)
+            jobs.remind(session, settings=settings, now=OPENING_DAY)
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(Outbox)) == 3
 
@@ -499,7 +503,7 @@ def test_an_inactive_person_is_not_reminded(factory, settings, cipher) -> None:
         session.get(Person, ids[0]).status = PersonStatus.INACTIVE
 
     with factory() as session, session.begin():
-        report = jobs.remind(session, settings=settings, now=IN_WINDOW)
+        report = jobs.remind(session, settings=settings, now=OPENING_DAY)
     assert report.queued == 1
 
 

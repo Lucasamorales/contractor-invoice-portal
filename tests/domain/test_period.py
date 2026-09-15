@@ -40,8 +40,9 @@ def test_period_parse_rejects_junk(text: str) -> None:
     ("day", "expected"),
     [
         (1, WindowState.BEFORE),
-        (23, WindowState.BEFORE),
-        (24, WindowState.OPEN),  # opens on the 24th (R-PER-02)
+        (21, WindowState.BEFORE),
+        (22, WindowState.OPEN),  # opens on the 22nd (R-PER-02)
+        (24, WindowState.OPEN),
         (26, WindowState.OPEN),
         (28, WindowState.OPEN),  # closes on the 28th, inclusive
         (29, WindowState.LATE),
@@ -52,13 +53,13 @@ def test_window_boundaries(day: int, expected: WindowState) -> None:
     assert window_state(london(2026, 9, day)) is expected
 
 
-@pytest.mark.parametrize("day", [24, 28, 29, 30])
+@pytest.mark.parametrize("day", [22, 24, 28, 29, 30])
 def test_nobody_is_locked_out_once_the_window_has_opened(day: int) -> None:
     # R-PER-04: after the 28th the portal still accepts the submission.
     assert can_submit(london(2026, 9, day)) is True
 
 
-@pytest.mark.parametrize("day", [1, 23])
+@pytest.mark.parametrize("day", [1, 21])
 def test_submit_disabled_before_the_window(day: int) -> None:
     assert can_submit(london(2026, 9, day)) is False
 
@@ -70,7 +71,7 @@ def test_lateness_flag() -> None:
 
 def test_closed_message_names_the_month() -> None:
     assert closed_message(london(2026, 9, 3)) == (
-        "The window for September opens on the 24th."
+        "The window for September opens on the 22nd."
     )
 
 
@@ -82,8 +83,8 @@ def test_period_is_evaluated_in_london_not_utc() -> None:
 
 
 def test_window_state_is_evaluated_in_london() -> None:
-    # 23:30 UTC on the 23rd is 00:30 on the 24th in London: the window is open.
-    moment = datetime(2026, 9, 23, 23, 30, tzinfo=UTC)
+    # 23:30 UTC on the 21st is 00:30 on the 22nd in London: the window is open.
+    moment = datetime(2026, 9, 21, 23, 30, tzinfo=UTC)
     assert window_state(moment) is WindowState.OPEN
 
 
@@ -95,5 +96,19 @@ def test_naive_datetime_is_rejected() -> None:
 
 def test_window_dates() -> None:
     period = Period.parse("2026-09")
-    assert period.opens_on().day == 24
+    assert period.opens_on().day == 22
     assert period.closes_on().day == 28
+
+
+@pytest.mark.parametrize(
+    ("day", "written"),
+    [(1, "1st"), (2, "2nd"), (3, "3rd"), (4, "4th"), (11, "11th"), (12, "12th"),
+     (13, "13th"), (21, "21st"), (22, "22nd"), (23, "23rd"), (28, "28th"),
+     (31, "31st")],
+)  # fmt: skip
+def test_a_window_day_is_written_the_way_people_write_it(
+    day: int, written: str
+) -> None:
+    from app.domain.period import ordinal
+
+    assert ordinal(day) == written

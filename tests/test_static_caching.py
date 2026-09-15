@@ -410,3 +410,26 @@ def test_every_screen_has_a_tutorial_and_every_step_has_a_place() -> None:
         "/admin/data-check",
     ):
         assert tutorial.steps_for(screen), f"{screen} lists no steps"
+
+
+def test_the_scheduler_sends_on_the_days_the_window_rule_names() -> None:
+    """The window days live in app/domain/period.py and the schedule lives in
+    Terraform, which cannot import Python. Moving the window without moving the
+    schedule would announce it on the wrong day, so the two are held together
+    here.
+    """
+    import re
+    from pathlib import Path
+
+    from app.domain.period import WINDOW_CLOSES_DAY, WINDOW_OPENS_DAY
+
+    text = Path("infra/scheduler.tf").read_text(encoding="utf-8")
+
+    def schedule(job: str) -> str:
+        block = re.search(job + r" = \{(.*?)\n    \}", text, re.S).group(1)
+        return re.search(r'schedule\s*=\s*"([^"]+)"', block).group(1)
+
+    remind_days = schedule("remind").split()[2]
+    assert remind_days == f"{WINDOW_OPENS_DAY},{WINDOW_CLOSES_DAY - 1}"
+    mirror_days = schedule("drive-mirror").split()[2]
+    assert mirror_days.startswith(f"{WINDOW_OPENS_DAY}-")

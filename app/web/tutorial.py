@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.domain.period import WINDOW_CLOSES_DAY, WINDOW_OPENS_DAY, ordinal
+
 
 @dataclass(frozen=True, slots=True)
 class Step:
@@ -64,9 +66,10 @@ MEMBER_MONTH = (
     Step(
         "member.month.window",
         "The window",
-        "Send opens on the 24th and closes on the 28th. After the 28th nobody "
-        "is locked out: your invoice is still accepted, marked late, and still "
-        "gets your next number in sequence.",
+        f"Send opens on the {ordinal(WINDOW_OPENS_DAY)} and closes on the "
+        f"{ordinal(WINDOW_CLOSES_DAY)}. After the {ordinal(WINDOW_CLOSES_DAY)} "
+        "nobody is locked out: your invoice is still accepted, marked late, and "
+        "still gets your next number in sequence.",
     ),
 )
 
@@ -201,7 +204,8 @@ ADMIN_OVERVIEW = (
     Step(
         "admin.overview.questions",
         "The only two questions",
-        "Between the 24th and the 29th you need to know who has not invoiced "
+        f"Between the {ordinal(WINDOW_OPENS_DAY)} and the 29th you need to know "
+        "who has not invoiced "
         "and what is stuck. Both are already computed — nothing on this screen "
         "is a new metric.",
     ),

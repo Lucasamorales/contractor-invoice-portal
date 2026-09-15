@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     # earlier is still ingested and still counts for the standings.
     kudos_claimable_from: date = date(2026, 7, 1)
     payment_terms_days: int = 14  # R-PDF-10
-    # Staging only. R-PER-06 shuts the submit action before the 24th, which
+    # Staging only. R-PER-06 shuts the submit action before the window, which
     # is right in production and makes the thing untestable for three weeks
     # of every month. Production refuses to start with this on — see
     # assert_production_ready — so it cannot leak across.

@@ -15,7 +15,9 @@ from zoneinfo import ZoneInfo
 
 LONDON = ZoneInfo("Europe/London")
 
-WINDOW_OPENS_DAY = 24
+# Moved from the 24th to the 22nd on 15 September 2026. Copy that names the
+# opening day reads it from here through ordinal().
+WINDOW_OPENS_DAY = 22
 WINDOW_CLOSES_DAY = 28
 
 _PERIOD_RE = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
@@ -118,7 +120,8 @@ def window_state(moment: datetime) -> WindowState:
 def can_submit(moment: datetime) -> bool:
     """True when the submit action is enabled.
 
-    Open and late both submit; only the days before the 24th are disabled
+    Open and late both submit; only the days before the window opens are
+    disabled
     (R-PER-04, R-PER-06).
     """
     return window_state(moment) is not WindowState.BEFORE
@@ -131,4 +134,16 @@ def is_late(moment: datetime) -> bool:
 
 def closed_message(moment: datetime) -> str:
     """The exact copy shown before the window opens (R-PER-06)."""
-    return f"The window for {Period.containing(moment).month_name} opens on the 24th."
+    month = Period.containing(moment).month_name
+    return f"The window for {month} opens on the {ordinal(WINDOW_OPENS_DAY)}."
+
+
+def ordinal(day: int) -> str:
+    """A day of the month as copy writes it: 22 is "22nd".
+
+    Wording that names a window day follows the constant instead of
+    repeating the number, so moving the window is a one-line change.
+    """
+    if 11 <= day % 100 <= 13:
+        return f"{day}th"
+    return f"{day}" + {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")

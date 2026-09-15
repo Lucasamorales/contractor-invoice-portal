@@ -85,7 +85,7 @@ def remind(
 ) -> JobReport:
     """R-JOB-02.
 
-    On the 24th everyone active gets the window-open note. On the 27th only
+    On opening day everyone active gets the window-open note. On the 27th only
     those with nothing submitted get a nudge — reminding somebody who has
     already done it is how people start ignoring the emails.
     """
