@@ -355,3 +355,58 @@ def test_every_amount_on_a_finance_screen_opens_hidden() -> None:
             assert opened > closed, (
                 f"{path.name}: {match.group(0)} is shown without hidden_money"
             )
+
+
+def test_every_screen_has_a_tutorial_and_every_step_has_a_place() -> None:
+    """The explanations live in the tutorial, not on the screens, so a screen
+    without steps is a screen nobody can ask about. Six had none.
+
+    A step pins itself to the element carrying its key, so a step with no
+    element never shows, and an element with no step is a pin to nowhere.
+    """
+    import re
+    from pathlib import Path
+
+    from app.web import tutorial
+
+    templates = Path("app/templates")
+    anchors: dict[str, list[str]] = {}
+    for path in templates.rglob("*.html"):
+        for key in re.findall(r'data-tut="([^"]+)"', path.read_text(encoding="utf-8")):
+            anchors.setdefault(key, []).append(path.name)
+
+    steps = [
+        step
+        for value in vars(tutorial).values()
+        if isinstance(value, tuple) and value and isinstance(value[0], tutorial.Step)
+        for step in value
+    ]
+    keys = {step.key for step in steps}
+    assert not keys - set(anchors), f"steps with nowhere to pin: {keys - set(anchors)}"
+    assert not set(anchors) - keys, f"pins with no step: {set(anchors) - keys}"
+
+    # Not screens: the shell, partials, the invoice document, the two error
+    # pages, and home.html, which no route renders.
+    not_screens = {
+        "base.html",
+        "invoice.html",
+        "blocked.html",
+        "error.html",
+        "home.html",
+    }
+    for path in templates.rglob("*.html"):
+        if path.name.startswith("_") or path.name in not_screens:
+            continue
+        assert "data-tut=" in path.read_text(encoding="utf-8"), (
+            f"{path.relative_to(templates)} has no tutorial"
+        )
+
+    for screen in (
+        "/details",
+        "/bank/change",
+        "/submit",
+        "/admin/payment-run",
+        "/admin/kudos",
+        "/admin/data-check",
+    ):
+        assert tutorial.steps_for(screen), f"{screen} lists no steps"

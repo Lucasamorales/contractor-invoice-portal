@@ -5,7 +5,7 @@
 {% block content %}
 <a class="back" href="/admin">&larr; Overview</a>
 
-<div class="page-head">
+<div class="page-head" data-tut="admin.kudos.quarter">
   <div class="head-row">
     <h1>Kudos &mdash; {{ quarter.key }}</h1>
     <span class="quarter-nav">
@@ -44,7 +44,7 @@
 {% endif %}
 
 <section>
-  <div class="table-head">
+  <div class="table-head" data-tut="admin.kudos.standings">
     <h2>Standings</h2>
     <span class="hint">
       {{ view.unbilled_kudos }} kudos not yet invoiced
@@ -61,7 +61,7 @@
             <th>Name</th>
             <th class="tight num">Kudos</th>
             <th class="tight num">Prize</th>
-            <th class="award-col">{{ '' }}</th>
+            <th class="award-col" data-tut="admin.kudos.award">{{ '' }}</th>
           </tr>
         </thead>
         <tbody>

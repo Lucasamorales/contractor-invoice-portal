@@ -18,7 +18,7 @@
 {% endif %}
 
 {% if bank %}
-  <div class="card">
+  <div class="card" data-tut="member.bank_change.current">
     <strong>What we have now</strong>
     <table class="kv">
       <tr><th>Name on the account</th><td>{{ bank.account_name or "not given" }}</td></tr>
@@ -100,7 +100,7 @@
     </label>
   {% endif %}
 
-  <div class="actions">
+  <div class="actions" data-tut="member.bank_change.payable">
     <a class="button ghost" href="/bank">Cancel</a>
     <button class="button" type="submit">Save and make payable{% include "_arrow.html" %}</button>
   </div>

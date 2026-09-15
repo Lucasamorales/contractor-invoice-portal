@@ -17,7 +17,7 @@
       <span class="count-red">{{ view.received }}</span>
       of {{ view.expected }} invoices in
     </h1>
-    <span class="right">
+    <span class="right" data-tut="admin.overview.hidden">
       {% call hidden_money("total received") %}<span class="figure wide">{{ received_pence | gbp }}</span>{% endcall %}
       <span class="hint as-block mt-xs">received so far</span>
     </span>

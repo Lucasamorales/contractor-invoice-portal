@@ -241,7 +241,10 @@
 
     build();
 
-    if (!steps.length) {
+    // A screen can list steps none of which are on the page in its current
+    // state: a refused send renders the blocked screen at /submit. Nothing to
+    // point at is the same as no tutorial, rather than an empty one.
+    if (!steps.length || !present().length) {
       toggle.disabled = true;
       toggle.title = "No tutorial on this screen yet";
       return;

@@ -4,7 +4,7 @@
 {% block steps %}{% set active = 'send' %}{% include "_steps.html" %}{% endblock %}
 {% block content %}
 <a class="back" href="/">&larr; This month</a>
-<div class="page-head pt-l">
+<div class="page-head pt-l" data-tut="member.sent.done">
   <p class="eyebrow"><span class="dot"></span>Sent</p>
   <h1 class="big">Invoice {{ invoice.number }} is with accounts.</h1>
   <p class="lead">
@@ -12,7 +12,7 @@
   </p>
 </div>
 
-<div class="card dark hero">
+<div class="card dark hero" data-tut="member.sent.fix">
   <p class="label">Total sent</p>
   <p class="figure huge mt-m">{{ invoice.total_pence | gbp }}</p>
   <p class="hint">

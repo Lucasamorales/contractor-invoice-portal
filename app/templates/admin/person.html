@@ -450,7 +450,7 @@
 </section>
 
 {# -------------------------------------------------------------- profile -- #}
-<section class="card">
+<section class="card" data-tut="admin.person.profile">
   <h2>Profile</h2>
   <div class="facts wide-facts mt-m">
     <div>
@@ -485,7 +485,7 @@
 </section>
 
 {% if person.status.value != "inactive" %}
-  <div class="page-foot">
+  <div class="page-foot" data-tut="admin.person.deactivate">
     {{ panel_link("deactivate", "Deactivate") }}
   </div>
 

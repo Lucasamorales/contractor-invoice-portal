@@ -157,6 +157,46 @@ MEMBER_ME = (
     ),
 )
 
+MEMBER_DETAILS = (
+    Step(
+        "member.details.letterhead",
+        "Your letterhead",
+        "These five lines print at the top of every invoice you send from now "
+        "on. Invoices already sent keep the details they were sent with.",
+    ),
+)
+
+MEMBER_BANK_CHANGE = (
+    Step(
+        "member.bank_change.current",
+        "What we have now",
+        "The account you are replacing. It stays the one we pay until you save "
+        "the new one.",
+    ),
+    Step(
+        "member.bank_change.payable",
+        "Saving makes it payable",
+        "Your next invoice is paid into the new account. You and accounts both "
+        "get an email saying it changed. If you get that email and did not "
+        "make the change, tell the IT department straight away.",
+    ),
+)
+
+MEMBER_SENT = (
+    Step(
+        "member.sent.done",
+        "Nothing else to do",
+        "Accounts have your invoice and a copy is on its way to you. The "
+        "number is now used, and your next invoice takes the one after it.",
+    ),
+    Step(
+        "member.sent.fix",
+        "If something is wrong",
+        "A sent invoice cannot be edited. Tell accounts: they void it and you "
+        "send a new one, with a new number. Every invoice stays in My details.",
+    ),
+)
+
 ADMIN_OVERVIEW = (
     Step(
         "admin.overview.questions",
@@ -192,6 +232,13 @@ ADMIN_OVERVIEW = (
         "The ordinary backlog: people with no fee, bank changes their owner has "
         "not answered, imported rows nobody confirmed. Each opens the queue.",
     ),
+    Step(
+        "admin.overview.hidden",
+        "Amounts are hidden",
+        "Every amount on the Finance screens opens as £•••, so a screenshare "
+        "does not show anybody's pay. Press it to show it, and press it again "
+        "to hide it.",
+    ),
 )
 
 ADMIN_PEOPLE = (
@@ -199,8 +246,8 @@ ADMIN_PEOPLE = (
         "admin.people.fees",
         "Fees are bullets on purpose",
         "A screenshare of this page should not leak the payroll. Reveal one at "
-        "a time, and the reveal writes your address to the audit log. Reading a "
-        "fee is part of the job; reading it unrecorded is not.",
+        "a time, and the reveal writes your address to the audit log. Press "
+        "the fee again to hide it; showing it again is not a second reveal.",
     ),
 )
 
@@ -228,6 +275,19 @@ ADMIN_PERSON = (
         "rather than overwriting it. A change with no reason is refused, "
         "because in six months that note is the only thing that explains the "
         "number.",
+    ),
+    Step(
+        "admin.person.profile",
+        "Their details",
+        "What they entered for their letterhead. Only they can change it, from "
+        "their own My details.",
+    ),
+    Step(
+        "admin.person.deactivate",
+        "Deactivating",
+        "For someone who has left. They stop getting reminders and cannot "
+        "invoice, and their history stays. It cannot be undone from here: tell "
+        "the IT department if it was a mistake.",
     ),
 )
 
@@ -262,6 +322,75 @@ ADMIN_QUEUE = (
         "confirms it, which no admin can do for them; a kudos name when "
         "somebody says who it is. An empty panel means nothing is stuck.",
     ),
+    Step(
+        "admin.queue.names",
+        "A name that matches nobody",
+        "The kudos sheet spells names by hand. Choose who it is, or Nobody for "
+        "someone who has left or does not invoice here. Their kudos then count "
+        "towards that person. It cannot be changed from here afterwards.",
+    ),
+)
+
+ADMIN_PAYMENT_RUN = (
+    Step(
+        "admin.payment_run.batches",
+        "Who to pay this month",
+        "The month's invoices, split by how the money goes: UK by sort code, "
+        "International by IBAN. The account shown is the one printed on the "
+        "invoice. A voided invoice drops off.",
+    ),
+    Step(
+        "admin.payment_run.show_all",
+        "Show all",
+        "Every amount opens hidden. Show all reveals the whole page at once, "
+        "and Hide all puts them back.",
+    ),
+    Step(
+        "admin.payment_run.export",
+        "The export",
+        "The CSV has the full account numbers, so it goes to the bank and "
+        "nowhere else. Every export is recorded with who took it.",
+    ),
+)
+
+ADMIN_KUDOS = (
+    Step(
+        "admin.kudos.quarter",
+        "One quarter at a time",
+        "Kudos are counted per quarter and paid on the quarter-end invoice: "
+        "March, June, September and December. The arrows move between "
+        "quarters.",
+    ),
+    Step(
+        "admin.kudos.standings",
+        "Standings",
+        "Counted from the kudos sheet. Anyone who cannot win, such as "
+        "leadership, is left out. The top three places win a prize.",
+    ),
+    Step(
+        "admin.kudos.award",
+        "Nothing is paid until you press Award",
+        "The place is suggested from the counts. On a tie, choose the place "
+        "yourself and say why; the prize follows the place you choose. An "
+        "award goes on their next quarter-end invoice and cannot be undone "
+        "from here.",
+    ),
+)
+
+ADMIN_DATA_CHECK = (
+    Step(
+        "admin.data_check.ready",
+        "Ready to invoice",
+        "Someone is ready when all four say yes: a fee, a complete letterhead, "
+        "a bank account they have confirmed, and an invoice number carried "
+        "over from the old spreadsheet.",
+    ),
+    Step(
+        "admin.data_check.flagged",
+        "Worth checking by hand",
+        "Things to look at on the person's page before their first invoice, "
+        "such as a payee name that differs from theirs or a missing role.",
+    ),
 )
 
 # Exact paths only. A prefix match would put the member steps on /admin.
@@ -271,11 +400,18 @@ BY_PATH: dict[str, tuple[Step, ...]] = {
     "/additional": MEMBER_ADDITIONAL,
     "/preview": MEMBER_PREVIEW,
     "/me": MEMBER_ME,
+    "/details": MEMBER_DETAILS,
+    "/bank/change": MEMBER_BANK_CHANGE,
+    # The Sent screen is the answer to the POST, so it lives at /submit.
+    "/submit": MEMBER_SENT,
     "/admin": ADMIN_OVERVIEW,
     "/admin/": ADMIN_OVERVIEW,
     "/admin/people": ADMIN_PEOPLE,
     "/admin/period": ADMIN_PERIOD,
     "/admin/queue": ADMIN_QUEUE,
+    "/admin/payment-run": ADMIN_PAYMENT_RUN,
+    "/admin/kudos": ADMIN_KUDOS,
+    "/admin/data-check": ADMIN_DATA_CHECK,
 }
 
 
