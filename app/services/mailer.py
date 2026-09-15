@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
@@ -24,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.config import MailMode, Settings, mail_mode
 from app.db.models import Outbox, OutboxStatus
+from app.services import receipts as receipt_files
 from app.services.storage import ObjectStore, StorageError
 
 logger = logging.getLogger(__name__)
@@ -660,6 +662,7 @@ def _invoice_attachments(
     # The PDF is already counted: it is never dropped for size, because an
     # invoice email without the invoice is not worth sending.
     budget = RESEND_MAX_MESSAGE_BYTES - _encoded_size(attachments) - BODY_ALLOWANCE
+    taken: set[str] = set()
 
     for expense in receipts:
         try:
@@ -683,15 +686,52 @@ def _invoice_attachments(
             continue
 
         budget -= cost
+        kind = receipt_files.sniff(content)
         attachments.append(
             Attachment(
-                name=str(expense.receipt_uri).rsplit("/", 1)[-1],
+                name=_receipt_name(
+                    expense.description, _extension(str(expense.receipt_uri)), taken
+                ),
                 content=content,
-                content_type="application/octet-stream",
+                # The real type, so an inbox previews the photo or the PDF
+                # rather than offering an unnamed download.
+                content_type=kind.value if kind else "application/octet-stream",
             )
         )
 
     return attachments, missing
+
+
+# Characters a mail client or a file system would refuse or mangle in a name.
+_UNSAFE_IN_NAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
+
+
+def _extension(uri: str) -> str:
+    last = uri.rsplit("/", 1)[-1]
+    return last.rpartition(".")[2].lower() if "." in last else ""
+
+
+def _receipt_name(description: str | None, extension: str, taken: set[str]) -> str:
+    """What accounts sees on the attachment: the expense it belongs to.
+
+    The stored object is named by a random id, which is right for the bucket
+    and useless in an inbox. The description is already in the body of this
+    same email, so naming the file after it tells nobody anything new. Two
+    expenses with the same description get a number rather than one file
+    silently standing in for both.
+    """
+    label = " ".join(_UNSAFE_IN_NAME.sub(" ", description or "").split())
+    label = label[:60].strip(" .")
+    stem = f"Receipt - {label}" if label else "Receipt"
+    suffix = f".{extension}" if extension else ""
+
+    name = stem + suffix
+    number = 2
+    while name.lower() in taken:
+        name = f"{stem} ({number}){suffix}"
+        number += 1
+    taken.add(name.lower())
+    return name
 
 
 def _encoded_size(attachments: list[Attachment]) -> int:

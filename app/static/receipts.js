@@ -72,6 +72,14 @@
       });
   }
 
+  // Bound once, however many times this file runs. It sits in the page
+  // body, and hx-boost re-executes body scripts on every navigation; the
+  // listeners below live on document, which outlives the swap. Without this
+  // each visit would add another copy and one chosen file would upload once
+  // per visit.
+  if (window.__portalReceiptsBound) return;
+  window.__portalReceiptsBound = true;
+
   document.addEventListener("change", function (event) {
     var input = event.target;
     if (!input.matches || !input.matches('input[type="file"][data-receipt]')) return;

@@ -629,6 +629,69 @@ def test_a_receipt_survives_preview_and_lands_on_the_invoice(wizard, factory) ->
         assert expense.receipt_uri.endswith(".png")
 
 
+def test_an_uploaded_receipt_reaches_the_email_named_after_its_expense(
+    wizard, factory
+) -> None:
+    """R-SUB-07, from the upload to the inbox.
+
+    Every step on the way was tested and the receipt still never arrived: the
+    script that uploads it never loaded, and nothing checked the far end. So
+    this follows two receipts all the way to the message accounts receives,
+    and checks each one is named for the expense it belongs to and carries
+    its real type — not a random id sent as a generic download.
+    """
+    from app.services import mailer
+
+    client, settings, box = wizard
+    seed_ready(factory, box, kudos=0)
+    store = app.dependency_overrides[get_store]()
+
+    pdf = b"%PDF-1.4 a receipt from a hotel %%EOF"
+    photo = upload(client, PNG, "IMG_2291.png").json()["uri"]
+    document = upload(client, pdf, "booking.pdf").json()["uri"]
+    items = {
+        "description": ["Train to Leeds", "Hotel"],
+        "amount": ["34.50", "120.00"],
+        "receipt_uri": [photo, document],
+    }
+
+    html, token = full_run(client, items)
+    key = re.search(r'name="idempotency_key" value="([^"]+)"', html).group(1)
+    sent = client.post(
+        "/submit", data={"csrf_token": token, "idempotency_key": key, **items}
+    )
+    assert sent.status_code == 200
+
+    class Recorder:
+        def __init__(self) -> None:
+            self.sent: list[mailer.Message] = []
+
+        def send(self, message: mailer.Message) -> None:
+            self.sent.append(message)
+
+    inbox = Recorder()
+    with factory() as session, session.begin():
+        report = mailer.dispatch(session, client=inbox, settings=settings, store=store)
+    assert report.sent == 1
+
+    message = inbox.sent[0]
+    attached = {a.name: a for a in message.attachments}
+    receipts = {name: a for name, a in attached.items() if name.startswith("Receipt")}
+
+    assert set(receipts) == {"Receipt - Train to Leeds.png", "Receipt - Hotel.pdf"}
+    assert receipts["Receipt - Train to Leeds.png"].content_type == "image/png"
+    assert receipts["Receipt - Hotel.pdf"].content_type == "application/pdf"
+    assert receipts["Receipt - Hotel.pdf"].content == pdf
+    # The invoice itself is still there, and nothing was reported missing.
+    assert any(
+        a.content_type == "application/pdf"
+        and a.name.endswith(".pdf")
+        and not a.name.startswith("Receipt")
+        for a in message.attachments
+    )
+    assert "Could not be attached" not in message.text
+
+
 def test_an_expense_without_a_receipt_is_still_fine(wizard, factory) -> None:
     """Most expenses will not have one, and R-WIZ-03 never demanded it."""
     client, _, box = wizard

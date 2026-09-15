@@ -234,7 +234,14 @@ def test_scripts_in_the_body_bind_their_global_listeners_once() -> None:
     import re
     from pathlib import Path
 
-    for name in ("theme.js", "tutorial.js", "preview.js", "forms.js", "kudos.js"):
+    for name in (
+        "theme.js",
+        "tutorial.js",
+        "preview.js",
+        "forms.js",
+        "kudos.js",
+        "receipts.js",
+    ):
         source = Path("app/static") / name
         text = source.read_text(encoding="utf-8")
         globals_bound = re.findall(
@@ -291,3 +298,29 @@ def test_the_repeated_account_number_is_checked_as_it_is_typed() -> None:
         assert 'data-match="account_number"' in pair, (
             f"{name}: the repeated field is not checked against the first"
         )
+
+
+def test_no_screen_loads_its_script_from_the_head() -> None:
+    """Moving between screens swaps the body and keeps the head, so a script a
+    screen asks for in its head is never fetched unless somebody reloads. The
+    receipt upload, the Add another button and the running total all sat dead
+    that way on every normal route into the expenses screen.
+
+    htmx itself is the one script that belongs up there: it has to be present
+    before anything is swapped.
+    """
+    import re
+    from pathlib import Path
+
+    templates = Path("app/templates")
+    for path in templates.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        assert "block scripts" not in text, (
+            f"{path} uses a head script block; put the script at the end of "
+            "its content block"
+        )
+
+    base = (templates / "base.html").read_text(encoding="utf-8")
+    head = base.split("</head>", 1)[0]
+    in_head = re.findall(r"static\('([^']+\.js)'\)", head)
+    assert in_head == ["htmx.min.js"], f"scripts in the head: {in_head}"

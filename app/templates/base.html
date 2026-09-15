@@ -36,7 +36,10 @@
   <link rel="apple-touch-icon" href="{{ static('apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ static('app.css') }}">
   <script src="{{ static('htmx.min.js') }}" defer></script>
-  {% block scripts %}{% endblock %}
+  {# No per-page scripts up here. Moving between screens swaps the body and
+     keeps this head, so a script a screen asks for in its head never loads
+     unless somebody reloads: the receipt upload sat dead that way. A
+     screen's script goes at the end of its content block instead. #}
 </head>
 {# hx-boost on its own, with no hx-select/hx-target/hx-swap. Boost already
    swaps the body's contents and takes the new title; spelling that out as
