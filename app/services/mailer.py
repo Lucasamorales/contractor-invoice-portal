@@ -387,9 +387,12 @@ def build_message(
 def _recipients(*addresses: object) -> tuple[str, ...]:
     seen: list[str] = []
     for address in addresses:
-        text = str(address or "").strip()
-        if text and text not in seen:
-            seen.append(text)
+        # One address, or a list of them (a flag goes to the sign-in address
+        # and, when it differs, the contact address as well).
+        for item in address if isinstance(address, (list, tuple)) else [address]:
+            text = str(item or "").strip()
+            if text and text not in seen:
+                seen.append(text)
     return tuple(seen)
 
 
@@ -798,9 +801,49 @@ def _bank_flagged(
         to=_recipients(payload.get("to_person")),
         subject=str(payload.get("subject", "Your bank details need a look")),
         parts=[
-            para("Your bank details need correcting before your next invoice."),
+            # A flag blocks nothing, so the email asks rather than tells.
+            para("Accounts have asked you to check your bank details."),
             rows([("What to look at", str(payload.get("reason", "")))]),
-            action("Update them", "/bank"),
+            action("Check them", "/bank"),
+            note("If they are already right, say so from the same page."),
+        ],
+        settings=settings,
+    )
+
+
+def _letterhead_flagged(
+    session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
+) -> Message:
+    del session, store
+    payload = row.payload
+    return compose(
+        to=_recipients(payload.get("to_person")),
+        subject=str(payload.get("subject", "Your letterhead needs a look")),
+        parts=[
+            para("Accounts have asked you to check the details on your invoice."),
+            rows([("What to look at", str(payload.get("reason", "")))]),
+            action("Check them", "/details"),
+            note("If they are already right, say so from the same page."),
+        ],
+        settings=settings,
+    )
+
+
+def _flag_answered(
+    session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
+) -> Message:
+    """To accounts, when a person says a flagged thing is already right."""
+    del session, store
+    payload = row.payload
+    name = str(payload.get("person_name", "Someone"))
+    what = str(payload.get("what", "details"))
+    return compose(
+        to=_recipients(payload.get("to_finance")),
+        subject=str(payload.get("subject", f"{name} answered a flag")),
+        parts=[
+            para(f"{name} says their {what} need no change."),
+            rows([("You asked", str(payload.get("reason", "")))]),
+            action("Open their page", f"/admin/people/{payload.get('person_id', '')}"),
         ],
         settings=settings,
     )
@@ -895,6 +938,8 @@ _BUILDERS = {
     "bank_changed": _bank_changed,
     "bank_proposed": _bank_proposed,
     "bank_flagged": _bank_flagged,
+    "letterhead_flagged": _letterhead_flagged,
+    "flag_answered": _flag_answered,
     "window_open": _window_open,
     "reminder": _reminder,
     "summary": _summary,

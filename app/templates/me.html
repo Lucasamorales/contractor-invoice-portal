@@ -5,6 +5,15 @@
   <h1>My details</h1>
 </div>
 
+{% if flags.letterhead %}
+  {% with flag = flags.letterhead, change_href = "/details", back = "/me",
+          tut = "member.me.flag" %}{% include "_flag.html" %}{% endwith %}
+{% endif %}
+{% if flags.bank %}
+  {% with flag = flags.bank, change_href = "/bank/change", back = "/me",
+          tut = "" if flags.letterhead else "member.me.flag" %}{% include "_flag.html" %}{% endwith %}
+{% endif %}
+
 <div class="row-grid">
   <div class="card">
     <p class="label">Letterhead</p>

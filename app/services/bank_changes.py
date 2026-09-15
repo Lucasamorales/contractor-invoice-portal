@@ -389,12 +389,17 @@ def flag_back(
     """An admin flags a row back to its owner (R-BANK-08).
 
     Sends the person an email saying what needs fixing. Does not change what is
-    payable — flagging is a request, not an edit.
+    payable — flagging is a request, not an edit. Its status, and the person's
+    answer, live in app/services/flags.py.
     """
-    if not reason.strip():
-        raise BankChangeError(
-            "Say what needs fixing, otherwise the email gives them nothing to act on."
-        )
+    # Imported here: flags reads bank rows through repo and must not import
+    # this module back.
+    from app.services import flags
+
+    try:
+        text = flags.check_reason(reason, kind=flags.BANK)
+    except flags.FlagError as exc:
+        raise BankChangeError(exc.message) from exc
 
     detail = session.get(BankDetail, detail_id)
     if detail is None:
@@ -406,18 +411,18 @@ def flag_back(
     repo.record_audit(
         session,
         actor_email=actor_email,
-        action="bank.flag",
+        action=flags.FLAG_ACTIONS[flags.BANK],
         entity="bank_details",
         entity_id=str(detail.id),
-        after={"reason": reason.strip()},
+        after={"reason": text},
     )
     session.add(
         repo.queue_email(
             kind=OUTBOX_BANK_FLAGGED,
             payload={
                 "person_id": str(person.id),
-                "to_person": person.contact_email or person.email,
-                "reason": reason.strip(),
+                "to_person": list(flags.recipients(person)),
+                "reason": text,
                 "flagged_by": actor_email,
                 "subject": "Your bank details need a look",
             },

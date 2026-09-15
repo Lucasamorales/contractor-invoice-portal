@@ -118,9 +118,18 @@
 </div>
 
 <div class="card" data-tut="admin.queue.pending">
-  <p class="label">Waiting for them &mdash; {{ queue.pending_bank | length }}</p>
-  {% if queue.pending_bank %}
+  <p class="label">Waiting for them &mdash; {{ queue.pending_bank | length + open_flags | length }}</p>
+  {% if queue.pending_bank or open_flags %}
     <ul class="history mt-m">
+      {% for person, flag in open_flags %}
+        <li class="split">
+          <a href="/admin/people/{{ person.id }}">{{ person.display_name }}</a>
+          <span>
+            <span class="chip alert">{{ 'Letterhead flagged' if flag.kind == 'letterhead' else 'Bank flagged' }}</span>
+            <time>{{ flag.raised_at.strftime("%d %b") }}</time>
+          </span>
+        </li>
+      {% endfor %}
       {% for bank in queue.pending_bank %}
         <li class="split">
           <a href="/admin/people/{{ bank.person_id }}">{{ bank.account_name }}</a>

@@ -440,24 +440,6 @@ def people_missing_kudos_snapshot(session: Session, period_key: str) -> list[Per
     )
 
 
-def last_flag_for_bank(session: Session, detail_id: uuid.UUID) -> AuditLog | None:
-    """The most recent flag raised against one bank row (R-BANK-08).
-
-    Flagging writes an audit row and an email and deliberately changes nothing
-    about the row itself, so the audit log is the only record that it happened.
-    Read back rather than adding a column for something already stored.
-    """
-    return session.scalar(
-        select(AuditLog)
-        .where(
-            AuditLog.action == "bank.flag",
-            AuditLog.entity_id == str(detail_id),
-        )
-        .order_by(AuditLog.at.desc())
-        .limit(1)
-    )
-
-
 def unverified_bank_rows(session: Session) -> list[BankDetail]:
     """Imported rows nobody has confirmed yet (R-SEED-10, R-ADM-06)."""
     return list(

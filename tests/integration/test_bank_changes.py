@@ -504,7 +504,7 @@ def test_flagging_emails_the_person_and_changes_nothing(wired, factory) -> None:
         row = session.scalars(
             select(Outbox).where(Outbox.kind == bank_changes.OUTBOX_BANK_FLAGGED)
         ).one()
-        assert row.payload["to_person"] == JANE
+        assert row.payload["to_person"] == [JANE]
         assert "Wise" in row.payload["reason"]
 
         # Nothing about what is payable moved.

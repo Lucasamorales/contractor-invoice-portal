@@ -372,7 +372,13 @@ def test_every_screen_has_a_tutorial_and_every_step_has_a_place() -> None:
     templates = Path("app/templates")
     anchors: dict[str, list[str]] = {}
     for path in templates.rglob("*.html"):
-        for key in re.findall(r'data-tut="([^"]+)"', path.read_text(encoding="utf-8")):
+        text = path.read_text(encoding="utf-8")
+        # A shared partial takes its key from the page that includes it
+        # (tut = "..."), so both spellings count and the partial's own
+        # placeholder does not.
+        found = re.findall(r'data-tut="([^"{]+)"', text)
+        found += re.findall(r'\btut = "([^"]+)"', text)
+        for key in found:
             anchors.setdefault(key, []).append(path.name)
 
     steps = [

@@ -40,7 +40,7 @@ from app.db.session import get_session
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, format_gbp, parse_gbp_to_pence
 from app.domain.period import Period, window_state
-from app.services import admin, bank_changes, invoicing, kudos_admin
+from app.services import admin, bank_changes, flags, invoicing, kudos_admin
 from app.services.crypto import Cipher, field_aad
 from app.services.storage import ObjectStore, StorageError
 from app.web import csrf
@@ -218,7 +218,7 @@ async def reveal_fee(
 # a set of booleans, which is what makes "one at a time" free, keeps the page
 # refresh- and back-button-safe, and lets a failed submit re-render with its
 # own panel still open.
-PERSON_PANELS = frozenset({"fee", "propose", "flag", "deactivate"})
+PERSON_PANELS = frozenset({"fee", "propose", "flag", "flag-letterhead", "deactivate"})
 
 # What just happened, said in the app's voice rather than by interpolating a
 # query parameter into the page. Never carries a fee or an account number.
@@ -231,6 +231,7 @@ PERSON_NOTICES = {
     "flagged": (
         "Flag emailed. Still active, still payable — a flag changes nothing on its own."
     ),
+    "flagged-letterhead": "Flag emailed. Nothing on their letterhead has changed.",
     "void": "That invoice is void. They can invoice again; its number is not reused.",
 }
 
@@ -298,11 +299,10 @@ def _person_page(
             "pending_row": next(
                 (b for b in banks if b["state"] == BankState.PENDING.value), None
             ),
-            "last_flag": (
-                repo.last_flag_for_bank(session, uuid.UUID(banks[0]["id"]))
-                if banks
-                else None
-            ),
+            # The latest flag of each kind, open or answered, so the page can
+            # say whether it is still waiting on them.
+            "bank_flag": flags.latest(session, person, flags.BANK),
+            "letterhead_flag": flags.latest(session, person, flags.LETTERHEAD),
         }
     )
     return templates.TemplateResponse(
@@ -738,6 +738,7 @@ async def queue(
 ) -> HTMLResponse:
     context = _context(request, identity, settings)
     context["queue"] = admin.queue(session, on=_now().date())
+    context["open_flags"] = flags.open_flags_for_everyone(session)
     context["attention"] = admin.needs_attention(session, now=_now())
     # For the "who is this?" form on an unmapped kudos name.
     context["people"] = repo.all_people(session)
@@ -748,6 +749,51 @@ async def queue(
 
 # --------------------------------------------------------------------------
 # R-BANK-07 / R-BANK-08 Propose and flag back
+
+
+@router.post("/people/{person_id}/letterhead/flag", response_model=None)
+async def flag_letterhead(
+    request: Request,
+    person_id: uuid.UUID,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    cipher: Box,
+    reason: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """Ask a person to check their letterhead. Changes nothing on it.
+
+    The person is the one in the URL, checked to exist, and the email goes to
+    that person's own sign-in address (flags.recipients), never to an address
+    taken from the form.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    person = _get_person(session, person_id)
+    try:
+        flags.flag_letterhead(
+            session, person=person, reason=reason, actor_email=identity.email
+        )
+    except flags.FlagError as exc:
+        session.rollback()
+        return _person_page(
+            request,
+            identity,
+            session,
+            settings,
+            cipher,
+            person,
+            errors=[exc.message],
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            panel="flag-letterhead",
+        )
+    session.commit()
+    return RedirectResponse(
+        f"/admin/people/{person.id}?done=flagged-letterhead",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 # --------------------------------------------------------------------------
 
 
@@ -999,6 +1045,7 @@ async def map_kudos_name(
 
     context = _context(request, identity, settings)
     context["queue"] = admin.queue(session, on=_now().date())
+    context["open_flags"] = flags.open_flags_for_everyone(session)
     context["attention"] = admin.needs_attention(session, now=_now())
     context["people"] = repo.all_people(session)
     context["errors"] = errors

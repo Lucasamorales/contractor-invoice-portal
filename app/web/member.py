@@ -46,7 +46,7 @@ from app.domain.formatting import name_from_email
 from app.domain.iban import mask
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period, can_submit, closed_message
-from app.services import bank_changes, receipts
+from app.services import bank_changes, flags, receipts
 from app.services.crypto import Cipher
 from app.services.invoicing import (
     ExpenseInput,
@@ -221,10 +221,12 @@ async def details_form(
     request: Request,
     identity: CurrentIdentity,
     person: CurrentPerson,
+    session: DbSession,
     settings: Config,
 ) -> HTMLResponse:
     context = _base_context(request, person, identity, settings)
     context["errors"] = {}
+    context["flag"] = flags.open_flags(session, person).get(flags.LETTERHEAD)
     return templates.TemplateResponse(
         request=request, name="details.html", context=context
     )
@@ -267,6 +269,7 @@ async def save_details(
     if errors:
         context = _base_context(request, person, identity, settings)
         context.update({"errors": errors, "submitted": fields})
+        context["flag"] = flags.open_flags(session, person).get(flags.LETTERHEAD)
         return templates.TemplateResponse(
             request=request,
             name="details.html",
@@ -281,9 +284,23 @@ async def save_details(
     _, before = _read_state(session, person, settings)
     first_run = bool(before.outstanding)
 
+    # Which fields changed, never their values: an address or a phone number
+    # has no business in the audit log. The row is also what closes a flag on
+    # the letterhead (flags.py).
+    changed = sorted(
+        name for name, value in fields.items() if getattr(person, name) != value
+    )
     for name, value in fields.items():
         setattr(person, name, value)
     person.profile_confirmed_at = _now()
+    repo.record_audit(
+        session,
+        actor_email=identity.email,
+        action=flags.LETTERHEAD_UPDATE,
+        entity="people",
+        entity_id=str(person.id),
+        after={"changed": changed},
+    )
     session.commit()
 
     if not first_run:
@@ -348,6 +365,7 @@ async def bank_form(
     context = _base_context(request, person, identity, settings)
     context["bank"] = _masked_bank(person, session, cipher)
     context["pending"] = _pending_proposal(person, session, cipher)
+    context["flag"] = flags.open_flags(session, person).get(flags.BANK)
     return templates.TemplateResponse(
         request=request, name="bank.html", context=context
     )
@@ -640,9 +658,54 @@ async def my_details(
             "bank": _masked_bank(person, session, cipher),
             "history": history,
             "invoices": repo.invoice_history(session, person.id),
+            "flags": flags.open_flags(session, person),
         }
     )
     return templates.TemplateResponse(request=request, name="me.html", context=context)
+
+
+# Where "It is correct" may send somebody back to: the three screens that show
+# a flag. A value from the form is never used as a redirect otherwise.
+FLAG_RETURNS = frozenset({"/me", "/bank", "/details"})
+
+
+@router.post("/flags/{kind}/correct")
+async def flag_is_correct(
+    kind: str,
+    identity: CurrentIdentity,
+    person: CurrentPerson,
+    session: DbSession,
+    settings: Config,
+    back: Annotated[str, Form()] = "/me",
+    csrf_token: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    """The person says the thing accounts flagged is already right.
+
+    Answers only this person's own open flag of that kind: who it is comes from
+    the verified sign-in, and nothing in the request names a flag or a person
+    (R-SEC-06). Accounts are emailed the answer.
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    if kind not in (flags.BANK, flags.LETTERHEAD):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    try:
+        flags.answer_correct(
+            session,
+            person=person,
+            kind=kind,
+            actor_email=identity.email,
+            finance_inbox=settings.finance_inbox,
+        )
+    except flags.FlagError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=exc.message
+        ) from exc
+    session.commit()
+    return RedirectResponse(
+        back if back in FLAG_RETURNS else "/me",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 def _content_disposition(filename: str) -> str:

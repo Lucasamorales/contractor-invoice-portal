@@ -795,6 +795,8 @@ def test_every_message_is_laid_out_and_points_back_at_the_portal() -> None:
         "bank_changed": {"old_account": "1234", "new_account": "5678"},
         "bank_proposed": {"proposed_account": "5678"},
         "bank_flagged": {"reason": "sort code does not match"},
+        "letterhead_flagged": {"reason": "role is out of date"},
+        "flag_answered": {"person_name": "Jane Smith", "what": "letterhead"},
         "summary": {"period_label": "September 2026", "received": 1, "expected": 2},
     }
 

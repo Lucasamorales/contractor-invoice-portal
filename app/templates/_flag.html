@@ -1,0 +1,23 @@
+{# A flag accounts raised, shown to the person it is about (flags.py).
+
+   Two ways out: change the thing, or say it is already right. Either closes
+   it, and accounts see which on their side. The explanation is in the
+   tutorial; the card only carries what accounts wrote.
+
+   Expects: flag, change_href, back, and tut (the tutorial key, or empty). #}
+<div class="card attention"{% if tut %} data-tut="{{ tut }}"{% endif %}>
+  <p class="eyebrow">
+    <span class="dot"></span>Accounts flagged your
+    {{ 'letterhead' if flag.kind == 'letterhead' else 'bank details' }}
+    &middot; {{ flag.raised_at.strftime('%d %b') }}
+  </p>
+  <p class="lead mt-s">&ldquo;{{ flag.reason }}&rdquo;</p>
+  <div class="actions mt-m">
+    {% if change_href %}<a class="button" href="{{ change_href }}">Change it</a>{% endif %}
+    <form hx-boost="false" method="post" action="/flags/{{ flag.kind }}/correct">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      <button class="button ghost" type="submit">It is correct</button>
+    </form>
+  </div>
+</div>

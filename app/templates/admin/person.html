@@ -10,6 +10,22 @@
    the order they get asked about, not the order they exist in the database. #}
 
 {% set here = "/admin/people/" ~ person.id %}
+{% set first_name = person.display_name.split(' ')[0] %}
+
+{# Where a flag stands, from flags.latest: still waiting, or what the person
+   did about it. #}
+{% macro flag_status(flag, first_name) %}
+  <div class="result-note mt-m">
+    <p class="panel-head">
+      Flagged {{ flag.raised_at.strftime("%d %b %Y") }} &middot;
+      {% if flag.status == 'open' %}waiting on {{ first_name }}
+      {% elif flag.status == 'changed' %}changed {{ flag.closed_at.strftime("%d %b %Y") }}
+      {% else %}they said it is correct, {{ flag.closed_at.strftime("%d %b %Y") }}{% endif %}
+    </p>
+    <p class="hint">&ldquo;{{ flag.reason }}&rdquo;</p>
+  </div>
+{% endmacro %}
+
 
 {% macro panel_link(name, label, extra_class="") %}
   {# Disclosure is a URL, not client state: one panel at a time for free, works
@@ -168,14 +184,7 @@
       {{ panel_link("flag", "Flag back") }}
     </div>
 
-    {% if last_flag %}
-      <div class="result-note mt-m">
-        <p class="panel-head">Flagged {{ last_flag.at.strftime("%d %b %Y") }}</p>
-        <p class="hint">
-          &ldquo;{{ last_flag.after.get('reason', '') }}&rdquo;
-        </p>
-      </div>
-    {% endif %}
+    {% if bank_flag %}{{ flag_status(bank_flag, first_name) }}{% endif %}
   {% else %}
     <p class="hint mt-m">No bank details on file.</p>
     <div class="pill-row mt-m">{{ panel_link("propose", "Propose a change") }}</div>
@@ -451,7 +460,10 @@
 
 {# -------------------------------------------------------------- profile -- #}
 <section class="card" data-tut="admin.person.profile">
-  <h2>Profile</h2>
+  <div class="head-row">
+    <h2>Profile</h2>
+    {{ panel_link("flag-letterhead", "Flag back") }}
+  </div>
   <div class="facts wide-facts mt-m">
     <div>
       <span class="label">Legal name</span>
@@ -482,6 +494,27 @@
       </span>
     </div>
   </div>
+
+  {% if letterhead_flag %}{{ flag_status(letterhead_flag, first_name) }}{% endif %}
+
+  {% if panel == 'flag-letterhead' %}
+    <div class="panel-inset warn" id="panel-flag-letterhead">
+      <p class="panel-head">Flag back to {{ first_name }}</p>
+      <form hx-boost="false" method="post"
+            action="/admin/people/{{ person.id }}/letterhead/flag">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="field">
+          <span class="label">What needs looking at</span>
+          <input type="text" name="reason" required autofocus>
+        </label>
+        {% for e in errors %}<p class="panel-error">{{ e }}</p>{% endfor %}
+        <div class="pill-row mt-m">
+          <button class="button" type="submit">Send the flag</button>
+          <a class="button ghost" href="{{ here }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+  {% endif %}
 </section>
 
 {% if person.status.value != "inactive" %}

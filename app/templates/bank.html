@@ -12,6 +12,11 @@
   </p>
 </div>
 
+{% if flag %}
+  {% with change_href = "/bank/change", back = "/bank",
+          tut = "member.bank.flag" %}{% include "_flag.html" %}{% endwith %}
+{% endif %}
+
 {% if pending %}
   {# An admin proposed this. It changes nothing until the owner agrees
      (R-BANK-07). #}

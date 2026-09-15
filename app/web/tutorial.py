@@ -75,6 +75,13 @@ MEMBER_MONTH = (
 
 MEMBER_BANK = (
     Step(
+        "member.bank.flag",
+        "Accounts flagged your bank details",
+        "Accounts want you to check what the card says. Change it, or press It "
+        "is correct if nothing needs changing. Either way the card goes, and "
+        "accounts see your answer.",
+    ),
+    Step(
         "member.bank.decision",
         "Why this is a decision",
         "These details came out of the old spreadsheet. Nothing has verified "
@@ -140,6 +147,13 @@ MEMBER_PREVIEW = (
 
 MEMBER_ME = (
     Step(
+        "member.me.flag",
+        "Accounts flagged something",
+        "Accounts want you to check what the card says. Change it, or press It "
+        "is correct if nothing needs changing. Either way the card goes, and "
+        "accounts see your answer.",
+    ),
+    Step(
         "member.me.masked",
         "Last four, always",
         "Your own account number is never shown back in full. If something here "
@@ -161,6 +175,13 @@ MEMBER_ME = (
 )
 
 MEMBER_DETAILS = (
+    Step(
+        "member.details.flag",
+        "Accounts flagged your letterhead",
+        "Accounts want you to check what the card says. Saving this form "
+        "answers it, or press It is correct if nothing needs changing. "
+        "Accounts see your answer.",
+    ),
     Step(
         "member.details.letterhead",
         "Your letterhead",
@@ -283,8 +304,9 @@ ADMIN_PERSON = (
     Step(
         "admin.person.profile",
         "Their details",
-        "What they entered for their letterhead. Only they can change it, from "
-        "their own My details.",
+        "What they entered for their letterhead. Only they can change it. Flag "
+        "back asks them to check it, and the note under it says whether they have "
+        "changed it or said it is correct.",
     ),
     Step(
         "admin.person.deactivate",
@@ -314,9 +336,10 @@ ADMIN_QUEUE = (
     Step(
         "admin.queue.pending",
         "Proposals you cannot complete",
-        "Bank changes you proposed, waiting on their owner. Only they can make "
-        "one payable, so these stay until the person answers. You cannot "
-        "approve your own proposal.",
+        "Bank changes you proposed and flags you raised, waiting on the person. "
+        "A proposal stays until they accept it, and only they can make it "
+        "payable. A flag clears when they change the thing or say it is "
+        "correct.",
     ),
     Step(
         "admin.queue.unconfirmed",
