@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "admin/_money.html" import hidden_money %}
 {% block title %}Payment run {{ period.key }}{% endblock %}
 {% block width %}wide{% endblock %}
 {% block content %}
@@ -7,11 +8,16 @@
 <div class="page-head">
   <div class="head-row">
     <h1>Payment run &mdash; {{ period.label }}</h1>
-    <form hx-boost="false" method="post" action="/admin/payment-run.csv">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <input type="hidden" name="month" value="{{ period.key }}">
-      <button class="button" type="submit">Export CSV</button>
-    </form>
+    {# Up to eighteen amounts on this screen, so one press shows or hides
+       them all rather than one at a time. #}
+    <div class="actions">
+      <button class="button ghost" type="button" data-money-all aria-pressed="false">Show all</button>
+      <form hx-boost="false" method="post" action="/admin/payment-run.csv">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="month" value="{{ period.key }}">
+        <button class="button" type="submit">Export CSV</button>
+      </form>
+    </div>
   </div>
   <p class="hint mt-s">The CSV carries the full account numbers.</p>
 </div>
@@ -22,7 +28,7 @@
       <h2>{{ title }}</h2>
       <span class="hint">
         {{ lines | length }} payment{{ '' if lines | length == 1 else 's' }}
-        &middot; <span class="figure sm">{{ total | gbp }}</span>
+        &middot; {% call hidden_money("batch total") %}<span class="figure sm">{{ total | gbp }}</span>{% endcall %}
       </span>
     </div>
     {% if lines %}
@@ -43,7 +49,7 @@
                 <td>{{ line.payee }}</td>
                 <td>{{ line.legal_name }}</td>
                 <td class="tight num">{{ line.invoice_number }}</td>
-                <td class="tight num">{{ line.amount_pence | gbp }}</td>
+                <td class="tight num">{% call hidden_money("payment") %}{{ line.amount_pence | gbp }}{% endcall %}</td>
                 <td>
                   {{ line.account_name }}
                   {% if line.sort_code or line.account_number %}

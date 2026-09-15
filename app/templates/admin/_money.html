@@ -1,0 +1,20 @@
+{# An amount on a Finance screen, hidden until somebody presses it and hidden
+   again when they press it a second time (R-ADM-01 extended to every figure).
+
+   A screenshare of any Finance screen should not leak pay, so every amount
+   opens as £•••. The figure itself is already in the page and money.js only
+   swaps which of the two buttons is showing: that is enough against a
+   screenshare, and costs no request. Fees are the exception and stay stricter
+   (_fee_value.html): not in the page until asked for, and every reveal
+   audited.
+
+   The caller's markup goes inside the second button untouched, so a shown
+   amount looks exactly as it did before this existed.
+
+       {% call hidden_money() %}<span class="figure sm">{{ x | gbp }}</span>{% endcall %}
+
+   Written without whitespace between the buttons: one is always hidden, and a
+   stray space beside it would nudge a right-aligned column. #}
+{% macro hidden_money(label="amount", shown=False) -%}
+<span class="money-toggle" data-money><button class="quiet" type="button" data-money-show aria-label="Show {{ label }}"{% if shown %} hidden{% endif %}>&pound;&bull;&bull;&bull;</button><button class="money-shown" type="button" data-money-hide title="Hide"{% if not shown %} hidden{% endif %}>{{ caller() }}</button></span>
+{%- endmacro %}

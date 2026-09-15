@@ -1,10 +1,13 @@
+{% from "admin/_money.html" import hidden_money %}
 {# One cell of the people table. Masked until asked for (R-ADM-01): a
    screenshare of this page should not leak the payroll, and the masking has to
    read as a deliberate decision rather than as something still loading. #}
 {% if fee_pence is none %}
   <span class="missing">Not set</span>
 {% elif revealed %}
-  <span class="figure sm">{{ fee_pence | gbp }}</span>
+  {# Arrives already showing. Hiding it and showing it again reuses this
+     figure rather than recording a second reveal (money.js). #}
+  {% call hidden_money("fee", shown=True) %}<span class="figure sm">{{ fee_pence | gbp }}</span>{% endcall %}
 {% else %}
   {# The people table wraps this in a cell; the person page does not, and
      passes the element to replace instead. #}

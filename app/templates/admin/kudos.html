@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "admin/_money.html" import hidden_money %}
 {% block title %}Kudos {{ quarter.key }}{% endblock %}
 {% block width %}wide{% endblock %}
 {% block content %}
@@ -47,7 +48,7 @@
     <h2>Standings</h2>
     <span class="hint">
       {{ view.unbilled_kudos }} kudos not yet invoiced
-      &middot; <span class="figure sm">{{ view.awarded_pence | gbp }}</span> in prizes awarded
+      &middot; {% call hidden_money("prizes awarded") %}<span class="figure sm">{{ view.awarded_pence | gbp }}</span>{% endcall %} in prizes awarded
     </span>
   </div>
 
@@ -78,11 +79,11 @@
               <td class="tight num">{{ row.kudos_count }}</td>
               <td class="tight num">
                 {% if row.awarded %}
-                  {{ row.awarded.amount_pence | gbp }}
+                  {% call hidden_money("prize") %}{{ row.awarded.amount_pence | gbp }}{% endcall %}
                 {% elif row.place %}
                   {# Follows the place selected beside it, not the standings:
                      on a tie those differ, and the money is the selection. #}
-                  <span data-prize>{{ row.cash_pence | gbp }}</span>
+                  {% call hidden_money("prize") %}<span data-prize>{{ row.cash_pence | gbp }}</span>{% endcall %}
                 {% else %}
                   <span class="on-faint">&mdash;</span>
                 {% endif %}

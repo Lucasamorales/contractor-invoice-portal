@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "admin/_money.html" import hidden_money %}
 {% block title %}{{ period.label }}{% endblock %}
 {% block width %}wide{% endblock %}
 {% block content %}
@@ -38,7 +39,7 @@
           </td>
           <td class="num">
             {% if row.invoice %}
-              <span class="figure sm">{{ row.invoice.total_pence | gbp }}</span>
+              {% call hidden_money("invoice total") %}<span class="figure sm">{{ row.invoice.total_pence | gbp }}</span>{% endcall %}
             {% else %}
               <span class="on-faint">&mdash;</span>
             {% endif %}

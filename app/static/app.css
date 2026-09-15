@@ -685,6 +685,22 @@ main.sheet-page { max-width: 1080px; }
   cursor: pointer;
 }
 
+/* A shown amount on a Finance screen (admin/_money.html). It is a button so
+   it can be pressed to hide again, and it has to look exactly like the figure
+   it holds, so nothing of a button survives. */
+.money-shown {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
 .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .actions.spread { justify-content: space-between; }
 

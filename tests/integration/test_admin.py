@@ -212,6 +212,11 @@ def test_revealing_a_fee_shows_it_and_records_the_reveal(admin_client, factory) 
     )
     assert response.status_code == 200
     assert "£2,500.00" in response.text
+    # It arrives showing, in the shape that can be hidden and shown again
+    # without asking the server, so a second look is not a second reveal.
+    shown = re.search(r"<button[^>]*data-money-hide[^>]*>", response.text).group(0)
+    assert "hidden" not in shown
+    assert "data-money-show" in response.text
 
     with factory() as session:
         entry = session.scalars(

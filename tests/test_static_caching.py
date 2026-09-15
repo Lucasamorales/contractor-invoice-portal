@@ -241,6 +241,7 @@ def test_scripts_in_the_body_bind_their_global_listeners_once() -> None:
         "forms.js",
         "kudos.js",
         "receipts.js",
+        "money.js",
     ):
         source = Path("app/static") / name
         text = source.read_text(encoding="utf-8")
@@ -324,3 +325,33 @@ def test_no_screen_loads_its_script_from_the_head() -> None:
     head = base.split("</head>", 1)[0]
     in_head = re.findall(r"static\('([^']+\.js)'\)", head)
     assert in_head == ["htmx.min.js"], f"scripts in the head: {in_head}"
+
+
+def test_every_amount_on_a_finance_screen_opens_hidden() -> None:
+    """A screenshare of any Finance screen should not leak pay (R-ADM-01), so
+    every amount is wrapped to open as £••• and toggle on press.
+
+    Fees go further and are not in the page at all until revealed, through
+    _fee_value.html. The one amount left showing is the kudos rate: it is the
+    policy, the same for everyone, and nobody's pay.
+    """
+    import re
+    from pathlib import Path
+
+    allowed = {("kudos.html", "kudos_rate_pence")}
+    for path in Path("app/templates/admin").glob("*.html"):
+        if path.name == "_money.html":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r"\{\{\s*([\w.]+)\s*\|\s*gbp\s*\}\}", text):
+            if (path.name, match.group(1).split(".")[-1]) in allowed:
+                continue
+            before = text[: match.start()]
+            opened = max(
+                before.rfind("{% call hidden_money"),
+                before.rfind("{%- call hidden_money"),
+            )
+            closed = before.rfind("{% endcall %}")
+            assert opened > closed, (
+                f"{path.name}: {match.group(0)} is shown without hidden_money"
+            )
