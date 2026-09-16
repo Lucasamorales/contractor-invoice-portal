@@ -91,7 +91,7 @@ and the tfvars disagree.
 | Services | `portal-invoices-{staging,production}` (the portal), `portal-tasks-{staging,production}` (scheduled jobs only) |
 | Files (PDFs, receipts, backups) | Bucket `portal-invoices-{staging,production}` |
 | Images | Artifact Registry `portal/invoice-portal` |
-| Secrets | Secret Manager: `portal-database-url-*`, `portal-bank-encryption-key-*`, `portal-csrf-secret-*`, `portal-resend-api-key-*` |
+| Secrets | Secret Manager: `portal-database-url-*`, `portal-bank-encryption-key-*`, `portal-csrf-secret-*` per environment, and one Resend key both use (`portal-resend-api-key-staging`) |
 | Database | Neon, one project each for staging and production |
 | Email | Resend, sending as `accounts@example.com` |
 | Kudos | The existing Google Sheet, read-only, synced daily |

@@ -58,9 +58,11 @@ mail_from = "Invoices <accounts@example.com>"
 # Never set in production: the app refuses to start with it (R-ENV-03).
 mail_redirect_to = ""
 
-# Created by hand from the Resend dashboard, never by Terraform, so the key is
-# never in state (R-SEC-02).
-resend_secret_id = "portal-resend-api-key-production"
+# The same Resend key staging uses, decided 16 September 2026: one account,
+# one key. The secret keeps its staging name; production's service account is
+# granted read access to it alongside staging's. Created by hand, never by
+# Terraform, so the key is never in state (R-SEC-02).
+resend_secret_id = "portal-resend-api-key-staging"
 
 # Cloud Run's deterministic address for the service: name, project number,
 # region. Known before the service exists, which the other address is not.

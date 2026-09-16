@@ -287,7 +287,7 @@ As at 16 September 2026. The infrastructure itself is described in
 |---|---|---|
 | Neon database | Live, migrated to `0004` | Exists, still at `0002`; migrate before the import |
 | Secrets: database, bank key, CSRF | In Secret Manager | In Secret Manager |
-| Resend API key | `portal-resend-api-key-staging` | **To create:** `portal-resend-api-key-production` |
+| Resend API key | `portal-resend-api-key-staging` | The same key and secret as staging (decided 16 September 2026) |
 | Sending domain | Resend's sandbox sender | **example.com, DNS added, verification pending** |
 | Cloud Run, bucket, scheduler jobs, IAP | Applied | Planned cleanly (28 to add), not applied |
 | Terraform state | Bucket, workspace `staging` | Bucket, workspace `production` (empty) |
