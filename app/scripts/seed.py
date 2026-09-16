@@ -129,7 +129,13 @@ def report(rows: list[SeedRow], outcomes: list[Outcome], *, committed: bool) -> 
     return needing_attention
 
 
-def apply_row(session: Session, row: SeedRow, cipher: Cipher | None) -> Outcome:
+def apply_row(
+    session: Session,
+    row: SeedRow,
+    cipher: Cipher | None,
+    *,
+    kudos_ineligible: tuple[str, ...] = (),
+) -> Outcome:
     """Create or update one person, their counter and their bank row.
 
     Idempotent on email (R-SEED-12): a second run updates rather than
@@ -146,6 +152,8 @@ def apply_row(session: Session, row: SeedRow, cipher: Cipher | None) -> Outcome:
     person.display_name = row.display_name
     person.legal_name = row.legal_name
     person.team = row.team
+    # R-KUD-20. The same list sign-in applies (Settings.kudos_ineligible_emails).
+    person.kudos_eligible = row.email.strip().lower() not in kudos_ineligible
     # R-SEED-11: imported people are active with an unconfirmed profile. They
     # still cannot invoice until Robin sets a fee (R-WIZ-09).
     person.status = PersonStatus.ACTIVE
@@ -259,7 +267,15 @@ def main(argv: list[str] | None = None) -> int:
 
     factory = get_sessionmaker()
     with factory() as session, session.begin():
-        outcomes = [apply_row(session, row, cipher) for row in rows]
+        outcomes = [
+            apply_row(
+                session,
+                row,
+                cipher,
+                kudos_ineligible=settings.kudos_ineligible_emails,
+            )
+            for row in rows
+        ]
 
     report(rows, outcomes, committed=True)
     return 0

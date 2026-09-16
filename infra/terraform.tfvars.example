@@ -1,5 +1,5 @@
-# Copy to staging.tfvars / production.tfvars. Not secrets — but not committed
-# either, because the member lists are people's addresses.
+# The shape of an environment's settings. The real ones, staging.tfvars and
+# production.tfvars, are committed: they hold no secret.
 
 project_id  = "your-gcp-project"
 environment = "staging"

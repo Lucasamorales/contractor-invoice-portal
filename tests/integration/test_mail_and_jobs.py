@@ -690,7 +690,8 @@ def test_production_refuses_to_start_with_a_redirect_set() -> None:
         csrf_secret="csrf",
         gcs_bucket="bucket",
         app_url="https://portal.example",
-        finance_emails="robin@example.com",
+        finance_emails="accounts@example.com",
+        finance_inbox="accounts@example.com",
         mail_redirect_to="leo@example.com",
     )
     with pytest.raises(ConfigError, match="mail_redirect_to"):

@@ -159,6 +159,16 @@ That reads `PORTAL_MIGRATION_URL` from `.env`, so it runs against the direct
 endpoint. For production, pass the credential inline rather than writing it
 to a file — it is break-glass and belongs in Secret Manager, not on a laptop.
 
+Against anything but a local database it refuses until you name the host it is
+about to change, so a stale `.env` cannot migrate the wrong database:
+
+```bash
+PORTAL_MIGRATE_HOST=<the host it printed> uv run alembic upgrade head
+```
+
+**Deploy the code first, then migrate.** The running version must never look
+for a column the migration has just removed.
+
 Check what it will do first, without connecting:
 
 ```bash
@@ -268,15 +278,24 @@ configured. Exit codes: `0` clean, `1` rows need human attention, `2` refused.
 
 ---
 
-## 5. Still to be provisioned
+## 5. What exists, and what production still needs
 
-These are the R-ENV-05 Terraform items, needed from build order step 6. Nothing
-here has been created yet, and SPEC §19 lists the questions still open.
+As at 16 September 2026. The infrastructure itself is described in
+`infra/README.md`.
 
-| What | Blocked on |
-|---|---|
-| GCS bucket, uniform access, versioning (R-STO-01) | nothing — can be done now |
-| Cloud Run service and IAP backend (R-ACC-01) | needs the GCP project and the finance IAM group |
-| Cloud Scheduler jobs (R-JOB-01..06) | needs the service deployed |
-| Kudos sheet access (R-KUD-01) | **the file ID and column layout have not been provided** |
-| Resend (R-SUB-06) | **the account and sending domain do not exist yet** |
+| | Staging | Production |
+|---|---|---|
+| Neon database | Live, migrated to `0004` | Exists, still at `0002`; migrate before the import |
+| Secrets: database, bank key, CSRF | In Secret Manager | In Secret Manager |
+| Resend API key | `portal-resend-api-key-staging` | **To create:** `portal-resend-api-key-production` |
+| Sending domain | Resend's sandbox sender | **example.com, DNS added, verification pending** |
+| Cloud Run, bucket, scheduler jobs, IAP | Applied | Planned cleanly (28 to add), not applied |
+| Terraform state | Bucket, workspace `staging` | Bucket, workspace `production` (empty) |
+| People and numbering | Invented demo people | **Spreadsheet import** (§4), before anyone signs in |
+| Kudos names | Mapped by hand on the Queue | **`seed_kudos_aliases`** from `data/kudos_aliases.csv` |
+| Kudos sheet access | Not used on staging | **Share the sheet** with `portal-invoices-production@your-gcp-project.iam.gserviceaccount.com` once it exists |
+| Fees | Invented | **Typed in by finance** after the import |
+| Budget alert | £3 a month | £5 a month |
+
+Still open before production's first cycle: rotate both Neon passwords, and
+confirm Marta Jamie's payee ("Bridge Building").

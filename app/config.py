@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     # .env sets this.
     finance_emails: Annotated[tuple[str, ...], NoDecode] = ()
 
+    # People who receive kudos and may not cash them or win a prize
+    # (R-KUD-20): leadership, and staff who do not invoice here. Applied to
+    # a person's row whenever they sign in and whenever the spreadsheet is
+    # imported, so this list is the one place the decision lives. Arrives
+    # comma-separated, like finance_emails.
+    kudos_ineligible_emails: Annotated[tuple[str, ...], NoDecode] = ()
+
     # --- Data ------------------------------------------------------------------
     database_url: SecretStr = SecretStr("")
     # The same database on its direct, unpooled endpoint. Alembic uses this
@@ -171,7 +178,7 @@ class Settings(BaseSettings):
 
     bill_to: BillTo = DEFAULT_BILL_TO
 
-    @field_validator("finance_emails", mode="before")
+    @field_validator("finance_emails", "kudos_ineligible_emails", mode="before")
     @classmethod
     def _split_emails(cls, value: object) -> object:
         """Accept a comma-separated list, which is how it arrives from env."""
@@ -197,6 +204,10 @@ class Settings(BaseSettings):
         """R-ACC-04. Case-insensitive; the list is the app's half of the check."""
         return email.strip().lower() in self.finance_emails
 
+    def kudos_eligible(self, email: str) -> bool:
+        """R-KUD-20. Whether this person may cash kudos and win a prize."""
+        return email.strip().lower() not in self.kudos_ineligible_emails
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -221,6 +232,10 @@ def assert_production_ready(settings: Settings) -> None:
         "csrf_secret": settings.csrf_secret.get_secret_value(),
         "gcs_bucket": settings.gcs_bucket,
         "finance_emails": settings.finance_emails,
+        # Where every invoice and the monthly summary go. Unset, invoices
+        # would reach only the person who sent them and accounts would never
+        # see one, which staging hides because it redirects all mail.
+        "finance_inbox": settings.finance_inbox,
         # Every email links back to the portal; a link to nowhere is worse
         # than no link.
         "app_url": settings.app_url,

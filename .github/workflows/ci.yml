@@ -3,7 +3,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # staging is where work lands; main is what production runs.
+    branches: [main, staging]
   pull_request:
 
 jobs:

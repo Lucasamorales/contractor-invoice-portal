@@ -2,9 +2,7 @@
 #
 # Kept apart from the environment stack in infra/: a budget belongs to the
 # billing account, not to staging or production, and all three are wanted
-# before production exists. Applied once, on its own state:
-#
-#   cd infra/billing && terraform init && terraform apply
+# before production exists.
 #
 # Why three. Staging and production share one Google Cloud project, so each
 # environment's budget picks out its own costs by the `environment` label on
