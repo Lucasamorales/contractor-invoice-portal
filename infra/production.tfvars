@@ -10,8 +10,8 @@ environment = "production"
 region      = "europe-west2"
 
 # The digest that was tested on staging, never a tag. Set at release time to
-# the image staging is running.
-image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal@sha256:REPLACE_WITH_THE_DIGEST_TESTED_ON_STAGING"
+# the image staging is running. 0.8.18, run on staging 16 September 2026.
+image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal@sha256:6a5b5ff394df6866eded555753420722d7b1c98b3fbf8318f80ac98d0be4287b"
 
 # CLAUDE.md 2.1: the only people who may see a fee. Decided 16 September 2026:
 # the accounts mailbox, Charlie and Remy. Julian does finance work signed in

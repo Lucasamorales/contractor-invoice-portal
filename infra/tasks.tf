@@ -132,8 +132,21 @@ resource "google_cloud_run_v2_service" "tasks" {
         value = local.tasks_audience
       }
 
-      # No IAP here, so no IAP audience. app/auth.py only needs it for the
-      # browser routes, and this service does not serve them.
+      # This service sends every email, and each email's button links back to
+      # the portal. Without the portal's address the link is silently left
+      # out: staging's emails went out with no button until 16 September 2026.
+      env {
+        name  = "PORTAL_APP_URL"
+        value = var.app_url
+      }
+
+      # No browser route is served here, so the IAP audience is never checked.
+      # It is set anyway because production refuses to start without it
+      # (assert_production_ready), which is how the missing app_url surfaced.
+      env {
+        name  = "PORTAL_IAP_AUDIENCE"
+        value = local.iap_audience
+      }
 
       env {
         name = "PORTAL_DATABASE_URL"
