@@ -41,6 +41,13 @@ resource "google_cloud_run_v2_service" "tasks" {
   project  = var.project_id
   location = var.region
 
+  # Billing reads these. Staging and production share one project, so the
+  # per-environment budgets in infra/billing tell their costs apart by label.
+  labels = {
+    app         = "invoice-portal"
+    environment = var.environment
+  }
+
   ingress             = "INGRESS_TRAFFIC_ALL"
   deletion_protection = var.environment == "production"
 

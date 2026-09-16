@@ -45,6 +45,13 @@ resource "google_cloud_run_v2_service" "app" {
   project  = var.project_id
   location = var.region
 
+  # Billing reads these. Staging and production share one project, so the
+  # per-environment budgets in infra/billing tell their costs apart by label.
+  labels = {
+    app         = "invoice-portal"
+    environment = var.environment
+  }
+
   # Requests arrive through IAP's own frontend, so the ingress setting must
   # allow them. Restricting to internal-load-balancer would be right if IAP sat
   # behind one; with IAP directly on the service there is no load balancer, and
