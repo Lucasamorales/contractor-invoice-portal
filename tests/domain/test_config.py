@@ -61,7 +61,8 @@ def production(**overrides) -> Settings:
         "bank_encryption_key": generate_key(),
         "csrf_secret": "x" * 64,
         "gcs_bucket": "portal-invoices-production",
-        "finance_emails": ("julian@example.com",),
+        "finance_emails": ("accounts@example.com",),
+        "finance_inbox": "accounts@example.com",
         # Every email links back to the portal, so production will not start
         # without somewhere for those links to go.
         "app_url": "https://portal.example",
@@ -82,6 +83,7 @@ def test_a_fully_configured_production_passes() -> None:
         "bank_encryption_key",
         "csrf_secret",
         "gcs_bucket",
+        "finance_inbox",
     ],
 )
 def test_production_refuses_to_start_half_configured(missing: str) -> None:
@@ -103,3 +105,19 @@ def test_staging_may_have_the_override() -> None:
     settings = Settings(_env_file=None, window_always_open=True)
     assert settings.is_production is False
     assert settings.window_always_open is True
+
+
+def test_kudos_ineligible_emails_arrive_as_a_comma_separated_list(monkeypatch) -> None:
+    """R-KUD-20, configured the same way as finance_emails."""
+    monkeypatch.setenv(
+        "PORTAL_KUDOS_INELIGIBLE_EMAILS",
+        " Remy@example.com , charlie@example.com",
+    )
+    settings = Settings(_env_file=None)
+    assert settings.kudos_eligible("REMY@example.com") is False
+    assert settings.kudos_eligible("charlie@example.com") is False
+    assert settings.kudos_eligible("jane@example.com") is True
+
+
+def test_nobody_is_ineligible_by_default() -> None:
+    assert Settings(_env_file=None).kudos_eligible("anyone@example.com")

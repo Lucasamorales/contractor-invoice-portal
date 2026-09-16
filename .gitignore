@@ -30,6 +30,9 @@ build/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+# The two environments' settings hold no secret and are reviewed like code.
+!infra/staging.tfvars
+!infra/production.tfvars
 
 # Rendered output from local runs
 /out/

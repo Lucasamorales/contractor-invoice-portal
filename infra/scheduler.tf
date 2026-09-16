@@ -25,8 +25,12 @@ locals {
   # where the people are (R-PER-01).
   jobs = {
     outbox = {
-      # R-JOB-04. Every five minutes; a queued invoice should not wait long.
-      schedule    = "*/5 * * * *"
+      # R-JOB-04. Every fifteen minutes, not five. Each run queries the
+      # database, and Neon's free plan only sleeps after five idle minutes: at
+      # five-minutely the database never slept and staging was on course to
+      # use about 140 of its 100 monthly compute hours (16 September 2026).
+      # An email reaching accounts ten minutes later costs nobody anything.
+      schedule    = "*/15 * * * *"
       path        = "/tasks/outbox"
       description = "Send queued mail with backoff"
     }

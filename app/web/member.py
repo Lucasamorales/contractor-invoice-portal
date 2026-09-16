@@ -102,7 +102,9 @@ def get_renderer() -> Callable[[dict], bytes]:
     return render_pdf
 
 
-def current_person(identity: CurrentIdentity, session: DbSession) -> Person:
+def current_person(
+    identity: CurrentIdentity, session: DbSession, settings: Config
+) -> Person:
     """The caller's own row, created on first login (R-ACC-03).
 
     Derived from the verified IAP email and nothing else (R-ACC-05, R-SEC-06).
@@ -113,6 +115,12 @@ def current_person(identity: CurrentIdentity, session: DbSession) -> Person:
         email=identity.email,
         display_name=name_from_email(identity.email),
     )
+    # R-KUD-20, from configuration, so somebody who first signs in after the
+    # spreadsheet import still gets the right answer, and a change to the list
+    # reaches their row the next time they sign in.
+    eligible = settings.kudos_eligible(identity.email)
+    if person.kudos_eligible != eligible:
+        person.kudos_eligible = eligible
     # Rows created before that derivation existed hold the bare local part of
     # the address, so the app greeted them as "leo" and the payment run
     # listed "leo" as the payee. Nothing else ever writes display_name, so a

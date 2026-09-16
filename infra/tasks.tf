@@ -96,6 +96,16 @@ resource "google_cloud_run_v2_service" "tasks" {
       }
 
       env {
+        name  = "PORTAL_FINANCE_INBOX"
+        value = var.finance_inbox
+      }
+
+      env {
+        name  = "PORTAL_KUDOS_INELIGIBLE_EMAILS"
+        value = join(",", var.kudos_ineligible_emails)
+      }
+
+      env {
         name  = "PORTAL_KUDOS_SHEET_ID"
         value = var.kudos_sheet_id
       }

@@ -12,6 +12,12 @@ variable "project_id" {
   default     = "your-gcp-project"
 }
 
+variable "region" {
+  description = "Where the image registry lives, beside the services that pull from it."
+  type        = string
+  default     = "europe-west2"
+}
+
 variable "staging_monthly_gbp" {
   description = "Staging's monthly budget, in whole pounds."
   type        = number

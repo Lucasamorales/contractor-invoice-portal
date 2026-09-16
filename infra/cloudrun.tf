@@ -45,6 +45,16 @@ resource "google_cloud_run_v2_service" "app" {
   project  = var.project_id
   location = var.region
 
+  lifecycle {
+    # The mistake this stops: production settings applied while the staging
+    # workspace is selected, which would turn staging into production, or the
+    # reverse. Every plan checks it, so nothing is changed before it fails.
+    precondition {
+      condition     = terraform.workspace == var.environment
+      error_message = "The selected workspace does not match var.environment. Run terraform workspace select with the environment you mean, and pass its tfvars file."
+    }
+  }
+
   # Billing reads these. Staging and production share one project, so the
   # per-environment budgets in infra/billing tell their costs apart by label.
   labels = {
@@ -116,6 +126,16 @@ resource "google_cloud_run_v2_service" "app" {
       env {
         name  = "PORTAL_FINANCE_EMAILS"
         value = join(",", var.finance_emails)
+      }
+
+      env {
+        name  = "PORTAL_FINANCE_INBOX"
+        value = var.finance_inbox
+      }
+
+      env {
+        name  = "PORTAL_KUDOS_INELIGIBLE_EMAILS"
+        value = join(",", var.kudos_ineligible_emails)
       }
 
       env {

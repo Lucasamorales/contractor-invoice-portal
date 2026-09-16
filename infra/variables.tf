@@ -58,6 +58,24 @@ variable "finance_emails" {
   default     = []
 }
 
+variable "finance_inbox" {
+  description = <<-EOT
+    Where every invoice email and the monthly summary are sent (R-SUB-07,
+    R-JOB-03). Production refuses to start without it.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "kudos_ineligible_emails" {
+  description = <<-EOT
+    People who receive kudos and may not cash them or win a prize (R-KUD-20):
+    leadership, and staff who do not invoice here.
+  EOT
+  type        = list(string)
+  default     = []
+}
+
 variable "iap_members" {
   description = <<-EOT
     Who may get through IAP, in IAM member form, e.g.
