@@ -17,6 +17,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.config import get_settings
 from app.db.models import Base
+from app.db.session import resolve_trust_store
 
 config = context.config
 
@@ -100,10 +101,18 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     url = database_url()
     guard_remote(url)
+    # The same trust-store handling the application uses. Production's URL asks
+    # for sslrootcert=system, which libpq cannot open on Windows, so a
+    # migration run from a laptop failed "certificate verify failed" while the
+    # app, on the same URL, connected fine.
+    url, connect_args = resolve_trust_store(url)
     section = config.get_section(config.config_ini_section, {})
     section["sqlalchemy.url"] = url
     connectable = engine_from_config(
-        section, prefix="sqlalchemy.", poolclass=pool.NullPool
+        section,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
     with connectable.connect() as connection:
         context.configure(

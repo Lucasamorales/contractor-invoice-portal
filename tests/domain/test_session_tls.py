@@ -80,3 +80,14 @@ def test_a_production_engine_refuses_a_url_without_verify_full() -> None:
     )
     with pytest.raises(ConfigError):
         build_engine(settings)
+
+
+def test_migrations_connect_the_way_the_app_does() -> None:
+    """A migration run from a laptop against production failed "certificate
+    verify failed" while the app connected fine on the same URL, because
+    alembic built its own engine and never swapped out sslrootcert=system."""
+    from pathlib import Path
+
+    source = Path("app/db/migrations/env.py").read_text(encoding="utf-8")
+    assert "resolve_trust_store(url)" in source
+    assert "connect_args=connect_args" in source
