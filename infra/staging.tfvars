@@ -15,11 +15,11 @@ image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal@sha2
 # Leo is here for staging only, so he can reach /admin and set fees while
 # testing. Production keeps the real three and nobody else.
 finance_emails = [
-  "leo@example.com",   # staging only, for testing
+  "leo@example.com", # staging only, for testing
   # julian@ (Robin) is left out on staging, 14 September 2026, so he can
   # test the contractor side as a plain user. He is finance in production.
-  "charlie@example.com", # Charlie
-  "remy@example.com", # Remy
+  "charlie@example.com",  # Charlie
+  "remy@example.com",  # Remy
   "accounts@example.com", # accounts, added 14 September 2026 for testing
 ]
 

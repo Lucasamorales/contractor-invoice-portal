@@ -68,6 +68,10 @@ locals {
   }
 }
 
+locals {
+  announcing_jobs = ["remind", "summary"]
+}
+
 resource "google_cloud_scheduler_job" "jobs" {
   for_each = local.jobs
 
@@ -77,6 +81,12 @@ resource "google_cloud_scheduler_job" "jobs" {
   description = each.value.description
   schedule    = each.value.schedule
   time_zone   = "Europe/London"
+
+  # The jobs that email people about the month wait for go-live: the
+  # window-open note and the reminder to every contractor, and the summary to
+  # accounts. Everything else (sending queued mail, the kudos sync, the backup)
+  # runs from the moment the environment exists.
+  paused = contains(local.announcing_jobs, each.key) && !var.reminders_live
 
   # Every job is idempotent, so a retry is safe (R-JOB-*).
   retry_config {

@@ -47,6 +47,12 @@ iap_members = [
 # to start with this on.
 window_always_open = false
 
+# GO-LIVE SWITCH. While false, the window-open email (the 22nd), the reminder
+# (the 27th) and the summary to accounts (the 29th) are paused. Set it to true
+# and apply once the fees are in and the dry run has passed; the next 22nd then
+# emails every active contractor.
+reminders_live = false
+
 # The kudos sheet (R-KUD-01), read daily. Shared read-only with the production
 # service account, portal-invoices-production@your-gcp-project.iam.gserviceaccount.com.
 kudos_sheet_id = "YOUR_KUDOS_SHEET_ID"

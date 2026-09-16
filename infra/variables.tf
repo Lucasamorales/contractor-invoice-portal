@@ -58,6 +58,17 @@ variable "finance_emails" {
   default     = []
 }
 
+variable "reminders_live" {
+  description = <<-EOT
+    Whether the window-open email, the reminder and the monthly summary are
+    sent. Off until an environment has its people, fees and a dry run behind
+    it: switched on, production emails every active contractor at 09:00 on the
+    22nd.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "finance_inbox" {
   description = <<-EOT
     Where every invoice email and the monthly summary are sent (R-SUB-07,
