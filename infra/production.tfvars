@@ -51,7 +51,8 @@ window_always_open = false
 # (the 27th) and the summary to accounts (the 29th) are paused. Set it to true
 # and apply once the fees are in and the dry run has passed; the next 22nd then
 # emails every active contractor.
-reminders_live = false
+# Switched on 16 September 2026, at Leo's go-live.
+reminders_live = true
 
 # The kudos sheet (R-KUD-01), read daily. Shared read-only with the production
 # service account, portal-invoices-production@your-gcp-project.iam.gserviceaccount.com.
