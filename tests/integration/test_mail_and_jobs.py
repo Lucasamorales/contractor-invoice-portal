@@ -772,6 +772,8 @@ def test_every_message_is_laid_out_and_points_back_at_the_portal() -> None:
     text and HTML is how the two drift apart, and a wrong plain-text fallback
     is invisible until somebody reads mail in a client that prefers it.
     """
+    import re
+
     from app.config import Settings
     from app.db.models import Outbox
 
@@ -804,8 +806,13 @@ def test_every_message_is_laid_out_and_points_back_at_the_portal() -> None:
         )
         assert message.text.strip(), f"{kind} has no plain text"
         assert message.html, f"{kind} has no html"
-        assert "https://portal.example" in message.text, f"{kind} text has no link"
-        assert "https://portal.example" in message.html, f"{kind} html has no link"
+        # The button links to the portal...
+        assert 'href="https://portal.example' in message.html, f"{kind} has no link"
+        # ...but the address itself is never shown: it is the long Cloud Run
+        # one. Not in the plain text, and not as visible text in the HTML.
+        visible = re.sub(r"<[^>]+>", " ", message.html)
+        assert "portal.example" not in visible, f"{kind} shows the address"
+        assert "portal.example" not in message.text, f"{kind} text shows the address"
         # No image can be hosted by the app — it is behind IAP, and a mail
         # client fetching one is not signed in.
         assert "<img" not in message.html, f"{kind} would show a broken image"

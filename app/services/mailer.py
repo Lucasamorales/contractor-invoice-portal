@@ -457,10 +457,11 @@ def render_text(parts: list[tuple[str, object]], settings: Settings) -> str:
             out += [f"  {label.ljust(width)}   {figure}" for label, figure in value]
             out.append("")
         elif kind == "action":
-            label, path = value
-            url = _link(settings, path)
-            if url:
-                out += [f"{label}: {url}", ""]
+            # The portal's address is never printed: it is the long Cloud Run
+            # one, and it reads as a mistake. The HTML version carries it behind
+            # the button; this fallback names where to go instead.
+            label, _path = value
+            out += [f"{label} (in the invoice portal)", ""]
     return "\n".join(out).strip() + "\n"
 
 
@@ -512,11 +513,12 @@ def render_html(parts: list[tuple[str, object]], settings: Settings) -> str:
                 "</td></tr></table>"
             )
 
+    # Linked, but never shown: the address is the long Cloud Run one.
     home = _link(settings, "/")
     footer = (
-        f'<a href="{_escape(home)}" style="color:#8a8a82;">{_escape(home)}</a>'
+        f'<a href="{_escape(home)}" style="color:#8a8a82;">Invoices</a>'
         if home
-        else "Your Company"
+        else "Invoices"
     )
 
     return (
