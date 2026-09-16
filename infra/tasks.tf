@@ -168,6 +168,14 @@ resource "google_cloud_run_v2_service" "tasks" {
           memory = "512Mi"
           cpu    = "1"
         }
+        # CPU only while a request is being handled, so an idle instance
+        # costs nothing. The provider defaults to that only when no resources
+        # block is set; setting memory above silently switched both services to
+        # CPU always allocated, and the scheduler waking the tasks service every
+        # five minutes kept one instance billed around the clock (about
+        # GBP 1.50 a day). Safe because nothing here works after its response:
+        # every job, sending mail included, finishes inside the request.
+        cpu_idle = true
       }
 
       startup_probe {
