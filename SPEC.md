@@ -20,7 +20,7 @@ Companion documents:
 |---|---|
 | **Person** | A Your Company contractor who invoices monthly. All 16 are contractors, not employees. |
 | **Robin** | Administrator / accounts / HR. Receives invoices, pays them, sets fees. |
-| **Finance group** | Robin, Charlie, Remy. The only people who may see fees. |
+| **Finance group** | The accounts mailbox (`accounts@`, which Robin works from), Charlie and Remy. The only people who may see fees. Decided 16 September 2026. |
 | **Kudos** | Internal reward. **1 kudo = £20.** Counts live in an existing Google Sheet, semi-public. |
 | **Fee** | A person's monthly remuneration. Sensitive. Only the finance group and the person may see it. |
 | **Period** | One calendar month, `YYYY-MM`. The submission window is the 22nd–28th. |
@@ -563,7 +563,7 @@ Leo first.
 | Period | 22nd–28th, never locked out. |
 | Fees | Admin screen only. Never in a spreadsheet, never in Drive. |
 | Kudos | Sheet stays as it is, read-only, £20 each. |
-| Who sees fees | Robin, Charlie, Remy. |
+| Who sees fees | The accounts mailbox, Charlie, Remy. |
 | Bank writes | Owner-confirmed only; admin may propose, never confirm. |
 | Storage | GCS is the only store. No Drive mirror (dropped 16 September 2026). |
 | VAT | None. All contractors. |

@@ -32,7 +32,8 @@ handles sensitive data. Optimise for correctness and clarity, never for scale.
 These are invariants. If a task appears to require breaking one, stop and ask.
 
 1. **No one ever sees another person's fee or bank details.** Access to fees is
-   limited to the finance group (Robin, Charlie, Remy). Every data access is
+   limited to the finance group: the accounts mailbox (which Robin works
+   from), Charlie and Remy, decided 16 September 2026. Every data access is
    scoped by the IAP-verified email.
 2. **Only the owner can make a bank change payable.** Admins may read, review,
    flag and propose — never confirm. See R-BANK-*.

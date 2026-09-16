@@ -8,8 +8,8 @@ region      = "europe-west2"
 
 # Pinned by digest, not by tag. A tag can be moved; a digest cannot, so the
 # thing that gets deployed is exactly the thing that was tested.
-# This is 0.7.0, built and pushed 7 September 2026.
-image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal@sha256:c6200373939dcb60e586a6651c512de76d0120d598692488cd6b40c5aa56a837"
+# 0.8.17, built and pushed 16 September 2026.
+image = "europe-west2-docker.pkg.dev/your-gcp-project/portal/invoice-portal@sha256:936b371f536cd4477b4f7d95f370482d0cae1882ea00d62d7e847adcccb55d27"
 
 # CLAUDE.md 2.1: the only people who may ever see a fee.
 # Leo is here for staging only, so he can reach /admin and set fees while
