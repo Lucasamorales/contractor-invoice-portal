@@ -364,7 +364,6 @@ Scheduled jobs, no button to press:
 | 27th, 09:00 | Nudge to whoever has not invoiced. **[not yet built: email.]** |
 | 29th, 09:00 | Reconciliation summary to finance. **[not yet built: email.]** |
 | Nightly, 02:00 | Database backup, thirty days kept. |
-| Hourly, 22nd–29th | Submitted PDFs mirrored to the Drive folder. **[not yet built: folder not chosen.]** |
 
 All times are London time.
 
@@ -392,8 +391,7 @@ For whoever writes the on-screen tutorial — do not point at any of these:
 | All email | DNS for the Resend sending domain |
 | Kudos from the sheet | The sheet's file id and column layout |
 | Receipt upload in the wizard | Nothing — validation and conversion are written, the UI is not |
-| Drive mirror | Which Shared Drive to use |
-| A finance-side PDF download | Not built either; finance gets PDFs by email and Drive |
+| A finance-side PDF download | Built: the PDF link on a person's page. There is no Drive mirror |
 
 One known gap in the spec itself: somebody who misses a month entirely has no
 way to invoice for it afterwards. Not a bug in the code — the spec has no

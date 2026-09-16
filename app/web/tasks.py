@@ -209,25 +209,3 @@ async def run_backup(
             detail="The backup did not run.",
         ) from exc
     return report.as_dict()
-
-
-@router.post("/drive-mirror")
-async def run_drive_mirror(caller: Scheduler, settings: Config) -> dict[str, object]:
-    """R-JOB-06.
-
-    Not built: which Shared Drive to use has not been decided (SPEC §19), and
-    R-STO-05 requires the folder be restricted to the finance group before
-    anything is copied into it.
-    """
-    del caller
-    if not settings.drive_folder_id:
-        return {
-            "job": "drive-mirror",
-            "queued": 0,
-            "skipped": 0,
-            "detail": "no Drive folder configured; nothing mirrored",
-        }
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="The Drive mirror is not built yet.",
-    )

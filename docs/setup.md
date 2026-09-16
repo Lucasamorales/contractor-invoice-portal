@@ -278,6 +278,5 @@ here has been created yet, and SPEC §19 lists the questions still open.
 | GCS bucket, uniform access, versioning (R-STO-01) | nothing — can be done now |
 | Cloud Run service and IAP backend (R-ACC-01) | needs the GCP project and the finance IAM group |
 | Cloud Scheduler jobs (R-JOB-01..06) | needs the service deployed |
-| Shared Drive folder (R-STO-05) | **which Drive to use has not been named** |
 | Kudos sheet access (R-KUD-01) | **the file ID and column layout have not been provided** |
 | Resend (R-SUB-06) | **the account and sending domain do not exist yet** |

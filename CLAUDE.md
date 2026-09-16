@@ -110,7 +110,6 @@ app/
     pdf.py             WeasyPrint rendering
     kudos_sync.py      Google Sheets read-only
     mailer.py          Resend client + outbox dispatcher
-    drive.py           monthly folder mirror
     crypto.py          encrypt/decrypt bank fields
   web/
     member.py          the wizard routes

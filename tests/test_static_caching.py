@@ -437,5 +437,4 @@ def test_the_scheduler_sends_on_the_days_the_window_rule_names() -> None:
 
     remind_days = schedule("remind").split()[2]
     assert remind_days == f"{WINDOW_OPENS_DAY},{WINDOW_CLOSES_DAY - 1}"
-    mirror_days = schedule("drive-mirror").split()[2]
-    assert mirror_days.startswith(f"{WINDOW_OPENS_DAY}-")
+    assert "drive-mirror" not in text, "the Drive mirror was dropped"

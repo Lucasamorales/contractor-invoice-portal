@@ -577,7 +577,6 @@ def test_task_endpoints_refuse_an_anonymous_caller(
                 "/tasks/summary",
                 "/tasks/sync-kudos",
                 "/tasks/backup",
-                "/tasks/drive-mirror",
             ):
                 assert client.post(path).status_code == 401, path
                 assert (
@@ -637,16 +636,14 @@ def test_a_verified_scheduler_can_run_the_jobs(
             body = client.post("/tasks/outbox").json()
             assert body["sent"] == 0  # nothing queued in this test
 
-            # The jobs that are not configured yet say so rather than
-            # reporting success. They report it in their own terms: the kudos
-            # sync counts events, the mirror counts files queued.
+            # A job that is not configured says so rather than reporting
+            # success, in its own terms: the kudos sync counts events.
             body = client.post("/tasks/sync-kudos").json()
             assert body["events_new"] == 0
             assert "no kudos sheet configured" in body["detail"]
 
-            body = client.post("/tasks/drive-mirror").json()
-            assert body["queued"] == 0
-            assert "no " in body["detail"]
+            # There is no Drive mirror; its endpoint is gone, not switched off.
+            assert client.post("/tasks/drive-mirror").status_code == 404
 
             # The backup refuses outright with nowhere durable to write. A
             # backup job that quietly writes to a container filesystem is worse

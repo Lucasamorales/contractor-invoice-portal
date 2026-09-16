@@ -566,9 +566,10 @@ async def download_invoice(
 ) -> Response:
     """Any invoice, for the people who pay them.
 
-    NOT COVERED BY A REQUIREMENT, like its member-side twin. The spec gives
-    finance two routes to a PDF — the email in R-SUB-07 and the Drive mirror in
-    R-STO-04 — and until both exist nobody in finance can see one at all.
+    NOT COVERED BY A REQUIREMENT, like its member-side twin. The spec's only
+    route for finance to a PDF is the email in R-SUB-07. There is no Drive
+    mirror (dropped 16 September 2026), so this is the one place finance can
+    open an invoice without searching an inbox.
 
     Unscoped by design, and that is the whole difference from the member
     route: finance may read any invoice (R-ACC-06), because they pay them and

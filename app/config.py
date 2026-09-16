@@ -158,7 +158,6 @@ class Settings(BaseSettings):
     mail_redirect_to: str = ""
     mail_from: str = ""
     finance_inbox: str = ""
-    drive_folder_id: str = ""
 
     # Where the portal lives, so an email can point at the thing it is about.
     # Set from the Cloud Run URL; behind IAP, so a link only opens for somebody
@@ -268,8 +267,3 @@ def mail_mode(settings: Settings) -> MailMode:
     if settings.mail_redirect_to and settings.resend_api_key.get_secret_value():
         return MailMode.LIVE
     return MailMode.SANDBOX
-
-
-def drive_writes_allowed(settings: Settings) -> bool:
-    """R-ENV-03: staging cannot write to the real Drive folder."""
-    return settings.is_production

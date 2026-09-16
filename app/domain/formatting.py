@@ -43,8 +43,8 @@ def format_iban(iban: str) -> str:
 def invoice_filename(period: Period, legal_name: str, number: int) -> str:
     """``2026-09 — Jane Smith — 34.pdf`` (R-PDF-15).
 
-    Path separators are stripped so a name can never escape its prefix in GCS
-    or Drive; nothing else about the spec's format is changed.
+    Path separators are stripped so a name can never escape its prefix in
+    GCS; nothing else about the spec's format is changed.
     """
     safe_name = re.sub(r"[\\/]+", " ", legal_name).strip()
     safe_name = re.sub(r"\s+", " ", safe_name)

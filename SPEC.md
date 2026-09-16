@@ -94,7 +94,7 @@ Postgres. All money is `INTEGER` pence. All timestamps `TIMESTAMPTZ` in UTC.
   `id, person_id FK, period, number INTEGER, status ENUM(draft|submitted|void),
    is_late BOOLEAN, remuneration_pence, additional_pence, total_pence,
    detail_note TEXT NULL, currency CHAR(3) DEFAULT 'GBP',
-   pdf_uri, drive_file_id NULL, idempotency_key UNIQUE,
+   pdf_uri, idempotency_key UNIQUE,
    issued_at, due_at, voided_at NULL, replaced_by_id NULL, created_at`
   - **`UNIQUE (person_id, number)`** — a real database constraint, not app logic.
   - `CHECK (total_pence = remuneration_pence + additional_pence)`.
@@ -440,13 +440,11 @@ by the app. All are idempotent — a double fire must not double-send.
   backoff; after 5 failures marks `failed` and alerts.
 - **R-JOB-05** `backup` — nightly `pg_dump` to GCS. Retain 30 days. This is the
   backup we rely on, not Neon's history.
-- **R-JOB-06** `drive-mirror` — copy submitted PDFs into the Shared Drive folder
-  for the period, creating `YYYY-MM Month/` if absent. Idempotent by
-  `drive_file_id`.
+- **R-JOB-06** *Removed 16 September 2026.* There is no Drive mirror: see R-STO-04.
 
 ---
 
-## 13. Storage and the Drive mirror
+## 13. Storage
 
 - **R-STO-01** One private GCS bucket, uniform bucket-level access, no public
   objects, versioning on.
@@ -454,11 +452,11 @@ by the app. All are idempotent — a double fire must not double-send.
   `invoices/{period}/{filename}.pdf`, `backups/{date}.sql.gz`.
 - **R-STO-03** All reads via V4 signed URLs, TTL ≤ 15 minutes. No signed URL is
   ever logged or emailed.
-- **R-STO-04** GCS is the system of record. Drive is a human-browsable mirror.
-- **R-STO-05** The Drive folder is restricted to the finance group — Robin,
-  Charlie, Remy. **Not** "anyone at Your Company with the link": those PDFs carry
-  every person's full account number. Terraform must set this explicitly and a
-  test must assert it.
+- **R-STO-04** GCS is the system of record, and the only store. *There is no
+  Drive mirror (dropped 16 September 2026):* finance receive every invoice by email
+  (R-SUB-07) and can open any invoice from the person page, and a Shared Drive
+  copy would have been a second place holding everyone's full account number.
+- **R-STO-05** *Removed 16 September 2026, with the Drive mirror.*
 
 ---
 
@@ -497,8 +495,8 @@ by the app. All are idempotent — a double fire must not double-send.
   with generated people and invented fees that share the real *structure*. The
   moment a real account number exists in staging, staging is production with
   weaker access rules.
-- **R-ENV-03** Staging cannot send real email (a sandbox client) and cannot write
-  to the real Drive folder. Enforced by config, asserted by a test.
+- **R-ENV-03** Staging cannot send real email (a sandbox client). Enforced by
+  config, asserted by a test.
 - **R-ENV-04** The staging IAP group contains the developers; the production
   finance group does not.
 - **R-ENV-05** All infrastructure in Terraform. No console clicking.
@@ -544,7 +542,7 @@ Only fixed date: the window opens on the 22nd.
    will judge; do it before the wizard.**
 4. **The wizard** — R-WIZ-*, R-BANK-*.
 5. **Admin** — R-ADM-*, built and demoed in staging against invented data.
-6. **Plumbing** — R-JOB-*, R-STO-*, mailer, Drive mirror, backups.
+6. **Plumbing** — R-JOB-*, R-STO-*, mailer, backups.
 7. **Dry run** — R-TEST-06, before the 22nd.
 
 ---
@@ -567,7 +565,7 @@ Leo first.
 | Kudos | Sheet stays as it is, read-only, £20 each. |
 | Who sees fees | Robin, Charlie, Remy. |
 | Bank writes | Owner-confirmed only; admin may propose, never confirm. |
-| Storage | GCS system of record, Drive mirror restricted to the finance group. |
+| Storage | GCS is the only store. No Drive mirror (dropped 16 September 2026). |
 | VAT | None. All contractors. |
 
 ---
@@ -578,7 +576,6 @@ Leo first.
   (R-WIZ-02); the first cycle will need chasing via R-ADM-06.
 - Jamie's account name is "Bridge Building". Robin must confirm this is
   the intended payee before her first automated payment.
-- The Shared Drive to use has not been named. Ask before creating one.
 - The kudos sheet's file ID and column layout have not been provided. Ask.
 - Resend is the mail provider (decided 5 September 2026, over Postmark on
   cost and attachment size). The sending domain still needs SPF, DKIM and

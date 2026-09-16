@@ -22,7 +22,7 @@ not created — `terraform plan` shows 18 to add, cleanly.
 
 ## What is not here yet
 
-- **The Drive folder** (R-STO-05). Which Shared Drive has not been decided.
+- Nothing. There is no Drive folder: the mirror was dropped on 16 September 2026.
 
 ## The chicken and egg
 

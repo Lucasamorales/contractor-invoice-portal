@@ -428,7 +428,6 @@ class Invoice(Base):
     detail_note: Mapped[str | None] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="GBP")
     pdf_uri: Mapped[str | None] = mapped_column(Text)
-    drive_file_id: Mapped[str | None] = mapped_column(String(200))
     idempotency_key: Mapped[str] = mapped_column(
         String(100), unique=True, nullable=False
     )

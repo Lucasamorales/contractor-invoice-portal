@@ -17,7 +17,7 @@ folds them into the spec.
 | 3. The invoice | done |
 | 4. The wizard | done, except receipts |
 | 5. Admin | done |
-| 6. Plumbing | storage, kudos and the container done; **mail and Drive outstanding** |
+| 6. Plumbing | storage, kudos and the container done; **mail outstanding**. No Drive mirror (dropped 16 September 2026) |
 | 7. Dry run | **not started** |
 
 **453 tests** (247 with no database, 126 against Postgres, 80 rendering,
@@ -32,7 +32,7 @@ runs image `0.3.0` and holds invented demo data including 20 kudos.
 ### 1.1 Cloud Scheduler cannot get through IAP
 
 **Nothing scheduled has ever run.** Not the outbox dispatcher, not the
-reminders, not the summary, not the nightly backup, not the Drive mirror, not
+reminders, not the summary, not the nightly backup, not
 the kudos sync.
 
 `scheduler.tf` used to claim these endpoints "sit outside IAP". They do not:
@@ -64,7 +64,7 @@ This is the next thing worth doing, because everything in §2 waits behind it.
 | # | What is needed | Blocks |
 |---|---|---|
 | 2.1 | **DNS for the Resend sending domain** (SPF, DKIM, DMARC) | every email. The invoice to Robin, the copy to the person, both reminders, the bank-change alerts, the monthly summary. The code is written and queues correctly; nothing has ever been sent. |
-| 2.2 | **Which Shared Drive to use** | R-STO-05, the human-browsable mirror |
+| 2.2 | ~~Which Shared Drive to use~~ | Dropped 16 September 2026: no Drive mirror |
 | 2.3 | **Confirm Marta Jamie's payee is "Bridge Building"** | her first automated payment (R-SEED-08) |
 | 2.4 | **A role for each person** | nobody has one and it prints on the letterhead. Collected at first login, so the first cycle needs chasing (R-WIZ-02) |
 | 2.5 | **Remy's review of the seed dry run** | running the seed with `--commit` |
@@ -95,8 +95,8 @@ submitted.
 ### 3.2 A finance-side PDF download
 
 A contractor can download their own invoice. Finance cannot — they are meant to
-get PDFs by email (§2.1) and through the Drive mirror (§2.2), and neither works
-yet. So right now nobody in finance can see a PDF at all.
+get PDFs by email (§2.1), and there is no Drive mirror (dropped 16 September
+2026). So right now nobody in finance can see a PDF at all.
 
 ### 3.3 Kudos perks
 

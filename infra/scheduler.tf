@@ -61,12 +61,6 @@ locals {
       path        = "/tasks/backup"
       description = "pg_dump to GCS, thirty days retained"
     }
-    drive-mirror = {
-      # R-JOB-06. Through the window and just after it.
-      schedule    = "30 * 22-29 * *"
-      path        = "/tasks/drive-mirror"
-      description = "Copy submitted PDFs to the Drive folder"
-    }
   }
 }
 
