@@ -743,6 +743,13 @@ def void(
     before = {"status": invoice.status.value, "number": invoice.number}
     invoice.status = InvoiceStatus.VOID
     invoice.voided_at = now
+
+    # A void invoice bills nothing, so what it claimed goes back on the pile
+    # (R-KUD-10): the reissue picks the kudos and any prize up again. Without
+    # this they stayed stamped with a voided invoice's id, which counts as
+    # billed, and nothing would ever pay them.
+    kudos, awards = repo.release_kudos_claims(session, invoice.id)
+
     repo.record_audit(
         session,
         actor_email=actor_email,
@@ -750,7 +757,12 @@ def void(
         entity="invoices",
         entity_id=str(invoice.id),
         before=before,
-        after={"status": "void", "reason": reason},
+        after={
+            "status": "void",
+            "reason": reason,
+            "kudos_released": kudos,
+            "awards_released": awards,
+        },
     )
 
 

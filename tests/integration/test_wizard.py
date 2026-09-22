@@ -931,9 +931,21 @@ def test_this_month_numbers_the_steps(wizard, factory) -> None:
     assert html.count('class="button"') == 1
 
 
-def test_a_shut_window_ends_the_chain_at_this_month(wizard, factory) -> None:
+def test_a_shut_window_ends_the_chain_at_this_month(
+    wizard, factory, monkeypatch
+) -> None:
     """There is nowhere to go on to, and This month is what says when it
-    opens."""
+    opens.
+
+    The day is pinned: read from the real clock, this passed for three weeks a
+    month and failed inside the window, which is the week it matters.
+    """
+    from datetime import UTC, datetime
+
+    from app.web import member
+
+    monkeypatch.setattr(member, "_now", lambda: datetime(2026, 9, 10, 12, tzinfo=UTC))
+
     client, _, cipher = wizard
     _day_one(factory, cipher)
 

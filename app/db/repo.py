@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -152,6 +152,28 @@ def invoice_history(session: Session, person_id: uuid.UUID) -> list[Invoice]:
             .order_by(Invoice.number.desc())
         )
     )
+
+
+def release_kudos_claims(session: Session, invoice_id: uuid.UUID) -> tuple[int, int]:
+    """Unclaim everything one invoice billed. Returns (kudos, awards).
+
+    Only ever called when an invoice is voided (R-SUB-10). A void invoice pays
+    nothing, so its kudos and any quarterly prize must become claimable again,
+    or the reissue leaves them out and no later invoice can pick them up
+    either: ``claimed_by_invoice_id`` is set, which is the whole test for
+    "already billed" (R-KUD-10).
+    """
+    kudos = session.execute(
+        update(KudosEvent)
+        .where(KudosEvent.claimed_by_invoice_id == invoice_id)
+        .values(claimed_by_invoice_id=None)
+    ).rowcount
+    awards = session.execute(
+        update(KudosAward)
+        .where(KudosAward.claimed_by_invoice_id == invoice_id)
+        .values(claimed_by_invoice_id=None)
+    ).rowcount
+    return kudos, awards
 
 
 def unclaimed_kudos(

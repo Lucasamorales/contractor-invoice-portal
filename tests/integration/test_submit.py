@@ -550,3 +550,51 @@ def test_a_failed_render_leaves_a_draft_that_a_retry_resumes(
         assert invoice.status is InvoiceStatus.SUBMITTED
         assert invoice.number == 8
         assert session.get(Counter, person_id).next_number == 9
+
+
+def test_voiding_gives_the_kudos_back_so_a_reissue_bills_them(
+    factory, settings, cipher, store, fake_pdf
+) -> None:
+    """R-KUD-10 with R-SUB-10. A void invoice bills nothing.
+
+    The claim goes on inside the submit transaction, so without releasing it a
+    voided invoice still counted as having billed those kudos: the reissue came
+    out without them and no later invoice could pick them up either, because
+    "already billed" is exactly "claimed_by_invoice_id is set".
+    """
+    from app.db.models import KudosEvent
+
+    person_id = ready_person(factory, cipher, next_number=8, kudos=4)
+    first = do_submit(factory, settings, cipher, store, fake_pdf, person_id)
+
+    with factory() as session:
+        claimed = session.scalars(
+            select(KudosEvent).where(KudosEvent.claimed_by_invoice_id == first)
+        ).all()
+        assert len(claimed) == 4, "the first invoice billed the four kudos"
+
+    with factory() as session, session.begin():
+        void(
+            session,
+            session.get(Invoice, first),
+            actor_email="robin@example.com",
+            now=IN_WINDOW,
+            reason="sent before this month's kudos were in",
+        )
+
+    with factory() as session:
+        assert not session.scalars(
+            select(KudosEvent).where(KudosEvent.claimed_by_invoice_id == first)
+        ).all(), "a void invoice holds no claim"
+
+    reissued = do_submit(factory, settings, cipher, store, fake_pdf, person_id)
+
+    with factory() as session:
+        again = session.scalars(
+            select(KudosEvent).where(KudosEvent.claimed_by_invoice_id == reissued)
+        ).all()
+        assert len(again) == 4, "the reissue bills them"
+        lines = session.scalars(
+            select(InvoiceLine).where(InvoiceLine.invoice_id == reissued)
+        ).all()
+        assert any("kudos" in line.label.lower() for line in lines), "on the invoice"
