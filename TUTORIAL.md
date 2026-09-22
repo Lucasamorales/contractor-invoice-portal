@@ -1,16 +1,15 @@
 # TUTORIAL.md — how to use the Invoice Portal
 
-Written as the source text for a future on-screen tutorial. It describes the
-app **as it actually is today**, not as the spec imagines it. Anything not
-built yet is marked so nobody writes a tooltip pointing at
-a button that does not exist.
+A written walkthrough of the portal as it stands in production, for anyone who
+wants more than the in-app tutorial (the **?** button on every screen, which is
+the one kept in step with the app). Updated 22 September 2026.
 
 Two audiences, in two parts:
 
 1. **[Everyone](#part-1--everyone)** — the sixteen of us who send an invoice each month.
-2. **[Finance](#part-2--finance)** — Robin, Charlie and Remy, who read them and pay them.
+2. **[Finance](#part-2--finance)** — accounts, Charlie and Remy, who read them and pay them.
 
-Robin is in both. He invoices for his own work through Part 1, exactly like
+Julian is in both. He invoices for his own work through Part 1, exactly like
 everybody else (R-ACC-08).
 
 ---
@@ -20,9 +19,9 @@ everybody else (R-ACC-08).
 ## The one-paragraph version
 
 Once a month you open the portal, check three figures, add anything extra, look
-at the invoice, and press one button. Your invoice goes to Robin, correctly
+at the invoice, and press one button. Your invoice goes to accounts, correctly
 numbered, in the same format as everybody else's. You never keep a template,
-you never remember a number, and Robin never phones you.
+you never remember a number, and nobody has to phone you.
 
 ## Getting in
 
@@ -40,7 +39,7 @@ address has not been added yet. Tell Leo.
 The first thing you see, and the only screen that shows everything at once:
 
 - **Remuneration** — your monthly fee. **You cannot change it.** Only finance
-  sets it. If it says *not set*, Robin has not entered it yet and has been told.
+  sets it. If it says *not set*, accounts have not entered it yet and have been told.
 - **Kudos** — how many you earned this month and what they come to. Read from
   the kudos sheet, so it cannot be edited here either.
 - **Running total** — the two added up, before anything you add yourself.
@@ -71,7 +70,7 @@ any time from **My details**.
 
 ### Bank details — `/bank`
 
-The account Robin pays. You will only ever see the **last four digits** of your
+The account accounts pay. You will only ever see the **last four digits** of your
 own account number here — the full number is encrypted and is not shown back to
 you, or to anyone, on screen.
 
@@ -86,12 +85,12 @@ Two things happen on this screen:
   typing.
 
 **The rule that matters most:** *only you can make a bank change payable.*
-Robin can suggest a correction, and if he has, you will see **"Robin has
+Accounts can suggest a correction, and if they have, you will see **"Accounts have
 suggested a change"** at the top of this screen with what he proposes. It
 changes nothing until you agree to it. An admin cannot redirect your money, and
 neither can someone who gets into an admin account.
 
-If Robin has flagged something as wrong, you will get an email saying what
+If accounts have flagged something as wrong, you will get an email saying what
 needs fixing. He still cannot fix it himself.
 
 ### Additional — `/additional`
@@ -104,15 +103,16 @@ Amounts are typed as ordinary pounds and pence, `34.50`. If you type something
 that is not an amount, it tells you which row and why rather than quietly
 dropping it.
 
-Kudos are shown here too, read-only. They come from the sheet. The plan is one file per expense row, uploaded
-straight from your browser, attached to Robin's email, HEIC photos converted to
-JPEG so he does not have to. The validation and conversion are written; the
-upload button is not on this screen yet.
+Kudos are shown here too, read-only. They come from the sheet.
+
+Each expense row takes one receipt, uploaded straight from your browser and
+attached to the email accounts receive. A photo is fine: location data is
+stripped and an iPhone HEIC is converted to JPEG so accounts can open it.
 
 ### Preview — `/preview`
 
 The actual invoice, rendered by the same template that makes the PDF. What you
-see is exactly what Robin receives — not an approximation of it.
+see is exactly what accounts receive — not an approximation of it.
 
 **Nothing has been sent at this point.** You can still go back.
 
@@ -147,9 +147,9 @@ to keep the email.
 - **Before the 22nd** you can use everything — details, bank, history — but
   **Send** is disabled and says when it opens.
 - **After the 28th nobody is locked out.** The portal still takes your invoice.
-  It is marked *late* and shows up on Robin's screen as late, and it still gets
+  It is marked *late* and shows up on the Finance screens as late, and it still gets
   your next number in sequence. A locked door would just turn into a phone call
-  from Robin, which is the thing this replaces.
+  from accounts, which is the thing this replaces.
 
 *(In staging there is an orange banner saying the window is forced open, so it
 can be tested on any day. Production refuses to start with that setting on.)*
@@ -170,39 +170,39 @@ Every block is shown on the Welcome screen with a link to the fix:
 
 | What it says | What to do |
 |---|---|
-| *Robin hasn't set your fee yet — he's been notified.* | Nothing. It is on Robin, and he has been told. |
+| *Accounts have not set your fee yet — they have been told.* | Nothing. It is with accounts, and they know. |
 | *Confirm your bank details first.* | Go to **Bank details** and confirm them. One click if they are right. |
 | *We need a few details for your invoice letterhead.* | Fill in **Your details**. |
 
 ## "Not quite sent" — read this one
 
 If you ever land back on the Welcome screen and it says **Not quite sent**, it
-means your invoice took a number but did not finish. **Nothing has gone to
-Robin.** The portal is telling you this on purpose rather than showing a
+means your invoice took a number but did not finish. **Nothing has reached
+accounts.** The portal is telling you this on purpose rather than showing a
 reassuring tick.
 
 Press **Try again**. It picks up where it left off and keeps the same number.
 
 This is the whole design principle in one screen: an invoice that does not
 arrive must be visible to *someone*. If you do not notice, it also appears on
-Robin's **Queue** screen under *Needs fixing*.
+the **Queue** screen in Finance, under *Needs fixing*.
 
 ## Emails you will get
 
 - A copy of your own invoice, when you send it.
 - *"Time to invoice"* on the 22nd.
 - *"Your invoice is not in yet"* on the 27th, only if it isn't.
-- *"Your bank details need your approval"* if Robin proposes
-  a change, and *"...need a look"* if he flags one back to you.
+- *"A change to your bank details needs your approval"* if accounts propose a
+  change, and *"Your bank details need a look"* if they flag one back to you.
 
-Until email works, **Download your copy** on the Sent screen and the download
-links on **My details** are how you get your PDF. That is why they exist.
+A copy reaches you by email as well, and **Download your copy** on the Sent
+screen and the download links on **My details** are always there.
 
 ---
 
 # Part 2 — Finance
 
-Robin, Charlie and Remy. Everything in this part lives under `/admin` and
+The accounts mailbox, Charlie and Remy. Everything in this part lives under `/admin` and
 nobody else can reach any of it — the check happens twice, once at the door and
 once in the app, so a misconfigured access rule is not the only thing between
 someone and the payroll.
@@ -264,7 +264,7 @@ If somebody's details are wrong, **Propose a change**. Type the account number
 twice, same as they would.
 
 It lands as **pending**. It changes nothing. They see it on their own bank
-screen as *"Robin has suggested a change"* and they either agree or type their
+screen as *"Accounts have suggested a change"* and they either agree or type their
 own. It sits on your **Queue** until they do.
 
 ### Flagging a row back
@@ -360,8 +360,9 @@ Scheduled jobs, no button to press:
 
 All times are London time.
 
-## The invoice email you receive When it is, each invoice arrives as
-`Invoice {number} — {legal name} — {Month} {Year}`, with the PDF attached, the
+## The invoice email accounts receive
+
+Each invoice arrives as `Invoice {number} — {legal name} — {Month} {Year}`, with the PDF attached, the
 receipts attached, and the full breakdown in the body — fee, kudos, and each
 expense line separately.
 
@@ -373,17 +374,13 @@ with a line saying what is missing. An invoice never waits on an attachment.
 
 ---
 
-## What is not built yet, in one list
+## Known gaps
 
-For whoever writes the on-screen tutorial — do not point at any of these:
+Somebody who misses a month entirely has no way to invoice for it afterwards.
+Not a bug in the code — the spec has no answer for it yet.
 
-| Not built | Blocked on |
-|---|---|
-| All email | DNS for the Resend sending domain |
-| Kudos from the sheet | The sheet's file id and column layout |
-| Receipt upload in the wizard | Nothing — validation and conversion are written, the UI is not |
-| A finance-side PDF download | Built: the PDF link on a person's page. There is no Drive mirror |
+Accounts can propose a bank correction and flag a row back, but cannot withdraw
+a proposal once made; it waits until the person answers.
 
-One known gap in the spec itself: somebody who misses a month entirely has no
-way to invoice for it afterwards. Not a bug in the code — the spec has no
-answer for it yet.
+The kudos perks in the written policy (the Sleepy Morning and the rest) are not
+in the portal. Only the cash is.
