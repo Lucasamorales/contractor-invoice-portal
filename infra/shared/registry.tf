@@ -19,8 +19,11 @@ resource "google_artifact_registry_repository" "images" {
   description   = "invoice portal images"
 
   # Artifact Registry's free allowance is 0.5GB of *stored*, compressed layers.
-  # The image is about 138MB compressed, so a handful of versions fit. This
-  # keeps the oldest from accumulating past that.
+  # The image is about 138MB compressed and every deploy pushes another, so at
+  # a few deploys a day the repository reached 447MB in three weeks, with the
+  # first deletion still a week away. Seven days rather than thirty, and the
+  # five most recent are kept whatever their age: KEEP wins over DELETE, so a
+  # quiet fortnight cannot leave nothing to roll back to.
   cleanup_policies {
     id     = "keep-recent"
     action = "KEEP"
@@ -33,7 +36,7 @@ resource "google_artifact_registry_repository" "images" {
     id     = "delete-old"
     action = "DELETE"
     condition {
-      older_than = "2592000s" # 30 days
+      older_than = "604800s" # 7 days
     }
   }
 }

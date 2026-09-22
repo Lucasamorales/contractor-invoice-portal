@@ -278,24 +278,25 @@ configured. Exit codes: `0` clean, `1` rows need human attention, `2` refused.
 
 ---
 
-## 5. What exists, and what production still needs
+## 5. Where both environments stand
 
-As at 16 September 2026. The infrastructure itself is described in
-`infra/README.md`.
+As at 22 September 2026. The infrastructure itself is described in
+`infra/README.md`, and what is still open in `BACKLOG.md`.
 
 | | Staging | Production |
 |---|---|---|
-| Neon database | Live, migrated to `0004` | Exists, still at `0002`; migrate before the import |
+| Neon database | Live, at `0004` | Live, at `0004` |
 | Secrets: database, bank key, CSRF | In Secret Manager | In Secret Manager |
-| Resend API key | `portal-resend-api-key-staging` | The same key and secret as staging (decided 16 September 2026) |
-| Sending domain | Resend's sandbox sender | **example.com, DNS added, verification pending** |
-| Cloud Run, bucket, scheduler jobs, IAP | Applied | Planned cleanly (28 to add), not applied |
-| Terraform state | Bucket, workspace `staging` | Bucket, workspace `production` (empty) |
-| People and numbering | Invented demo people | **Spreadsheet import** (§4), before anyone signs in |
-| Kudos names | Mapped by hand on the Queue | **`seed_kudos_aliases`** from `data/kudos_aliases.csv` |
-| Kudos sheet access | Not used on staging | **Share the sheet** with `portal-invoices-production@your-gcp-project.iam.gserviceaccount.com` once it exists |
-| Fees | Invented | **Typed in by finance** after the import |
+| Resend API key | `portal-resend-api-key-staging` | The same key and secret as staging |
+| Sending domain | Redirects every email to one inbox | example.com, verified, sending as `accounts@` |
+| Cloud Run, bucket, scheduler jobs, IAP | Applied | Applied 16 September 2026 |
+| Terraform state | Bucket, workspace `staging` | Bucket, workspace `production` |
+| People and numbering | Invented demo people | The 16 imported from the spreadsheet |
+| Kudos names | Mapped by hand on the Queue | Imported; one name (Samantha Lane) unmatched |
+| Kudos sheet | Not read on staging (R-ENV-02) | Read daily at 07:00 London |
+| Fees | Invented | Set by finance |
+| Emails to everybody | Redirected | Live since 16 September 2026 |
 | Budget alert | £3 a month | £5 a month |
 
-Still open before production's first cycle: rotate both Neon passwords, and
-confirm Marta Jamie's payee ("Bridge Building").
+Still open before the next cycle: rotate both Neon passwords, and confirm
+Marta Jamie's payee ("Bridge Building").

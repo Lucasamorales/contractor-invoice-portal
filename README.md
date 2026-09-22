@@ -7,6 +7,9 @@ standard format. It goes to accounts by email, and finance get a payment run.
 It replaces everyone keeping their own Word template and accounts chasing the
 ones who forget.
 
+**Live in production since 16 September 2026.** What changed and when is in
+[`CHANGELOG.md`](CHANGELOG.md); what is still open is in [`BACKLOG.md`](BACKLOG.md).
+
 - **What it must do, requirement by requirement:** [`SPEC.md`](SPEC.md)
 - **The rules for working on it:** [`CLAUDE.md`](CLAUDE.md), and read §2 first
 - **Kudos, and why they work the way they do:** [`KUDOS.md`](KUDOS.md)
@@ -51,8 +54,8 @@ uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
 Without the container every integration test is **skipped**, not failed, and
-the run still looks green. Check the count: around 550 pass and 8 skip when
-everything ran.
+the run still looks green. Check the count: 558 pass and 8 skip when everything
+ran.
 
 There is no local sign-in. Every request is identified by Google's IAP, so the
 app cannot simply be started and clicked through on a laptop. The integration
@@ -93,7 +96,7 @@ and the tfvars disagree.
 | Images | Artifact Registry `portal/invoice-portal` |
 | Secrets | Secret Manager: `portal-database-url-*`, `portal-bank-encryption-key-*`, `portal-csrf-secret-*` per environment, and one Resend key both use (`portal-resend-api-key-staging`) |
 | Database | Neon, one project each for staging and production |
-| Email | Resend, sending as `accounts@example.com` |
+| Email | Resend, sending as `accounts@example.com` (staging redirects every email to one inbox) |
 | Kudos | The existing Google Sheet, read-only, synced daily |
 | Budgets | Billing account "Your Company": staging £3, production £5, whole project £10 a month |
 
@@ -130,5 +133,6 @@ All run from the repository root, and all are a dry run until `--commit`.
 | `docs/setup.md` | Setting up Neon, the keys, the local database, seeding, and migrations |
 | `infra/README.md` | The infrastructure, and how to apply it |
 | `TUTORIAL.md` | A written walkthrough of the app. Partly out of date; the in-app tutorial (the ? button) is current |
-| `BACKLOG.md` | A snapshot from early September. Superseded by the git history |
+| `CHANGELOG.md` | What changed, release by release |
+| `BACKLOG.md` | What is still open, and what was decided but not built |
 | `design_handoff_invoice_portal_ui/` | The original UI design |

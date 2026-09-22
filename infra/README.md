@@ -2,8 +2,9 @@
 
 R-ENV-05: all infrastructure in Terraform, no console clicking.
 
-Two stacks, and state for both in the versioned bucket
-`your-gcp-project-tfstate`, so nothing depends on one laptop.
+Both environments are applied and running. Two stacks, with state for both in
+the versioned bucket `your-gcp-project-tfstate`, so nothing depends on
+one laptop.
 
 | Stack | Folder | State | Holds |
 |---|---|---|---|
@@ -55,7 +56,8 @@ In Windows PowerShell 5.1 quote the argument, or it gets split on the `=`:
 |---|---|
 | `portal-invoices-{env}` Cloud Run service | The portal. Scale to zero, CPU only while handling a request, IAP in front |
 | `portal-tasks-{env}` Cloud Run service | Scheduled jobs only, and nothing else answers there |
-| Five scheduler jobs | Outbox every 15 minutes, kudos sync daily, reminders on the 22nd and 27th, summary on the 29th, nightly backup. Each with its own OIDC token |
+| Five scheduler jobs | Outbox every 15 minutes, kudos sync daily at 07:00, reminders on the 22nd and 27th, summary on the 29th, nightly backup. Each with its own OIDC token. All times London |
+| `reminders_live` | The go-live switch. While it is false the window-open, reminder and summary emails are paused, and nothing else is affected. Production launched with it false and it was switched on the same day |
 | `portal-invoices-{env}` bucket | PDFs, receipts, backups. Private, versioned, EU |
 | Two service accounts | The app's identity, and a separate scheduler identity that cannot read the bank columns |
 | IAP access | `iap_members` from the tfvars. Production: everyone on the Workspace domain |

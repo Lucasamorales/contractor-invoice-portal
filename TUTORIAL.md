@@ -2,7 +2,7 @@
 
 Written as the source text for a future on-screen tutorial. It describes the
 app **as it actually is today**, not as the spec imagines it. Anything not
-built yet is marked **[not yet built]** so nobody writes a tooltip pointing at
+built yet is marked so nobody writes a tooltip pointing at
 a button that does not exist.
 
 Two audiences, in two parts:
@@ -42,8 +42,7 @@ The first thing you see, and the only screen that shows everything at once:
 - **Remuneration** — your monthly fee. **You cannot change it.** Only finance
   sets it. If it says *not set*, Robin has not entered it yet and has been told.
 - **Kudos** — how many you earned this month and what they come to. Read from
-  the kudos sheet, so it cannot be edited here either. **[not yet built:** the
-  sheet is not connected yet, so this currently shows *unavailable*.**]**
+  the kudos sheet, so it cannot be edited here either.
 - **Running total** — the two added up, before anything you add yourself.
 - **Before you can invoice** — if anything is missing, it is listed here with a
   link straight to the fix. See [When it won't let you](#when-it-wont-let-you).
@@ -105,9 +104,7 @@ Amounts are typed as ordinary pounds and pence, `34.50`. If you type something
 that is not an amount, it tells you which row and why rather than quietly
 dropping it.
 
-Kudos are shown here too, read-only. They come from the sheet.
-
-**[not yet built: receipts.]** The plan is one file per expense row, uploaded
+Kudos are shown here too, read-only. They come from the sheet. The plan is one file per expense row, uploaded
 straight from your browser, attached to Robin's email, HEIC photos converted to
 JPEG so he does not have to. The validation and conversion are written; the
 upload button is not on this screen yet.
@@ -119,7 +116,7 @@ see is exactly what Robin receives — not an approximation of it.
 
 **Nothing has been sent at this point.** You can still go back.
 
-### Send to Robin
+### Send
 
 One button. It disables itself the moment you click it, and pressing it twice
 cannot produce two invoices even if you try — the second press returns the
@@ -148,7 +145,7 @@ to keep the email.
 
 - The window is the **22nd to the 28th** of the month, inclusive.
 - **Before the 22nd** you can use everything — details, bank, history — but
-  **Send to Robin** is disabled and says when it opens.
+  **Send** is disabled and says when it opens.
 - **After the 28th nobody is locked out.** The portal still takes your invoice.
   It is marked *late* and shows up on Robin's screen as late, and it still gets
   your next number in sequence. A locked door would just turn into a phone call
@@ -192,14 +189,10 @@ Robin's **Queue** screen under *Needs fixing*.
 
 ## Emails you will get
 
-**[not yet built:** email is not connected yet, so none of these are arriving
-in staging. The messages are written and queued; the sending account is not set
-up. Anything below marked with this will start working the day it is.**]**
-
-- **[not yet built]** A copy of your own invoice, when you send it.
-- **[not yet built]** *"Time to invoice"* on the 22nd.
-- **[not yet built]** *"Your invoice is not in yet"* on the 27th, only if it isn't.
-- **[not yet built]** *"Your bank details need your approval"* if Robin proposes
+- A copy of your own invoice, when you send it.
+- *"Time to invoice"* on the 22nd.
+- *"Your invoice is not in yet"* on the 27th, only if it isn't.
+- *"Your bank details need your approval"* if Robin proposes
   a change, and *"...need a look"* if he flags one back to you.
 
 Until email works, **Download your copy** on the Sent screen and the download
@@ -359,17 +352,15 @@ Scheduled jobs, no button to press:
 | When | What |
 |---|---|
 | Every 5 minutes | Queued email is sent, with retries and backoff. |
-| Daily, 20th–28th | Kudos read from the sheet. **[not yet built: sheet not connected.]** |
-| 22nd, 09:00 | *"Time to invoice"* to everyone. **[not yet built: email.]** |
-| 27th, 09:00 | Nudge to whoever has not invoiced. **[not yet built: email.]** |
-| 29th, 09:00 | Reconciliation summary to finance. **[not yet built: email.]** |
+| Daily, 20th–28th | Kudos read from the sheet. |
+| 22nd, 09:00 | *"Time to invoice"* to everyone. |
+| 27th, 09:00 | Nudge to whoever has not invoiced. |
+| 29th, 09:00 | Reconciliation summary to finance. |
 | Nightly, 02:00 | Database backup, thirty days kept. |
 
 All times are London time.
 
-## The invoice email you receive
-
-**[not yet built: email is not connected.]** When it is, each invoice arrives as
+## The invoice email you receive When it is, each invoice arrives as
 `Invoice {number} — {legal name} — {Month} {Year}`, with the PDF attached, the
 receipts attached, and the full breakdown in the body — fee, kudos, and each
 expense line separately.
