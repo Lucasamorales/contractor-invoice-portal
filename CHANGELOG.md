@@ -6,6 +6,19 @@ has not been released yet.
 
 ---
 
+## 24 September 2026
+
+- **A counter can be corrected for one person.** The spreadsheet's `INVOICE N`
+  column is a hand-kept snapshot, and one row was 28 invoices out of date: it
+  said 34 where the person had reached 62, so the portal offered her 35. The
+  only fix until now was to correct the file and re-import, which takes the
+  higher number correctly but also clears everybody's confirmed profile and
+  sends the whole company back through the details step. `app.scripts.set_counter`
+  changes one row, for one person, with a reason and an audit entry, and refuses
+  to wind a counter back or to hand out a number already spent (R-NUM-05).
+- That person's next invoice number is now 63. She had not submitted, so
+  nothing had to be voided.
+
 ## 0.8.20 — 22 September 2026
 
 - **Voiding an invoice gives its kudos back.** The claim was made inside the
