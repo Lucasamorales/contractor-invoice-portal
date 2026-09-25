@@ -19,7 +19,7 @@ first invoices sent. What was built and when is in `CHANGELOG.md`.
 
 | # | What | Why |
 |---|---|---|
-| 2.1 | **Kudos sync more often than once a day** | The sheet is read at 07:00 London, which is 03:00 in Argentina. A kudo given during the day does not show until the next morning, and somebody who has already invoiced sees it only on their December invoice. Options: hourly through the window, a refresh button for accounts, or moving the daily read to the start of the Argentine working day |
+| 2.1 | **Kudos sync more often than once a day** | Partly done: accounts have a refresh button on the kudos screen (R-KUD-24, 25 September). The automatic read is still once a day at 07:00 London, which is 03:00 in Argentina, so a kudo given during the day still needs somebody to press the button or to wait. Remaining options: hourly through the window, or moving the daily read to the start of the Argentine working day |
 | 2.2 | **A sending-only Resend key** | Both environments share one key, and it has full access to the account, including another domain |
 | 2.3 | **Refresh `TUTORIAL.md`** | The written guide still describes parts as unbuilt. The in-app tutorial is current |
 

@@ -16,6 +16,34 @@
   <p class="hint mt-s">
     {{ kudos_rate_pence | gbp }} each, paid on the quarter-end invoice.
   </p>
+  {# The sheet is read every morning; this reads it now (R-KUD-24). The time
+     is here whether or not anybody presses the button, because "is this
+     current?" is the question and a timestamp answers it. #}
+  <div class="head-row mt-s" data-tut="admin.kudos.refresh">
+    <span class="hint">
+      {% if last_synced %}
+        Sheet last read {{ last_synced }}.
+      {% else %}
+        The sheet has not been read this month yet.
+      {% endif %}
+      {%- if refreshed is not none %}
+        {% if refreshed %}
+          Found {{ refreshed }} new {{ 'kudo' if refreshed == 1 else 'kudos' }}.
+        {% else %}
+          Nothing new.
+        {% endif %}
+      {% endif %}
+    </span>
+    <form hx-boost="false" method="post" action="/admin/kudos/refresh">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="quarter" value="{{ quarter.key }}">
+      <button class="button small" type="submit"
+              {% if not sheet_configured %}disabled
+              title="No kudos sheet is configured in this environment"{% endif %}>
+        Refresh from the sheet
+      </button>
+    </form>
+  </div>
 </div>
 
 {% if errors %}

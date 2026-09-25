@@ -435,6 +435,22 @@ def kudos_sheet_was_read(session: Session, period_key: str) -> bool:
     ) > 0
 
 
+def last_kudos_sync(session: Session, period_key: str) -> datetime | None:
+    """When the sheet was last read in this period, or None if never.
+
+    The snapshots are written one per person by a single read, so the newest
+    ``synced_at`` among them is the time of that read. Shown to accounts on the
+    kudos screen, because "how fresh is this?" is the question the refresh
+    button exists to answer and a timestamp answers it without pressing
+    anything.
+    """
+    return session.scalar(
+        select(func.max(KudosSnapshot.synced_at)).where(
+            KudosSnapshot.period == period_key
+        )
+    )
+
+
 def people_missing_kudos_snapshot(session: Session, period_key: str) -> list[Person]:
     """Who we cannot state a kudos count for this period (R-KUD-06).
 

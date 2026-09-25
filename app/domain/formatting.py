@@ -26,6 +26,27 @@ def format_invoice_date(moment: datetime | date) -> str:
     return f"{moment.day:02d}/{moment.month:02d}/{moment.year:04d}"
 
 
+def format_read_time(moment: datetime, *, now: datetime) -> str:
+    """How long ago something happened, in Europe/London (R-KUD-24).
+
+    ``today at 07:00``, ``yesterday at 07:00``, ``22 Sep at 09:14``. Both
+    arguments are read in London, because the reader is in London or Argentina
+    and neither of them thinks in UTC: a sync at 06:05 UTC is "today at 07:00"
+    to both of them during summer time.
+    """
+    if moment.tzinfo is None or now.tzinfo is None:
+        raise ValueError("both times must be timezone-aware")
+    local = moment.astimezone(LONDON)
+    today = now.astimezone(LONDON).date()
+    clock = f"{local.hour:02d}:{local.minute:02d}"
+    days = (today - local.date()).days
+    if days == 0:
+        return f"today at {clock}"
+    if days == 1:
+        return f"yesterday at {clock}"
+    return f"{local.day} {local.strftime('%b')} at {clock}"
+
+
 def format_sort_code(sort_code: str) -> str:
     """``NN-NN-NN`` (R-PDF-11). Stored as six bare digits (R-SEED-05)."""
     digits = re.sub(r"[^0-9]", "", sort_code)

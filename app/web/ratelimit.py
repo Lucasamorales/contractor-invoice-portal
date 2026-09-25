@@ -61,3 +61,8 @@ class RateLimiter:
 # decrypts fields and queues mail to two people.
 submit_limiter = RateLimiter(limit=10, window_seconds=300)
 bank_limiter = RateLimiter(limit=5, window_seconds=300)
+# The kudos refresh button (R-KUD-24). Google's read quota is nowhere near a
+# concern at this size; what this stops is a stuck finger turning one useful
+# press into fifty requests to somebody else's API. Concurrency is handled
+# separately, by the advisory lock in kudos_sync.
+kudos_refresh_limiter = RateLimiter(limit=6, window_seconds=300)

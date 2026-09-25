@@ -16,6 +16,7 @@ from datetime import UTC, date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import (
     HTMLResponse,
     PlainTextResponse,
@@ -37,13 +38,21 @@ from app.db.models import (
     Person,
 )
 from app.db.session import get_session
+from app.domain.formatting import format_read_time
 from app.domain.kudos import Quarter
 from app.domain.money import MoneyError, format_gbp, parse_gbp_to_pence
 from app.domain.period import Period, window_state
-from app.services import admin, bank_changes, flags, invoicing, kudos_admin
+from app.services import (
+    admin,
+    bank_changes,
+    flags,
+    invoicing,
+    kudos_admin,
+    kudos_sync,
+)
 from app.services.crypto import Cipher, field_aad
 from app.services.storage import ObjectStore, StorageError
-from app.web import csrf
+from app.web import csrf, ratelimit
 from app.web.member import _content_disposition as member_disposition
 from app.web.member import get_cipher, get_store
 from app.web.templates import templates
@@ -932,6 +941,41 @@ def _kudos_prizes(settings: Settings) -> dict[str, str]:
 # --------------------------------------------------------------------------
 
 
+def _kudos_context(
+    request: Request,
+    identity: FinanceIdentity,
+    settings: Settings,
+    session: Session,
+    period: Quarter,
+) -> dict[str, object]:
+    """Everything the kudos screen needs.
+
+    Three routes render this screen — the view, a refused award and a refused
+    refresh — and a fourth copy of the same lines is how they come to disagree.
+    """
+    context = _context(request, identity, settings)
+    last = repo.last_kudos_sync(session, Period.containing(_now()).key)
+    context.update(
+        {
+            "view": kudos_admin.quarter_view(session, period, settings=settings),
+            "quarter": period,
+            "unmapped": repo.unresolved_kudos_names(session),
+            "kudos_rate_pence": settings.kudos_rate_pence,
+            "prizes": _kudos_prizes(settings),
+            # When the sheet was last read, so the screen answers "is this
+            # current?" without anybody pressing anything (R-KUD-24).
+            "last_synced": format_read_time(last, now=_now()) if last else None,
+            # Staging has no sheet by design (R-ENV-02), and a button that
+            # cannot work should say why rather than fail when pressed.
+            "sheet_configured": bool(settings.kudos_sheet_id),
+            # Always defined. Jinja's Undefined is not None, so a missing key
+            # here would report "nothing new" on every render of this screen.
+            "refreshed": None,
+        }
+    )
+    return context
+
+
 @router.get("/kudos", response_class=HTMLResponse)
 async def kudos_quarter(
     request: Request,
@@ -939,21 +983,142 @@ async def kudos_quarter(
     session: DbSession,
     settings: Config,
     quarter: str | None = None,
+    refreshed: int | None = None,
 ) -> HTMLResponse:
     """A quarter's standings, and where the policy needs a human.
 
     Shows the leaderboard and the cash each place carries. It awards nothing:
     the tiebreakers are judgements, so the button is the decision.
+
+    ``refreshed`` is how many new kudos the refresh below just found, carried
+    through the redirect so the answer survives a reload rather than being a
+    message that vanishes.
     """
     period = _quarter_from(quarter)
-    context = _context(request, identity, settings)
-    context["view"] = kudos_admin.quarter_view(session, period, settings=settings)
-    context["quarter"] = period
-    context["unmapped"] = repo.unresolved_kudos_names(session)
-    context["kudos_rate_pence"] = settings.kudos_rate_pence
-    context["prizes"] = _kudos_prizes(settings)
+    context = _kudos_context(request, identity, settings, session, period)
+    context["refreshed"] = refreshed
     return templates.TemplateResponse(
         request=request, name="admin/kudos.html", context=context
+    )
+
+
+@router.post("/kudos/refresh", response_model=None)
+async def refresh_kudos(
+    request: Request,
+    identity: FinanceIdentity,
+    session: DbSession,
+    settings: Config,
+    quarter: Annotated[str, Form()] = "",
+    csrf_token: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    """Read the kudos sheet now, instead of waiting for tomorrow (R-KUD-24).
+
+    The same job the scheduler runs at 07:00 (R-JOB-01), on demand. Kudos given
+    during the day are otherwise invisible until the next morning, which is the
+    wrong answer in the six days a month when people are invoicing.
+
+    Everything that makes the scheduled sync safe applies unchanged: it is
+    read-only against the sheet, idempotent on ``event_key``, and it cannot
+    touch an invoice that has already been issued — those figures are frozen on
+    to ``invoice_lines`` at submit (R-KUD-05).
+    """
+    csrf.require(settings, identity.email, csrf_token)
+    ratelimit.kudos_refresh_limiter.check(identity.email)
+    period = _quarter_from(quarter)
+
+    if not settings.kudos_sheet_id:
+        # Staging, by design (R-ENV-02). Say so rather than reporting the 403
+        # that a missing file id would eventually produce.
+        return _refused_refresh(
+            request,
+            identity,
+            settings,
+            session,
+            period,
+            "No kudos sheet is configured in this environment, so there is "
+            "nothing to read.",
+        )
+
+    def run() -> kudos_sync.SyncReport:
+        """One transaction: the sync, its lock, and the audit row together."""
+        with session.begin():
+            report = kudos_sync.sync(
+                session,
+                settings=settings,
+                now=_now(),
+                # Passed explicitly rather than left to the default, which is
+                # bound at import time and so cannot be replaced in a test.
+                fetch=kudos_sync.fetch_rows,
+            )
+            repo.record_audit(
+                session,
+                actor_email=identity.email,
+                action="kudos.sync",
+                entity="kudos_events",
+                entity_id=Period.containing(_now()).key,
+                after={
+                    "rows_read": report.rows_read,
+                    "events_new": report.events_new,
+                    "withdrawn": report.withdrawn,
+                    "unmatched": len(report.unmatched),
+                },
+            )
+            return report
+
+    try:
+        # The fetch is a blocking HTTP call and a token refresh, up to twenty
+        # seconds. On this service that would stall every other request on the
+        # instance, including somebody mid-submit.
+        report = await run_in_threadpool(run)
+    except kudos_sync.KudosSyncBusy:
+        return _refused_refresh(
+            request,
+            identity,
+            settings,
+            session,
+            period,
+            "A refresh is already running. Give it a moment and reload.",
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    except kudos_sync.KudosSyncError as exc:
+        # R-KUD-06 depends on a failed read being visible. The message names
+        # which of the three separate things is wrong — the file id, the
+        # sharing, or the API — because the raw 403 names none of them.
+        logger.error("kudos refresh failed for %s: %s", identity.email, exc)
+        return _refused_refresh(request, identity, settings, session, period, str(exc))
+
+    logger.info(
+        "kudos refreshed by %s: %d new, %d withdrawn, %d unmatched",
+        identity.email,
+        report.events_new,
+        report.withdrawn,
+        len(report.unmatched),
+    )
+    return RedirectResponse(
+        f"/admin/kudos?quarter={period.key}&refreshed={report.events_new}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _refused_refresh(
+    request: Request,
+    identity: FinanceIdentity,
+    settings: Settings,
+    session: Session,
+    period: Quarter,
+    message: str,
+    *,
+    status_code: int = status.HTTP_422_UNPROCESSABLE_ENTITY,
+) -> HTMLResponse:
+    """The kudos screen again, with what went wrong on it."""
+    session.rollback()
+    context = _kudos_context(request, identity, settings, session, period)
+    context["errors"] = [message]
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/kudos.html",
+        context=context,
+        status_code=status_code,
     )
 
 
@@ -995,12 +1160,7 @@ async def award_quarter(
         session.rollback()
         errors.append(str(exc))
 
-    context = _context(request, identity, settings)
-    context["view"] = kudos_admin.quarter_view(session, period, settings=settings)
-    context["quarter"] = period
-    context["unmapped"] = repo.unresolved_kudos_names(session)
-    context["kudos_rate_pence"] = settings.kudos_rate_pence
-    context["prizes"] = _kudos_prizes(settings)
+    context = _kudos_context(request, identity, settings, session, period)
     context["errors"] = errors
     return templates.TemplateResponse(
         request=request,

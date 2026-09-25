@@ -6,6 +6,24 @@ has not been released yet.
 
 ---
 
+## 25 September 2026
+
+- **Accounts can read the kudos sheet on demand** (R-KUD-24). A button on the
+  kudos screen runs the same job the scheduler runs at 07:00, so a kudo given
+  during the day no longer waits until tomorrow to appear — which matters in
+  precisely the six days a month when people are invoicing. The daily sync is
+  unchanged. The screen also states when the sheet was last read, so nobody has
+  to press anything to find out whether it is current.
+- **Two syncs can no longer run at once.** The job takes a transaction-scoped
+  advisory lock; whichever of the button and the scheduler arrives second does
+  nothing and says so. Before this there was only one caller, so nothing had to
+  arbitrate, and a collision would have failed on the duplicate event key.
+- **The sheet read no longer blocks the service it runs on.** It is a
+  synchronous HTTP call of up to twenty seconds and now runs off the event loop,
+  so it cannot stall somebody else's request.
+- `SPEC.md` corrected: R-KUD-02 claimed the sync also ran when a member opened
+  the wizard. It never did.
+
 ## 24 September 2026
 
 - **A counter can be corrected for one person.** The spreadsheet's `INVOICE N`

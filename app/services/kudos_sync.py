@@ -55,6 +55,27 @@ class KudosSyncError(RuntimeError):
     """
 
 
+class KudosSyncBusy(RuntimeError):
+    """Another sync holds the lock, so this one did nothing.
+
+    Deliberately **not** a ``KudosSyncError``: nothing failed and nothing is
+    unreadable. The work is already being done by somebody else, and the honest
+    answer is "nothing happened", which each caller phrases its own way — the
+    scheduler as a skip, the refresh button as "already running".
+    """
+
+
+# One lock for the whole job (R-KUD-24). Two syncs at once would both insert
+# the same event_key and one would die on the unique constraint; before the
+# refresh button there was only ever one caller, so nothing had to arbitrate.
+# A transaction-scoped advisory lock is released by the commit or the rollback,
+# so there is no lock to leak if a process dies mid-sync.
+#
+# The number is arbitrary but must never change: it is the identity of the lock
+# across processes.
+SYNC_LOCK_KEY = 340_926_501
+
+
 @dataclass
 class SyncReport:
     """What a sync did, in terms a person can act on."""
@@ -289,5 +310,11 @@ def sync(
     invented rows. Everything after the HTTP call is then the real thing —
     parsing, matching, the cut-over, the ledger, the snapshots — rather than a
     separate write path that only staging ever runs and nobody ever tests.
+
+    Raises ``KudosSyncBusy`` if another sync is already running. The lock is
+    taken here rather than in either caller, so the scheduled job and the
+    refresh button cannot collide however they are invoked.
     """
+    if not session.scalar(select(func.pg_try_advisory_xact_lock(SYNC_LOCK_KEY))):
+        raise KudosSyncBusy("a kudos sync is already running")
     return store(session, parse(session, fetch(settings)), settings=settings, now=now)

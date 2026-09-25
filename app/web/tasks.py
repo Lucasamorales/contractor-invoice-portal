@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from google.auth.exceptions import GoogleAuthError
 from google.oauth2 import id_token
 from sqlalchemy.orm import Session
@@ -163,9 +164,26 @@ async def run_sync_kudos(
             "detail": "no kudos sheet configured; nothing synced",
         }
 
-    try:
+    def run() -> kudos_sync.SyncReport:
         with session.begin():
-            report = kudos_sync.sync(session, settings=settings, now=_now())
+            return kudos_sync.sync(
+                session, settings=settings, now=_now(), fetch=kudos_sync.fetch_rows
+            )
+
+    try:
+        # The fetch blocks for as long as Google takes, and this process also
+        # serves the outbox every fifteen minutes.
+        report = await run_in_threadpool(run)
+    except kudos_sync.KudosSyncBusy:
+        # Somebody pressed Refresh on the kudos screen at the same moment
+        # (R-KUD-24). Nothing failed and nothing is missing: the read is
+        # happening. A 2xx, because a retry would only collide again.
+        logger.info("kudos sync skipped: another sync holds the lock")
+        return {
+            "job": "sync-kudos",
+            "events_new": 0,
+            "detail": "skipped; another sync was already running",
+        }
     except kudos_sync.KudosSyncError as exc:
         # R-KUD-06 depends on this failing loudly: if the sheet cannot be read
         # the wizard must say so, and it can only say so if nothing here

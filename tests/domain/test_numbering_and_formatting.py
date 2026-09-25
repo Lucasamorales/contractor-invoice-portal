@@ -9,6 +9,7 @@ import pytest
 from app.domain.formatting import (
     format_iban,
     format_invoice_date,
+    format_read_time,
     format_sort_code,
     invoice_filename,
     month_heading,
@@ -125,3 +126,30 @@ def test_a_guessed_name_leaves_somebody_elses_capitals_alone() -> None:
 
 def test_a_subaddress_is_not_part_of_a_name() -> None:
     assert name_from_email("julian.robin+invoices@x.com") == "Julian Robin"
+
+
+def test_a_read_time_is_said_the_way_somebody_would_say_it() -> None:
+    """R-KUD-24. The kudos screen shows when the sheet was last read, and the
+    reader is in London or Argentina — neither of them thinks in UTC."""
+    now = datetime(2026, 9, 25, 15, 0, tzinfo=UTC)
+    assert (
+        format_read_time(datetime(2026, 9, 25, 6, 0, tzinfo=UTC), now=now)
+        == "today at 07:00"  # BST, which is what both readers would write
+    )
+    assert (
+        format_read_time(datetime(2026, 9, 24, 6, 0, tzinfo=UTC), now=now)
+        == "yesterday at 07:00"
+    )
+    assert (
+        format_read_time(datetime(2026, 9, 22, 8, 14, tzinfo=UTC), now=now)
+        == "22 Sep at 09:14"
+    )
+
+
+def test_a_read_time_refuses_a_time_with_no_zone() -> None:
+    """A naive datetime here would silently be read as UTC and print an hour
+    out for half the year."""
+    with pytest.raises(ValueError, match="timezone-aware"):
+        format_read_time(
+            datetime(2026, 9, 25, 6, 5), now=datetime(2026, 9, 25, 15, 0, tzinfo=UTC)
+        )

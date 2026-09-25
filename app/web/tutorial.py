@@ -395,6 +395,14 @@ ADMIN_KUDOS = (
         "leadership, is left out. The top three places win a prize.",
     ),
     Step(
+        "admin.kudos.refresh",
+        "Reading the sheet again",
+        "The kudos sheet is read automatically every morning, so a kudo given "
+        "today appears tomorrow. Press this to read it now — useful while "
+        "people are invoicing. It only ever reads, and it cannot change an "
+        "invoice that has already been sent.",
+    ),
+    Step(
         "admin.kudos.award",
         "Nothing is paid until you press Award",
         "The place is suggested from the counts. On a tie, choose the place "

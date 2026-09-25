@@ -54,7 +54,7 @@ uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
 Without the container every integration test is **skipped**, not failed, and
-the run still looks green. Check the count: 558 pass and 8 skip when everything
+the run still looks green. Check the count: 576 pass and 8 skip when everything
 ran.
 
 There is no local sign-in. Every request is identified by Google's IAP, so the

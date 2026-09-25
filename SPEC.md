@@ -232,8 +232,10 @@ Columns: `NAME, TEAM, EMAIL, REMUNERATION, NOTES, BANK ACCOUNTS, INVOICE N°`.
 
 - **R-KUD-01** A read-only Google Sheets API client, scoped to **one file ID**,
   using the Cloud Run service account. Never a broader Drive scope.
-- **R-KUD-02** Sync runs on schedule (R-JOB-01) and on demand when a member opens
-  the wizard, whichever is fresher.
+- **R-KUD-02** Sync runs on schedule (R-JOB-01), once a day. It does **not** run
+  when a member opens the wizard: an earlier draft of this line said it did, and
+  that was never built — a read per page view would put somebody else's API in
+  the path of the invoice screen. On-demand reading is R-KUD-24.
 - **R-KUD-03** Rows are matched to people by email. An unmatched row is reported,
   never guessed.
 - **R-KUD-04** `amount = kudos_count × rate_pence`, rate 2000 (£20), stored on the
@@ -244,6 +246,13 @@ Columns: `NAME, TEAM, EMAIL, REMUNERATION, NOTES, BANK ACCOUNTS, INVOICE N°`.
   "unavailable — Leo has been notified" and **still allows submission** with
   kudos = 0 only if the person explicitly acknowledges it. It must never silently
   invoice £0 of kudos.
+- **R-KUD-24** Finance may read the sheet **on demand**, from a button on
+  `/admin/kudos`. It is the same job as R-JOB-01 and nothing about it is
+  special-cased: read-only against the sheet, idempotent on `event_key`, and
+  unable to alter an invoice already issued (R-KUD-05). Two syncs never run at
+  once — the job takes a lock, and whichever arrives second does nothing and
+  says so rather than failing. The screen states when the sheet was last read,
+  so the answer to "is this current?" does not require pressing anything.
 
 ---
 
@@ -431,7 +440,8 @@ below are permitted.
 All are `POST /tasks/*`, called by Cloud Scheduler with an OIDC token, verified
 by the app. All are idempotent — a double fire must not double-send.
 
-- **R-JOB-01** `sync-kudos` — daily during the window, and on demand.
+- **R-JOB-01** `sync-kudos` — daily. Finance can also run it from the kudos
+  screen (R-KUD-24); if the two coincide, the second one skips.
 - **R-JOB-02** `remind` — **22nd**: everyone active gets the window-open email
   with a link. **27th**: only those with no submitted invoice get a nudge.
 - **R-JOB-03** `summary` — **29th**: reconciliation email to the finance group —
