@@ -8,6 +8,22 @@ has not been released yet.
 
 ## 25 September 2026
 
+- **Somebody can be moved between payout regions** (`app.scripts.set_payout_region`).
+  The region is set once at import from the spreadsheet's NOTES column and
+  nothing could change it afterwards, so a contractor moving from an EUR
+  account to a UK one was stuck: the bank screen renders IBAN and Swift/BIC for
+  an international payee and the validation demands them, leaving no way to
+  type a sort code.
+- The region and the old account move **together**, in one transaction with an
+  audit row each. Moving the region alone would leave the region saying UK
+  while the only account held an IBAN — nothing would block a submit, and the
+  invoice would be rendered against UK fields that are not there, after the
+  number had already been allocated. Retiring the account instead lands on the
+  ordinary "confirm your bank details first" path.
+- It refuses to run while an invoice is unfinished or a bank change is waiting
+  to be confirmed, because both would be resolved against the old region.
+
+
 - **Accounts can read the kudos sheet on demand** (R-KUD-24). A button on the
   kudos screen runs the same job the scheduler runs at 07:00, so a kudo given
   during the day no longer waits until tomorrow to appear — which matters in
