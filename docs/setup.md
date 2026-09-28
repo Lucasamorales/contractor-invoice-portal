@@ -155,19 +155,41 @@ the service account to exist.
 uv run alembic upgrade head
 ```
 
-That reads `PORTAL_MIGRATION_URL` from `.env`, so it runs against the direct
+That reads `PORTAL_MIGRATION_URL` from `.env`, so it runs against staging's direct
 endpoint. For production, pass the credential inline rather than writing it
-to a file — it is break-glass and belongs in Secret Manager, not on a laptop.
+to a file — it is break-glass and belongs in Secret Manager, not on a laptop:
 
-Against anything but a local database it refuses until you name the host it is
-about to change, so a stale `.env` cannot migrate the wrong database:
+```bash
+PORTAL_ENVIRONMENT=production PORTAL_DATABASE_URL='postgresql+psycopg://…' uv run alembic upgrade head
+```
+
+**`.env` is ignored entirely when `PORTAL_ENVIRONMENT=production`.** It has to be:
+the file sets `PORTAL_MIGRATION_URL`, a migration prefers that over
+`PORTAL_DATABASE_URL`, and on 28 September 2026 a migration aimed at production
+ran against staging because of it — announcing a clean upgrade and naming no
+database.
+
+Two things then stand between a command and the wrong database. It refuses
+until you name the host:
 
 ```bash
 PORTAL_MIGRATE_HOST=<the host it printed> uv run alembic upgrade head
 ```
 
-**Deploy the code first, then migrate.** The running version must never look
-for a column the migration has just removed.
+And before it changes anything it says what it is about to change:
+
+```
+WARNI  migrating database neondb, at 0005_release_voided_numbers, holding 17 people
+```
+
+Read that line. The host cannot tell the environments apart on its own —
+staging and production sit behind one Neon endpoint, with the branch chosen
+inside the connection string — but the people count can.
+
+**Order:** deploy the code first, then migrate, so the running version never
+looks for a column the migration has just removed. A migration that only
+*relaxes* something — `0005` dropping a constraint — is the exception and goes
+first, because the new code needs it and the old code does not mind.
 
 Check what it will do first, without connecting:
 
@@ -280,23 +302,24 @@ configured. Exit codes: `0` clean, `1` rows need human attention, `2` refused.
 
 ## 5. Where both environments stand
 
-As at 22 September 2026. The infrastructure itself is described in
-`infra/README.md`, and what is still open in `BACKLOG.md`.
+As at 28 September 2026, running **0.8.22**. The infrastructure itself is
+described in `infra/README.md`, and what is still open in `BACKLOG.md`.
 
 | | Staging | Production |
 |---|---|---|
-| Neon database | Live, at `0004` | Live, at `0004` |
+| Neon database | Live, at `0005` | Live, at `0005` |
 | Secrets: database, bank key, CSRF | In Secret Manager | In Secret Manager |
 | Resend API key | `portal-resend-api-key-staging` | The same key and secret as staging |
 | Sending domain | Redirects every email to one inbox | example.com, verified, sending as `accounts@` |
 | Cloud Run, bucket, scheduler jobs, IAP | Applied | Applied 16 September 2026 |
 | Terraform state | Bucket, workspace `staging` | Bucket, workspace `production` |
-| People and numbering | Invented demo people | The 16 imported from the spreadsheet |
+| People and numbering | Invented demo people | The 16 imported, plus the accounts mailbox. First cycle complete: 17 invoices, 4 of them cancelled and reissued |
 | Kudos names | Mapped by hand on the Queue | Imported; one name (Samantha Lane) unmatched |
-| Kudos sheet | Not read on staging (R-ENV-02) | Read daily at 07:00 London |
+| Kudos sheet | Not read on staging (R-ENV-02), so the refresh button is disabled there | Read daily at 07:00 London, and on demand from the Kudos screen (R-KUD-24) |
 | Fees | Invented | Set by finance |
 | Emails to everybody | Redirected | Live since 16 September 2026 |
 | Budget alert | £3 a month | £5 a month |
 
-Still open before the next cycle: rotate both Neon passwords, and confirm
-Marta Jamie's payee ("Bridge Building").
+Still open before the next cycle: rotate both Neon passwords, and the three
+reissues waiting on accounts (`BACKLOG.md` §1). Marta Jamie's payee is settled —
+she moved to a UK account in her own name on 28 September.

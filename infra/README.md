@@ -57,6 +57,7 @@ In Windows PowerShell 5.1 quote the argument, or it gets split on the `=`:
 | `portal-invoices-{env}` Cloud Run service | The portal. Scale to zero, CPU only while handling a request, IAP in front |
 | `portal-tasks-{env}` Cloud Run service | Scheduled jobs only, and nothing else answers there |
 | Five scheduler jobs | Outbox every 15 minutes, kudos sync daily at 07:00, reminders on the 22nd and 27th, summary on the 29th, nightly backup. Each with its own OIDC token. All times London |
+| The kudos sync's second caller | Accounts can run the same job on demand from the Kudos screen (R-KUD-24). The two take a lock, so whichever arrives second does nothing and says so |
 | `reminders_live` | The go-live switch. While it is false the window-open, reminder and summary emails are paused, and nothing else is affected. Production launched with it false and it was switched on the same day |
 | `portal-invoices-{env}` bucket | PDFs, receipts, backups. Private, versioned, EU |
 | Two service accounts | The app's identity, and a separate scheduler identity that cannot read the bank columns |
