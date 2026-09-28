@@ -309,6 +309,55 @@ def lock_counter(session: Session, person_id: uuid.UUID) -> Counter | None:
     )
 
 
+def live_invoice_numbers(session: Session, person_id: uuid.UUID) -> set[int]:
+    """The numbers this person's live invoices hold (R-NUM-05).
+
+    Void invoices are left out on purpose: a cancelled invoice gives its number
+    back, so the reissue carries the same one and the person's own sequence has
+    no gap in it.
+    """
+    rows = session.scalars(
+        select(Invoice.number).where(
+            Invoice.person_id == person_id,
+            Invoice.status != InvoiceStatus.VOID,
+        )
+    )
+    return set(rows)
+
+
+def freed_invoice_numbers(session: Session, person_id: uuid.UUID) -> set[int]:
+    """Numbers held only by voided invoices, and so available again."""
+    voided = set(
+        session.scalars(
+            select(Invoice.number).where(
+                Invoice.person_id == person_id,
+                Invoice.status == InvoiceStatus.VOID,
+            )
+        )
+    )
+    return voided - live_invoice_numbers(session, person_id)
+
+
+def void_invoice_holding(
+    session: Session, person_id: uuid.UUID, number: int, period: str
+) -> Invoice | None:
+    """The voided invoice this number is being reused from, if there is one.
+
+    Used to link a reissue to what it replaces, and to say so in the subject of
+    the email accounts receive.
+    """
+    return session.scalars(
+        select(Invoice)
+        .where(
+            Invoice.person_id == person_id,
+            Invoice.number == number,
+            Invoice.period == period,
+            Invoice.status == InvoiceStatus.VOID,
+        )
+        .order_by(Invoice.voided_at.desc())
+    ).first()
+
+
 def record_audit(
     session: Session,
     *,

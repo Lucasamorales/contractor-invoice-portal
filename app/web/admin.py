@@ -503,6 +503,7 @@ async def void_invoice(
         actor_email=identity.email,
         now=_now(),
         reason=reason.strip(),
+        settings=settings,
     )
     session.commit()
     return RedirectResponse(
@@ -623,7 +624,7 @@ async def download_invoice(
         media_type="application/pdf",
         headers={
             "Content-Disposition": member_disposition(
-                invoice.pdf_uri.rsplit("/", 1)[-1]
+                invoicing.download_name(session, invoice)
             ),
             # It carries somebody's full account number (CLAUDE.md 2.8).
             "Cache-Control": "private, no-store",

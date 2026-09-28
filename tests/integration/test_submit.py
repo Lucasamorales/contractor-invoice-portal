@@ -215,7 +215,10 @@ def test_the_pdf_is_stored_and_recorded(
         assert store.exists(invoice.pdf_uri)
         # R-PDF-15 / R-STO-02.
         assert "invoices/2026-09/" in invoice.pdf_uri
-        assert "2026-09 — Jane Smith — 8.pdf" in invoice.pdf_uri
+        # The object name carries the invoice id as well, so a reissue taking
+    # the number back (R-NUM-05) cannot overwrite what was sent.
+    assert "2026-09 — Jane Smith — 8 — " in invoice.pdf_uri
+    assert invoice.pdf_uri.endswith(f"{invoice.id}.pdf")
 
 
 def test_the_email_is_queued_never_sent(
@@ -361,9 +364,16 @@ def test_two_people_may_hold_the_same_number(
 # --------------------------------------------------------------------------
 
 
-def test_void_then_reissue_takes_the_next_number_and_leaves_a_gap(
+def test_void_then_reissue_takes_the_same_number_back(
     factory, settings, cipher, store, fake_pdf
 ) -> None:
+    """R-NUM-05. The reissue *is* invoice 8, not 9.
+
+    The first cycle left three people with a permanent hole in their own
+    sequence, each of which somebody would have had to explain to an
+    accountant. A cancelled invoice keeps its number on the record and gives
+    it back for use.
+    """
     person_id = ready_person(factory, cipher, next_number=8)
     first = do_submit(factory, settings, cipher, store, fake_pdf, person_id)
 
@@ -375,6 +385,7 @@ def test_void_then_reissue_takes_the_next_number_and_leaves_a_gap(
             actor_email="robin@example.com",
             now=IN_WINDOW,
             reason="wrong expense attached",
+            settings=settings,
         )
 
     reissued = do_submit(factory, settings, cipher, store, fake_pdf, person_id)
@@ -385,8 +396,9 @@ def test_void_then_reissue_takes_the_next_number_and_leaves_a_gap(
         assert old.status is InvoiceStatus.VOID
         assert old.voided_at is not None
         assert old.number == 8
-        # R-NUM-05: voiding does not release the number.
-        assert new.number == 9
+        # R-NUM-05: the number came back with the void.
+        assert new.number == 8
+        assert old.replaced_by_id == new.id
         assert new.status is InvoiceStatus.SUBMITTED
 
 
@@ -404,6 +416,7 @@ def test_voiding_writes_an_audit_row(
             actor_email="robin@example.com",
             now=IN_WINDOW,
             reason="duplicate",
+            settings=settings,
         )
     with factory() as session:
         entry = session.scalars(select(AuditLog)).one()
@@ -580,6 +593,7 @@ def test_voiding_gives_the_kudos_back_so_a_reissue_bills_them(
             actor_email="robin@example.com",
             now=IN_WINDOW,
             reason="sent before this month's kudos were in",
+            settings=settings,
         )
 
     with factory() as session:

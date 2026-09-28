@@ -45,11 +45,11 @@ from app.db.models import (
     PrintSnapshot,
 )
 from app.db.models import LineKind as DbLineKind
-from app.domain.formatting import month_heading
+from app.domain.formatting import invoice_filename, month_heading
 from app.domain.invoice import InvoiceLine as DomainLine
 from app.domain.invoice import InvoiceTotals, LineKind, compose, detail_note
 from app.domain.kudos import Quarter, is_quarter_end
-from app.domain.numbering import advance
+from app.domain.numbering import advance, next_number, released_floor
 from app.domain.period import Period, is_late
 from app.services import receipts
 from app.services.crypto import Cipher, field_aad
@@ -61,6 +61,10 @@ logger = logging.getLogger(__name__)
 ENCRYPTED_FIELDS = ("account_number", "sort_code", "iban", "swift_bic")
 
 OUTBOX_INVOICE_SUBMITTED = "invoice_submitted"
+# R-SUB-11. Sent when an invoice is cancelled, because the number it held
+# comes back and the reissue carries it: without this the two documents in
+# an inbox differ only by the date inside them.
+OUTBOX_INVOICE_VOIDED = "invoice_voided"
 
 
 class SubmissionBlocked(Exception):
@@ -339,7 +343,12 @@ def allocate_draft(
         session.add(counter)
         session.flush()
 
-    number = counter.next_number
+    # R-NUM-05: the lowest number no live invoice of theirs holds. A voided
+    # invoice gives its number back, so a reissue carries the same one; the
+    # floor stops it reaching below the sequence they arrived with.
+    number = next_number(
+        counter.next_number, repo.live_invoice_numbers(session, prepared.person.id)
+    )
 
     invoice = Invoice(
         person_id=prepared.person.id,
@@ -402,8 +411,32 @@ def allocate_draft(
     for award in prepared.awards:
         award.claimed_by_invoice_id = invoice.id
 
+    # What this invoice replaces, if it took a cancelled invoice's number back
+    # (R-NUM-05). Recorded on the void row so the history reads in one
+    # direction: 34, cancelled, replaced by this.
+    replaced = repo.void_invoice_holding(
+        session, prepared.person.id, number, prepared.period.key
+    )
+    if replaced is not None:
+        replaced.replaced_by_id = invoice.id
+
     counter.next_number = advance(number)
     return invoice
+
+
+def download_name(session: Session, invoice: Invoice) -> str:
+    """What the PDF is called when somebody saves it (R-PDF-15).
+
+    Built from the invoice rather than taken from the object name, which now
+    carries the invoice id to keep a reissue from overwriting the document it
+    replaces (R-NUM-05). Nobody wants a uuid in their downloads folder.
+
+    The legal name comes from the print snapshot, so a file saved today is
+    named after whoever the invoice was actually issued as.
+    """
+    snapshot = session.get(PrintSnapshot, invoice.id)
+    legal_name = str(snapshot.letterhead.get("legal_name") or "") if snapshot else ""
+    return invoice_filename(Period.parse(invoice.period), legal_name, invoice.number)
 
 
 def promote_receipts(session: Session, invoice: Invoice, store: ObjectStore) -> int:
@@ -499,9 +532,15 @@ def render_and_store(
     )
     pdf = render(context)
 
+    # The invoice id is in the name because the number no longer is unique:
+    # a cancelled invoice gives its number back (R-NUM-05), so the reissue
+    # would otherwise write over the document that was actually sent — and the
+    # void row still points here, which would make it answer with the wrong
+    # one. The name a person sees when they download it is built separately.
     name = (
         f"invoices/{period.key}/"
-        f"{period.key} — {letterhead.legal_name} — {invoice.number}.pdf"
+        f"{period.key} — {letterhead.legal_name} — {invoice.number}"
+        f" — {invoice.id}.pdf"
     )
     return store.put(name, pdf, content_type="application/pdf")
 
@@ -552,16 +591,30 @@ def finalise(
     person = session.get(Person, invoice.person_id)
     period = Period.parse(invoice.period)
     legal_name = (person.legal_name or person.display_name) if person else ""
+    # Whether this number has been out before on a cancelled invoice. Read
+    # from the void row it replaced rather than recomputed, so the subject and
+    # the history cannot disagree.
+    is_resend = (
+        repo.void_invoice_holding(
+            session, invoice.person_id, invoice.number, invoice.period
+        )
+        is not None
+    )
 
     session.add(
         repo.queue_email(
             kind=OUTBOX_INVOICE_SUBMITTED,
             payload={
                 "invoice_id": str(invoice.id),
-                # R-SUB-07: no fee figure in the subject.
+                # R-SUB-07: no fee figure in the subject. R-NUM-05: say in the
+                # subject when this number has been used before, because the
+                # cancelled one is in the same inbox with the same number on
+                # it and nothing else tells them apart at a glance.
                 "subject": (
-                    f"Invoice {invoice.number} — {legal_name} — {period.label}"
+                    f"Invoice {invoice.number}{' (resent)' if is_resend else ''} "
+                    f"— {legal_name} — {period.label}"
                 ),
+                "is_resend": is_resend,
                 "to_finance": settings.finance_inbox,
                 # R-SUB-08: a copy goes to the person.
                 "to_person": (person.contact_email or person.email) if person else "",
@@ -731,18 +784,34 @@ def void(
     actor_email: str,
     now: datetime,
     reason: str,
+    settings: Settings,
 ) -> None:
-    """Void an invoice (R-SUB-10, CLAUDE.md §2.3).
+    """Void an invoice (R-SUB-10, R-NUM-05, CLAUDE.md §2.3).
 
     Corrections are void and reissue. A submitted invoice's figures are never
-    updated, and voiding does not release the number (R-NUM-05) — the reissue
-    takes the next one and the gap stays.
+    updated — this row keeps what it said forever — but **the number goes
+    back**: the reissue carries the same one, so the person's own sequence has
+    no hole in it and nobody has to explain a missing invoice to an accountant.
     """
     if invoice.status is InvoiceStatus.VOID:
         return
     before = {"status": invoice.status.value, "number": invoice.number}
     invoice.status = InvoiceStatus.VOID
     invoice.voided_at = now
+    # Before the counter is read: the freed set has to see this invoice as
+    # void, or the number being released now would be missing from it.
+    session.flush()
+
+    # R-NUM-05. Down to this number, and further if an earlier void left one
+    # free below it. Locked because a submit in another transaction reads the
+    # same row to pick its number.
+    counter = repo.lock_counter(session, invoice.person_id)
+    if counter is not None:
+        counter.next_number = released_floor(
+            counter.next_number,
+            invoice.number,
+            repo.freed_invoice_numbers(session, invoice.person_id),
+        )
 
     # A void invoice bills nothing, so what it claimed goes back on the pile
     # (R-KUD-10): the reissue picks the kudos and any prize up again. Without
@@ -762,7 +831,34 @@ def void(
             "reason": reason,
             "kudos_released": kudos,
             "awards_released": awards,
+            "number_released": invoice.number,
         },
+    )
+
+    # Nobody was told before, because the gap in the numbering was the signal
+    # that something had been replaced. Now the reissue carries the same
+    # number, so the only thing separating the two documents in an inbox is
+    # this message (R-SUB-11).
+    person = session.get(Person, invoice.person_id)
+    session.add(
+        repo.queue_email(
+            kind=OUTBOX_INVOICE_VOIDED,
+            payload={
+                "invoice_id": str(invoice.id),
+                # No figure, in the subject or the body: R-SEC-05 stands, and
+                # this one goes to the person and the finance inbox only.
+                "subject": (
+                    f"Cancelled: invoice {invoice.number} — "
+                    f"{Period.parse(invoice.period).label}"
+                ),
+                "number": invoice.number,
+                "period_label": Period.parse(invoice.period).label,
+                "reason": reason,
+                "person_name": person.display_name if person else "",
+                "to_person": person.email if person else "",
+                "to_finance": settings.finance_inbox,
+            },
+        )
     )
 
 

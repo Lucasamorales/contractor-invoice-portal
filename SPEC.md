@@ -199,11 +199,26 @@ Columns: `NAME, TEAM, EMAIL, REMUNERATION, NOTES, BANK ACCOUNTS, INVOICE N°`.
   `SELECT next_number FROM counters WHERE person_id = :id FOR UPDATE`, insert the
   invoice with that number, increment the counter, commit. Nothing slow (PDF
   rendering, GCS, email) happens inside this transaction.
-- **R-NUM-03** `UNIQUE (person_id, number)` on `invoices` is the backstop. If it
-  ever fires, that is a bug and must surface as a 500, not be swallowed.
+- **R-NUM-03** `UNIQUE (person_id, number)` over **live** invoices is the
+  backstop — a partial unique index, since a voided invoice keeps its number on
+  the record while giving it back for use (R-NUM-05). If it ever fires, that is
+  a bug and must surface as a 500, not be swallowed.
 - **R-NUM-04** Printed **plain, with no zero padding**: `8`, `34`, `213`.
-- **R-NUM-05** A voided invoice does **not** release its number. Reissues take
-  the next one. Gaps are acceptable; duplicates are not.
+- **R-NUM-05** A voided invoice **releases its number**: the next invoice is
+  the lowest number no live invoice of theirs holds, never below the number
+  their sequence started at (R-SEED-09). So a cancelled invoice 10 is reissued
+  as invoice 10, and a person's own books have no hole in them.
+
+  *This reverses the original rule, on 28 September 2026, after the first
+  cycle left three people with a permanent gap — 34, 32 and 47 — each of which
+  somebody would have had to explain to an accountant. The numbering belongs to
+  the contractor and continues the sequence they kept before this system
+  existed (R-NUM-01); a gap reads as a missing invoice in their records.*
+
+  What stays true: a voided invoice is never edited and is never deleted, two
+  **live** invoices can never share a number (R-NUM-03), and the release is
+  never a wind-back past where the sequence began. If a later invoice already
+  holds the numbers above a released one, they are skipped rather than reused.
 - **R-NUM-06** Submitting is idempotent on `idempotency_key` (R-SUB-02): a repeat
   returns the same invoice and never allocates a second number.
 
@@ -404,6 +419,12 @@ below are permitted.
   retry reuses the same draft.
 - **R-SUB-10** Corrections: void + reissue with `replaced_by_id`. Never edit a
   submitted invoice's figures.
+- **R-SUB-11** Voiding emails the person and the finance inbox: which invoice,
+  which month, why, and that the number will come back on the replacement. It
+  carries **no figure** — it is not the invoice email and does not inherit that
+  email's exception to CLAUDE.md §2.8. The reissue's own email says `(resent)`
+  in its subject, because the cancelled one is in the same inbox with the same
+  number on it.
 
 ---
 

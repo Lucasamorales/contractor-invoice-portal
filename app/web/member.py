@@ -46,7 +46,7 @@ from app.domain.formatting import name_from_email
 from app.domain.iban import mask
 from app.domain.money import MoneyError, parse_gbp_to_pence
 from app.domain.period import Period, can_submit, closed_message
-from app.services import bank_changes, flags, receipts
+from app.services import bank_changes, flags, invoicing, receipts
 from app.services.crypto import Cipher
 from app.services.invoicing import (
     ExpenseInput,
@@ -789,7 +789,7 @@ async def download_invoice(
         media_type="application/pdf",
         headers={
             "Content-Disposition": _content_disposition(
-                invoice.pdf_uri.rsplit("/", 1)[-1]
+                invoicing.download_name(session, invoice)
             ),
             # It carries a full account number, so it must not sit in a proxy
             # or a shared browser cache (CLAUDE.md 2.8).

@@ -392,7 +392,17 @@ class Invoice(Base):
     __table_args__ = (
         # R-NUM-03: the backstop. If this ever fires it is a bug, and it must
         # surface as a 500 rather than be swallowed.
-        UniqueConstraint("person_id", "number", name="uq_invoices_person_number"),
+        #
+        # Live invoices only. A voided invoice keeps its number on the record
+        # but gives it back for use (R-NUM-05), so the reissue of invoice 10 is
+        # invoice 10 — what is forbidden is two *live* invoices sharing one.
+        Index(
+            "uq_invoices_person_number_live",
+            "person_id",
+            "number",
+            unique=True,
+            postgresql_where=text("status <> 'void'"),
+        ),
         CheckConstraint(
             "total_pence = remuneration_pence + additional_pence",
             name="ck_invoices_total",

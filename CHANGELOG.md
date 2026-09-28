@@ -6,6 +6,32 @@ has not been released yet.
 
 ---
 
+## 28 September 2026
+
+- **A cancelled invoice gives its number back** (R-NUM-05, reversing the
+  original rule). The next invoice is now the lowest number no live invoice of
+  theirs holds, so a voided invoice 10 is reissued as invoice 10. The first
+  cycle left three people with a permanent gap — 34, 32 and 47 — and the
+  numbering belongs to the contractor, continuing the sequence they kept before
+  this system existed: a hole in it reads as a missing invoice and has to be
+  explained to an accountant every time.
+- Cancelling two in a row gives both numbers back, in order, so nobody fills
+  the second gap and keeps the first.
+- What has not changed: a voided invoice is never edited or deleted, two live
+  invoices still cannot share a number, and the sequence can never walk back
+  below where it started.
+- **Voiding now emails the person and accounts** (R-SUB-11) — which invoice,
+  which month, why, and that the replacement will carry the same number. It
+  carries no figure. The gap in the numbering used to be the signal that
+  something had been replaced; this is.
+- **The reissue's email says `(resent)` in its subject**, because the cancelled
+  invoice is sitting in the same inbox with the same number on it.
+- Stored PDFs now carry the invoice id in their object name, so a reissue
+  cannot overwrite the document it replaces. What a person downloads is
+  unchanged.
+- Migration `0005`: the one-number-per-person constraint now applies to live
+  invoices only.
+
 ## 25 September 2026
 
 - **Somebody can be moved between payout regions** (`app.scripts.set_payout_region`).

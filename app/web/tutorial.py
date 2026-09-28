@@ -216,8 +216,9 @@ MEMBER_SENT = (
     Step(
         "member.sent.fix",
         "If something is wrong",
-        "A sent invoice cannot be edited. Tell accounts: they void it and you "
-        "send a new one, with a new number. Every invoice stays in My details.",
+        "A sent invoice cannot be edited. Tell accounts: they cancel it and "
+        "you send it again, keeping the same invoice number. You will get an "
+        "email when it is cancelled. Every invoice stays in My details.",
     ),
 )
 
@@ -290,8 +291,10 @@ ADMIN_PERSON = (
         "admin.person.invoices",
         "Fixing a wrong invoice",
         "An invoice is immutable once issued, so a correction is a void and a "
-        "reissue. The reason you type is the confirmation, and it is required. "
-        "The number is never reused: the gap explains itself later.",
+        "reissue. The reason you type is the confirmation, it is required, and "
+        "it goes in the email both of you receive. The number goes back: the "
+        "replacement carries the same one, so their books have no gap in "
+        "them.",
     ),
     Step(
         "admin.person.fee",

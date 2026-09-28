@@ -632,7 +632,10 @@ def _invoice_attachments(
     and an email that never arrives is not. What is missing goes in the body so
     it is visible rather than merely logged.
     """
+    # Imported here, like the models below: the attachment name is the one
+    # R-PDF-15 specifies, and invoicing owns it.
     from app.db.models import Expense, Invoice
+    from app.services.invoicing import download_name
 
     attachments: list[Attachment] = []
     missing: list[str] = []
@@ -648,7 +651,7 @@ def _invoice_attachments(
         try:
             attachments.append(
                 Attachment(
-                    name=invoice.pdf_uri.rsplit("/", 1)[-1],
+                    name=download_name(session, invoice),
                     content=store.get(invoice.pdf_uri),
                     content_type="application/pdf",
                 )
@@ -851,6 +854,41 @@ def _flag_answered(
     )
 
 
+def _invoice_voided(
+    session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
+) -> Message:
+    """R-SUB-11. An invoice was cancelled, to the person and to accounts.
+
+    It exists because the number comes back (R-NUM-05): the replacement
+    carries the same one, so without this the two documents in the finance
+    inbox differ only by the date printed inside them.
+
+    No figure anywhere in it. This is not the invoice email and it does not
+    inherit that email's exception to CLAUDE.md §2.8.
+    """
+    del session, store
+    payload = row.payload
+    number = payload.get("number", "")
+    return compose(
+        to=_recipients(payload.get("to_person"), payload.get("to_finance")),
+        subject=str(payload.get("subject", f"Cancelled: invoice {number}")),
+        parts=[
+            para(
+                f"Invoice {number} for {payload.get('period_label')} has been "
+                "cancelled. Nothing is owed on it."
+            ),
+            rows([("Why", str(payload.get("reason", "")))]),
+            para(
+                f"When it is sent again it will carry the same number, {number}, "
+                "and the subject will say it is a resend. Treat this one as "
+                "replaced."
+            ),
+            action("Make your invoice"),
+        ],
+        settings=settings,
+    )
+
+
 def _window_open(
     session: Session, row: Outbox, settings: Settings, store: ObjectStore | None
 ) -> Message:
@@ -937,6 +975,7 @@ def _summary(
 
 _BUILDERS = {
     "invoice_submitted": _invoice_submitted,
+    "invoice_voided": _invoice_voided,
     "bank_changed": _bank_changed,
     "bank_proposed": _bank_proposed,
     "bank_flagged": _bank_flagged,

@@ -19,6 +19,8 @@ from app.domain.numbering import (
     NumberingError,
     advance,
     format_number,
+    next_number,
+    released_floor,
     seed_next_number,
 )
 from app.domain.period import Period
@@ -153,3 +155,42 @@ def test_a_read_time_refuses_a_time_with_no_zone() -> None:
         format_read_time(
             datetime(2026, 9, 25, 6, 5), now=datetime(2026, 9, 25, 15, 0, tzinfo=UTC)
         )
+
+
+# R-NUM-05: a cancelled invoice gives its number back
+# --------------------------------------------------------------------------
+
+
+def test_the_next_number_is_the_lowest_one_nothing_live_holds() -> None:
+    """Void 10 and the replacement is 10. That is the whole rule."""
+    assert next_number(10, taken=set()) == 10
+    assert next_number(10, taken={10}) == 11
+    assert next_number(34, taken={35}) == 34
+
+
+def test_it_steps_over_every_number_a_live_invoice_holds() -> None:
+    """Filling an old gap must not then collide with what came after it."""
+    assert next_number(34, taken={34, 35, 36}) == 37
+
+
+def test_the_floor_is_where_their_sequence_started() -> None:
+    """Numbers below it were issued out of a Word template years ago and are
+    not in this database, so nothing may reach back into them."""
+    assert next_number(63, taken={1, 2, 62}) == 63
+    with pytest.raises(NumberingError):
+        next_number(0, taken=set())
+
+
+def test_voiding_lowers_the_floor_to_the_number_it_released() -> None:
+    assert released_floor(11, voided=10, freed={10}) == 10
+
+
+def test_voiding_reaches_past_a_gap_left_earlier() -> None:
+    """Eze: 34 cancelled, 35 sent, then 35 cancelled too. The next invoice is
+    34, not 35, or he fills the second hole and keeps the first."""
+    assert released_floor(36, voided=35, freed={34, 35}) == 34
+
+
+def test_voiding_never_raises_the_floor() -> None:
+    """Cancelling something old cannot push the sequence forward."""
+    assert released_floor(20, voided=30, freed={30}) == 20
