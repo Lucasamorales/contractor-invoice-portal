@@ -20,12 +20,11 @@ transaction.
 Dry run by default. It prints what it would change and writes nothing until
 ``--commit``.
 
-Two refusals, both of them R-NUM-05. A counter only ever moves **forward**, so a
-correction that would wind it back is refused; and a number this person has
-already used — issued, drafted or voided — can never be handed out again, so a
-correction that would collide with one is refused too. Neither is overridable
-by a flag: winding back is how two invoices end up sharing a number, and that
-is the one thing the numbering rules exist to prevent.
+Two refusals, both of them R-NUM-05. A number a **live** invoice holds can
+never be handed out twice. And the counter only moves backwards onto a number a
+cancelled invoice gave back — anything lower reaches into the invoices somebody
+issued out of a Word template before this system existed, which are not in this
+database and cannot be checked against. Neither is overridable by a flag.
 """
 
 from __future__ import annotations
@@ -34,11 +33,10 @@ import argparse
 import sys
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import repo
-from app.db.models import Counter, Invoice, Person
+from app.db.models import Counter, Person
 from app.db.session import get_sessionmaker
 from app.domain.numbering import seed_next_number
 
@@ -57,7 +55,8 @@ class Correction:
     person: Person
     before: int | None
     after: int
-    highest_used: int | None
+    live: frozenset[int]
+    freed: frozenset[int]
 
     @property
     def created(self) -> bool:
@@ -85,25 +84,31 @@ def correct(
 
     after = seed_next_number(last_issued)
 
-    # Every number this person has ever been given, whatever became of it. A
-    # voided invoice keeps its number (R-NUM-05) and a draft is holding one,
-    # so both count.
-    highest_used = session.scalar(
-        select(func.max(Invoice.number)).where(Invoice.person_id == person.id)
-    )
-    if highest_used is not None and after <= highest_used:
+    # A number a live invoice holds is spent for good. One held only by a
+    # cancelled invoice is not: R-NUM-05 gives it back, which is the whole
+    # reason this tool can now point a counter downwards.
+    live = repo.live_invoice_numbers(session, person.id)
+    freed = repo.freed_invoice_numbers(session, person.id)
+    if after in live:
         raise CorrectionRefused(
-            f"{person.email} has already used invoice number {highest_used}; "
-            f"setting the next one to {after} would reissue a number that is "
-            f"already spent (R-NUM-05)"
+            f"{person.email} has a live invoice numbered {after}; two live "
+            f"invoices can never share a number (R-NUM-03)"
         )
 
     counter = repo.lock_counter(session, person.id)
     before = counter.next_number if counter is not None else None
-    if before is not None and after <= before:
+    if before is not None and after == before:
+        raise CorrectionRefused(f"{person.email}'s next number is already {after}")
+    if before is not None and after < before and after not in freed:
+        # Forward is always safe. Backward is only ever right for a number a
+        # void released — anything lower reaches into the invoices they issued
+        # out of a Word template before this system existed, which are not in
+        # this database and cannot be checked against.
+        released = ", ".join(str(n) for n in sorted(freed)) or "none"
         raise CorrectionRefused(
-            f"{person.email}'s next number is already {before}; a counter only "
-            f"ever moves forward (R-NUM-05), so it cannot be set to {after}"
+            f"{person.email}'s next number is {before}, and {after} was never "
+            f"released by a cancelled invoice (released: {released}). A counter "
+            f"only moves back onto a number a void gave back (R-NUM-05)"
         )
 
     if counter is None:
@@ -121,7 +126,11 @@ def correct(
         after={"next_number": after, "last_issued": last_issued, "reason": reason},
     )
     return Correction(
-        person=person, before=before, after=after, highest_used=highest_used
+        person=person,
+        before=before,
+        after=after,
+        live=frozenset(live),
+        freed=frozenset(freed),
     )
 
 
@@ -129,12 +138,12 @@ def describe(correction: Correction) -> str:
     """One block a human can check before it is written."""
     person = correction.person
     was = "none" if correction.before is None else str(correction.before)
-    used = "none" if correction.highest_used is None else str(correction.highest_used)
+    used = ", ".join(str(n) for n in sorted(correction.live)) or "none"
     return "\n".join(
         (
             f"  person        {person.display_name} <{person.email}>",
             f"  next number   {was} -> {correction.after}",
-            f"  highest used  {used}",
+            f"  live numbers  {used}",
         )
     )
 

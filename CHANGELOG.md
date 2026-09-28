@@ -8,6 +8,13 @@ has not been released yet.
 
 ## 28 September 2026
 
+- **A counter can be pointed back at a number a cancelled invoice released.**
+  `set_counter` refused to move backwards at all, which was right under the old
+  rule and wrong under R-NUM-05: somebody voided before the change has a
+  counter that was already pushed past the number they should get back, and
+  nothing live to cancel. It now moves back onto a released number only, never
+  onto one a live invoice holds and never into the invoices issued before this
+  system existed.
 - **A migration aimed at production can no longer land on staging.** `.env`
   holds staging's credentials for local development, including
   `PORTAL_MIGRATION_URL`, and a migration prefers that setting — so exporting a
