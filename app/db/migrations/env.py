@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.config import get_settings
+from app.db.migration_target import describe_target, migration_url
 from app.db.models import Base
 from app.db.session import resolve_trust_store
 
@@ -31,15 +31,6 @@ target_metadata = Base.metadata
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "db", "postgres", ""})
 
 CONFIRM_VAR = "PORTAL_MIGRATE_HOST"
-
-
-def database_url() -> str:
-    """The direct endpoint when one is configured, otherwise the pooled one."""
-    settings = get_settings()
-    return (
-        settings.migration_url.get_secret_value()
-        or settings.database_url.get_secret_value()
-    )
 
 
 def guard_remote(url: str) -> None:
@@ -88,7 +79,7 @@ def run_migrations_offline() -> None:
     needing a database at all. No guard: nothing is written anywhere.
     """
     context.configure(
-        url=database_url() or "postgresql+psycopg://offline/offline",
+        url=migration_url() or "postgresql+psycopg://offline/offline",
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -99,7 +90,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    url = database_url()
+    url = migration_url()
     guard_remote(url)
     # The same trust-store handling the application uses. Production's URL asks
     # for sslrootcert=system, which libpq cannot open on Windows, so a
@@ -115,6 +106,13 @@ def run_migrations_online() -> None:
         connect_args=connect_args,
     )
     with connectable.connect() as connection:
+        # Said out loud before anything is changed. The host alone cannot tell
+        # two environments apart — they can share an endpoint, with the branch
+        # chosen inside the connection string — so this names the database, its
+        # revision and how many people are in it.
+        logging.getLogger("alembic.runtime.migration").warning(
+            "migrating %s", describe_target(connection)
+        )
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

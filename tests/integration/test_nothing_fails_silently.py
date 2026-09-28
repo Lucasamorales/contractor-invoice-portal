@@ -286,3 +286,42 @@ def test_a_clean_period_says_nothing_is_broken(factory, settings, cipher) -> Non
     with factory() as session:
         assert admin.needs_attention(session, now=IN_WINDOW).stuck_drafts == []
         assert admin.needs_attention(session, now=IN_WINDOW).failed_mail == []
+
+
+def test_a_migration_names_the_database_it_is_about_to_change(engine) -> None:
+    """A hostname does not tell two environments apart.
+
+    Staging and production can sit behind one endpoint with the branch chosen
+    inside the connection string, which is how a migration aimed at production
+    ran against staging and still announced a clean upgrade. What the guard
+    prints now is the database itself.
+    """
+    from app.db.migration_target import describe_target
+
+    with engine.connect() as connection:
+        described = describe_target(connection)
+
+    assert "database " in described
+    assert "holding" in described  # the people table exists here
+    assert "at " in described or "never migrated" in described
+
+
+def test_it_describes_an_empty_database_without_falling_over(engine) -> None:
+    """Before the first migration there is no alembic_version and no people.
+
+    Checking for each table beats catching the error: a failed statement
+    poisons the transaction the migration is about to run in.
+    """
+    from sqlalchemy import text
+
+    from app.db.migration_target import describe_target
+
+    with engine.connect() as connection:
+        connection.execute(text("create schema if not exists empty_probe"))
+        connection.execute(text("set search_path to empty_probe"))
+        described = describe_target(connection)
+        connection.execute(text("set search_path to public"))
+        connection.rollback()
+
+    assert "never migrated" in described
+    assert "holding" not in described

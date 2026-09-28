@@ -8,6 +8,18 @@ has not been released yet.
 
 ## 28 September 2026
 
+- **A migration aimed at production can no longer land on staging.** `.env`
+  holds staging's credentials for local development, including
+  `PORTAL_MIGRATION_URL`, and a migration prefers that setting — so exporting a
+  production URL was not enough and the file quietly won. When the environment
+  says production the file is not read at all; those credentials are
+  break-glass and live in Secret Manager (R-SEC-09).
+- **A migration now names the database it is about to change** — its own name,
+  its current revision and how many people are in it — before changing
+  anything. The host could not tell the two apart: staging and production sit
+  behind one endpoint, with the branch chosen inside the connection string.
+
+
 - **A cancelled invoice gives its number back** (R-NUM-05, reversing the
   original rule). The next invoice is now the lowest number no live invoice of
   theirs holds, so a voided invoice 10 is reissued as invoice 10. The first
