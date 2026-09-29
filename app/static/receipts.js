@@ -18,17 +18,60 @@
     el.classList.toggle("missing", Boolean(isError));
   }
 
+  // How many uploads have not answered yet.
+  //
+  // The file is sent the moment it is chosen and the hidden field holding its
+  // location is cleared until the reply arrives, so pressing on in between
+  // posts an expense with no receipt. The file is safely stored and the
+  // invoice says it has none — silently, because an expense with no receipt
+  // is a perfectly ordinary thing. One person lost a receipt that way with
+  // ten seconds between choosing the file and sending the invoice.
+  var inFlight = 0;
+
+  // Only the form the expenses are in. The header carries its own one-button
+  // form for the day/night toggle, and disabling that — or rewriting its
+  // glyph — would be a second bug wearing the first one's coat.
+  function wizardButtons() {
+    var items = document.getElementById("items");
+    var form = items && items.closest("form");
+    return form ? form.querySelectorAll('button[type="submit"]') : [];
+  }
+
+  function holdTheDoor() {
+    var waiting = inFlight > 0;
+    wizardButtons().forEach(function (button) {
+      button.disabled = waiting;
+      // Said on the button itself: a disabled control with no explanation is
+      // worse than the bug it prevents.
+      if (waiting) {
+        if (!button.dataset.label) button.dataset.label = button.innerHTML;
+        button.textContent = "Waiting for the receipt…";
+      } else if (button.dataset.label) {
+        button.innerHTML = button.dataset.label;
+        delete button.dataset.label;
+      }
+    });
+  }
+
+  function settled() {
+    inFlight = Math.max(0, inFlight - 1);
+    holdTheDoor();
+  }
+
   function upload(row, input) {
     var file = input.files && input.files[0];
     var hidden = row.querySelector('input[name="receipt_uri"]');
     if (!file) {
       if (hidden) hidden.value = "";
       setStatus(row, "");
+      holdTheDoor();
       return;
     }
 
     setStatus(row, "Checking…", false);
     if (hidden) hidden.value = "";
+    inFlight += 1;
+    holdTheDoor();
 
     var body = new FormData();
     body.append("file", file);
@@ -69,7 +112,11 @@
       .catch(function () {
         setStatus(row, "That upload did not go through. Try again.", true);
         input.value = "";
-      });
+      })
+      // Whatever happened — stored, refused or the network gone — the wait is
+      // over. A finally, so a throw anywhere above cannot leave the button
+      // disabled for ever.
+      .finally(settled);
   }
 
   // Bound once, however many times this file runs. It sits in the page

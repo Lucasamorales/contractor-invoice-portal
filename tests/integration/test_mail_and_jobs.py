@@ -830,3 +830,49 @@ def test_no_message_names_a_person_who_might_leave() -> None:
     for literal in re.findall(r'"([^"\n]{12,})"', source):
         for name in ("Leo", "Robin", "Julian", "Charlie"):
             assert name not in literal, f"{name} appears in: {literal}"
+
+
+def test_an_expense_with_no_receipt_is_named_in_the_email(
+    factory, settings, cipher, tmp_path
+) -> None:
+    """Accounts could not tell "none was given" from "one was given and lost".
+
+    The existing "Could not be attached" line only covers a receipt that
+    exists and could not be fetched. A row that never had one was silent, and
+    one was lost exactly that way: the file uploads the moment it is chosen,
+    and pressing on before it answered left the expense with no link to it.
+    """
+    store = LocalObjectStore(tmp_path / "objects")
+    seed_and_submit(factory, cipher, settings, store)
+    client = Recorder()
+
+    with factory() as session, session.begin():
+        mailer.dispatch(session, client=client, settings=settings, store=store)
+
+    body = client.sent[0].text
+    assert "No receipt provided for: travel" in body
+    # Not confused with a failure: nothing was lost, so nothing is alarming.
+    assert "Could not be attached" not in body
+
+
+def test_nothing_is_said_when_every_expense_has_its_receipt(
+    factory, settings, cipher, tmp_path
+) -> None:
+    store = LocalObjectStore(tmp_path / "objects")
+    invoice_id = seed_and_submit(factory, cipher, settings, store)
+    uri = store.put("receipts/x.png", b"\x89PNG\r\n\x1a\n", content_type="image/png")
+    with factory() as session, session.begin():
+        from app.db.models import Expense
+
+        expense = session.scalars(
+            select(Expense).where(Expense.invoice_id == invoice_id)
+        ).one()
+        expense.receipt_uri = uri
+
+    client = Recorder()
+    with factory() as session, session.begin():
+        mailer.dispatch(session, client=client, settings=settings, store=store)
+
+    body = client.sent[0].text
+    assert "No receipt provided" not in body
+    assert len(client.sent[0].attachments) == 2

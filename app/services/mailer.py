@@ -598,6 +598,13 @@ def _invoice_submitted(
     if store is not None:
         attachments, missing = _invoice_attachments(session, payload, store)
 
+    # An expense that never had a receipt is not a failure, and it used to be
+    # silent — so accounts could not tell "none was given" from "one was given
+    # and we lost it". Said plainly, and separately from the failures below.
+    without = _expenses_without_a_receipt(session, payload)
+    if without:
+        parts.append(para("No receipt provided for: " + ", ".join(without)))
+
     if missing:
         # Said out loud rather than left to a log nobody reads. Accounts can
         # ask for a file; they cannot ask for an email they never got.
@@ -620,6 +627,28 @@ def _invoice_submitted(
         settings=settings,
         attachments=tuple(attachments),
     )
+
+
+def _expenses_without_a_receipt(session: Session, payload: dict) -> list[str]:
+    """Expense rows that carry no receipt at all.
+
+    Distinct from the ``missing`` list, which is about files that exist and
+    could not be fetched or were too large. This one is about a row where none
+    was ever uploaded — which happens by accident: the file uploads the moment
+    it is chosen, and until this was fixed somebody could press on before the
+    upload answered and lose the link to it without being told.
+    """
+    from app.db.models import Expense
+
+    invoice_id = payload.get("invoice_id")
+    if not invoice_id:
+        return []
+    rows_without = session.scalars(
+        select(Expense).where(
+            Expense.invoice_id == invoice_id, Expense.receipt_uri.is_(None)
+        )
+    )
+    return [expense.description for expense in rows_without]
 
 
 def _invoice_attachments(

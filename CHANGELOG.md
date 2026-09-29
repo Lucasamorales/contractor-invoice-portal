@@ -6,6 +6,22 @@ has not been released yet.
 
 ---
 
+## 29 September 2026
+
+- **A receipt can no longer be lost by pressing on too quickly.** The file is
+  uploaded the moment it is chosen, and the field holding its location is
+  cleared until the reply arrives — so sending the invoice in between recorded
+  an expense with no receipt while the file sat in the bucket, unclaimed and
+  unmentioned. One September invoice lost a receipt exactly that way, with ten
+  seconds between the two. The wizard now waits: the button says "Waiting for
+  the receipt…" until every upload has answered.
+- **The invoice email names any expense with no receipt.** Before, only a
+  receipt that existed and could not be fetched was mentioned, so accounts had
+  no way to tell "none was given" from "one was given and we lost it".
+- A test that pinned the summary's clock to the 29th but let the database write
+  `created_at` from its own failed once the real date caught up. The row is
+  pinned too now.
+
 ## 28 September 2026
 
 - **A counter can be pointed back at a number a cancelled invoice released.**

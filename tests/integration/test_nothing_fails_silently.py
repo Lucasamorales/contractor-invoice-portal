@@ -266,6 +266,16 @@ def test_the_summary_email_names_what_is_broken(
             render=lambda c: (_ for _ in ()).throw(RuntimeError("boom")),
         )
 
+    # created_at comes from the database's clock, and "stuck" is measured
+    # against it — so with the summary's clock pinned to the 29th, a draft
+    # written at the real time of day stops looking stuck the moment the real
+    # date catches up. Pin the row too, or this passes until it does not.
+    with factory() as session, session.begin():
+        draft = session.scalars(
+            select(Invoice).where(Invoice.status == InvoiceStatus.DRAFT)
+        ).one()
+        draft.created_at = IN_WINDOW
+
     with factory() as session, session.begin():
         jobs.summary(
             session, settings=settings, now=datetime(2026, 9, 29, 9, tzinfo=UTC)
