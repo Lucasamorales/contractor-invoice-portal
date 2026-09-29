@@ -91,19 +91,39 @@ def test_iban_prints_in_groups_of_four() -> None:
 
 
 def test_filename_format() -> None:
-    # R-PDF-15: {period} — {legal_name} — {number}.pdf
+    """R-PDF-15: the month in words, the name on the invoice, the amount.
+
+    It is the name somebody reads in a downloads folder, where "2026-09" and
+    an invoice number answer neither question being asked.
+    """
     assert (
-        invoice_filename(Period.parse("2026-09"), "Jane Smith", 34)
-        == "2026-09 — Jane Smith — 34.pdf"
+        invoice_filename(Period.parse("2026-09"), "Jane Smith", 259450)
+        == "September 2026 — Jane Smith — £2594.50.pdf"
+    )
+
+
+def test_a_filename_carries_the_year_so_two_septembers_differ() -> None:
+    september = Period.parse("2026-09")
+    next_september = Period.parse("2027-09")
+    assert invoice_filename(september, "Jane Smith", 1000) != invoice_filename(
+        next_september, "Jane Smith", 1000
+    )
+
+
+def test_a_filename_has_no_thousands_separator() -> None:
+    """Legal in a filename everywhere, unwelcome in some of them."""
+    assert "," not in invoice_filename(Period.parse("2026-09"), "Jane", 1234567)
+    assert invoice_filename(Period.parse("2026-09"), "Jane", 1234567).endswith(
+        "£12345.67.pdf"
     )
 
 
 def test_filename_strips_path_separators() -> None:
     # Without separators the remaining dots cannot escape the GCS key prefix.
-    name = invoice_filename(Period.parse("2026-09"), "Jane/../Smith", 1)
+    name = invoice_filename(Period.parse("2026-09"), "Jane/../Smith", 100)
     assert "/" not in name
     assert "\\" not in name
-    assert name == "2026-09 — Jane .. Smith — 1.pdf"
+    assert name == "September 2026 — Jane .. Smith — £1.00.pdf"
 
 
 def test_month_heading_is_just_the_month() -> None:

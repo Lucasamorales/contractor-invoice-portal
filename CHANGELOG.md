@@ -8,6 +8,17 @@ has not been released yet.
 
 ## 29 September 2026
 
+- **The invoice PDF is named after the month and the amount** (R-PDF-15):
+  `September 2026 — Jane Smith — £2594.50.pdf`, where it used to be
+  `2026-09 — Jane Smith — 34.pdf`. It is the name somebody reads in a downloads
+  folder or an email attachment, and a period key and an invoice number answer
+  neither of the questions being asked there. The stored object is unchanged:
+  it is sorted by people who do want the period key, and its name has to stay
+  unique now that a cancelled invoice gives its number back.
+- In the download header's plain-ASCII fallback the pound sign becomes "GBP"
+  rather than being dropped, so the name does not end in a bare number.
+
+
 - **A receipt can no longer be lost by pressing on too quickly.** The file is
   uploaded the moment it is chosen, and the field holding its location is
   cleared until the reply arrives — so sending the invoice in between recorded

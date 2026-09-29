@@ -152,9 +152,9 @@ def render_pdf(context: dict[str, Any]) -> bytes:
     return HTML(string=html, base_url=".").write_pdf()
 
 
-def pdf_filename(period: Period, legal_name: str, number: int) -> str:
+def pdf_filename(period: Period, legal_name: str, total_pence: int) -> str:
     """R-PDF-15."""
-    return invoice_filename(period, legal_name, number)
+    return invoice_filename(period, legal_name, total_pence)
 
 
 def gcs_object_name(period: Period, legal_name: str, number: int) -> str:

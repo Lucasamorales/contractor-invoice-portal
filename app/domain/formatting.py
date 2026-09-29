@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from datetime import date, datetime
 
+from app.domain.money import format_gbp
 from app.domain.period import LONDON, Period
 
 
@@ -61,15 +62,26 @@ def format_iban(iban: str) -> str:
     return " ".join(compact[i : i + 4] for i in range(0, len(compact), 4))
 
 
-def invoice_filename(period: Period, legal_name: str, number: int) -> str:
-    """``2026-09 — Jane Smith — 34.pdf`` (R-PDF-15).
+def invoice_filename(period: Period, legal_name: str, total_pence: int) -> str:
+    """``September 2026 — Jane Smith — £2594.50.pdf`` (R-PDF-15).
 
-    Path separators are stripped so a name can never escape its prefix in
-    GCS; nothing else about the spec's format is changed.
+    The month in words and the amount, because this is the name somebody sees
+    in a downloads folder or an email attachment — where "2026-09" and an
+    invoice number answer neither of the questions being asked, which are which
+    month and how much.
+
+    The name is the one on the invoice itself (R-PDF-02), so the file and the
+    document agree, and so it matches the payee on the payment run.
+
+    No thousands separator: a comma in a filename is legal everywhere and
+    unwelcome in some of them.
+
+    Path separators are stripped so a name can never escape its prefix in GCS.
     """
     safe_name = re.sub(r"[\\/]+", " ", legal_name).strip()
     safe_name = re.sub(r"\s+", " ", safe_name)
-    return f"{period.key} — {safe_name} — {number}.pdf"
+    amount = format_gbp(total_pence).replace(",", "")
+    return f"{period.label} — {safe_name} — {amount}.pdf"
 
 
 def month_heading(period: Period) -> str:

@@ -719,12 +719,16 @@ async def flag_is_correct(
 def _content_disposition(filename: str) -> str:
     """An ``attachment`` header that survives R-PDF-15's filename.
 
-    That filename contains em dashes, and a bare ``filename=`` parameter is
-    Latin-1 only, so a browser would mangle it or drop the header. RFC 6266
-    wants both forms: a plain one for old clients and a percent-encoded UTF-8
-    one for everything current.
+    That filename contains em dashes and a pound sign, and a bare ``filename=``
+    parameter is Latin-1 only, so a browser would mangle it or drop the header.
+    RFC 6266 wants both forms: a plain one for old clients and a percent-encoded
+    UTF-8 one for everything current.
+
+    The pound sign becomes "GBP" rather than being dropped, or the fallback
+    name would end in a bare number with no clue what it counts.
     """
     ascii_name = unicodedata.normalize("NFKD", filename.replace("—", "-"))
+    ascii_name = ascii_name.replace("£", "GBP ")
     ascii_name = ascii_name.encode("ascii", "ignore").decode("ascii")
     # A legal name is free text and this ends up inside a quoted header value.
     ascii_name = re.sub(r"[^A-Za-z0-9 ._-]", "", ascii_name).strip() or "invoice.pdf"

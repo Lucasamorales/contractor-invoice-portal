@@ -212,5 +212,5 @@ def test_the_saved_file_is_still_named_after_the_invoice(
 
     with factory() as session:
         name = download_name(session, session.get(Invoice, invoice_id))
-    assert name.endswith(" — 10.pdf")
+    assert name.startswith("September 2026 — Jane Smith — £")
     assert str(invoice_id) not in name

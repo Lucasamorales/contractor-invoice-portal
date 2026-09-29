@@ -437,7 +437,9 @@ def test_the_owner_can_download_their_own_invoice(wizard, factory) -> None:
     # R-PDF-15's filename, in both the plain and the UTF-8 form (RFC 6266).
     disposition = response.headers["content-disposition"]
     assert disposition.startswith("attachment;")
-    assert "2026-09 - Jane Smith - 8.pdf" in disposition
+    # R-PDF-15: the month in words and the amount, not the period key and
+    # the invoice number.
+    assert "September 2026 - Jane Smith - GBP 2500.00.pdf" in disposition
     assert "filename*=UTF-8''" in disposition
     # It carries a full account number: no proxy or shared cache (CLAUDE.md 2.8).
     assert response.headers["cache-control"] == "private, no-store"

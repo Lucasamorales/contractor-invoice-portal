@@ -436,7 +436,9 @@ def download_name(session: Session, invoice: Invoice) -> str:
     """
     snapshot = session.get(PrintSnapshot, invoice.id)
     legal_name = str(snapshot.letterhead.get("legal_name") or "") if snapshot else ""
-    return invoice_filename(Period.parse(invoice.period), legal_name, invoice.number)
+    return invoice_filename(
+        Period.parse(invoice.period), legal_name, invoice.total_pence
+    )
 
 
 def promote_receipts(session: Session, invoice: Invoice, store: ObjectStore) -> int:

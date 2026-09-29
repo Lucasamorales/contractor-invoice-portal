@@ -389,7 +389,17 @@ below are permitted.
 - **R-PDF-13** The PDF must fit on one page for all 16 people. A visual
   regression test compares a rendered sample against a committed reference.
 - **R-PDF-14** No VAT line, no tax ID — everyone invoices as a contractor.
-- **R-PDF-15** Filename: `{period} — {legal_name} — {number}.pdf`.
+- **R-PDF-15** Filename: `{Month Year} — {legal_name} — {total}.pdf`, e.g.
+  `September 2026 — Jane Smith — £2594.50.pdf`. The month in words and the
+  amount, because this is what somebody reads in a downloads folder or an email
+  attachment, where a period key and an invoice number answer neither question
+  being asked. No thousands separator. The name is the one on the invoice
+  (R-PDF-02), so the file, the document and the payment run agree.
+
+  *Changed 29 September 2026; it was `{period} — {legal_name} — {number}.pdf`.*
+  The stored object keeps the old shape plus the invoice id — it is sorted and
+  searched by people who want the period key, and its name must stay unique
+  when a number is reused (R-NUM-05).
 
 ---
 
