@@ -39,8 +39,15 @@ has not been released yet.
   break-glass and live in Secret Manager (R-SEC-09).
 - **A migration now names the database it is about to change** — its own name,
   its current revision and how many people are in it — before changing
-  anything. The host could not tell the two apart: staging and production sit
-  behind one endpoint, with the branch chosen inside the connection string.
+  anything. Both databases are called `neondb`, so the name proves nothing on
+  its own; the people count does.
+
+  *Corrected 29 September: this entry first said the two environments shared a
+  Neon endpoint and were told apart by a branch inside the connection string.
+  They do not. They are separate Neon projects — production is
+  `ep-curly-king-b2om6fwn`, staging is `ep-jolly-flower-b2d09ygh` — and the
+  hostname distinguishes them perfectly well. Both guard messages named staging
+  only because `.env` was supplying the URL both times.*
 
 
 - **A cancelled invoice gives its number back** (R-NUM-05, reversing the

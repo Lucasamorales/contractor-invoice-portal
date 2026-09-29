@@ -55,9 +55,9 @@ def migration_url(settings: Settings | None = None) -> str:
 def describe_target(connection: Connection) -> str:
     """What is on the other end, in terms that tell two environments apart.
 
-    A hostname does not: staging and production can sit behind one endpoint,
-    and the branch is chosen inside the connection string. The database's own
-    name, its current revision and how many people are in it do.
+    Both databases are called ``neondb``, so a name proves nothing on its own.
+    Its revision and how many people are in it do: seventeen real people is
+    production, ten invented ones is staging.
 
     Every lookup checks the table exists first rather than catching the error.
     A failed statement poisons the transaction it is in, and this runs inside

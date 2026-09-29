@@ -122,9 +122,9 @@ The full list is `CLAUDE.md` §2. The ones that catch people out:
   own sequence has a hole in it (R-NUM-05). Two *live* invoices can still never
   share a number.
 - **A migration ignores `.env` when `PORTAL_ENVIRONMENT=production`**, and says
-  which database it is about to change before changing it. Read that line: the
-  hostname cannot tell staging from production, because they share a Neon
-  endpoint.
+  which database it is about to change before changing it. Read that line:
+  both databases are called `neondb`, so only the endpoint and the people count
+  tell them apart (`docs/setup.md` §1.5).
 
 ## Scripts
 

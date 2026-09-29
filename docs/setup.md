@@ -176,15 +176,26 @@ until you name the host:
 PORTAL_MIGRATE_HOST=<the host it printed> uv run alembic upgrade head
 ```
 
+The two are easy to tell apart, and worth learning by sight:
+
+| Environment | Neon endpoint | Database |
+|---|---|---|
+| Production | `ep-curly-king-b2om6fwn` | `neondb`, `eu-central-1` |
+| Staging | `ep-jolly-flower-b2d09ygh` | `neondb`, `eu-central-1` |
+
+Separate Neon projects, not two branches of one. The app uses the `-pooler`
+form of each; a migration uses the direct one, because DDL through PgBouncer's
+transaction pooling is not something to rely on.
+
 And before it changes anything it says what it is about to change:
 
 ```
 WARNI  migrating database neondb, at 0005_release_voided_numbers, holding 17 people
 ```
 
-Read that line. The host cannot tell the environments apart on its own —
-staging and production sit behind one Neon endpoint, with the branch chosen
-inside the connection string — but the people count can.
+Read that line. Both databases are called `neondb`, so the name proves nothing
+on its own — the people count does. Seventeen is production; ten invented
+people is staging.
 
 **Order:** deploy the code first, then migrate, so the running version never
 looks for a column the migration has just removed. A migration that only
