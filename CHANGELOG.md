@@ -6,6 +6,15 @@ has not been released yet.
 
 ---
 
+## 7 October 2026
+
+- **Seven wizard tests no longer fail in October.** They assume September (the
+  invoice window, kudos due at a quarter end, period 2026-09) and read the real
+  clock, so they passed through September and failed together once the month
+  changed. CI had not run since the 29th, so nothing had gone red yet, but the
+  next push to `staging` or `main` would have. The shared fixture now pins the
+  clock. Test-only; nothing in `app/` changes and nothing needs deploying.
+
 ## 29 September 2026
 
 - **The invoice PDF is named after the month and the amount** (R-PDF-15):
