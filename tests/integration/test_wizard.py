@@ -25,6 +25,7 @@ from app.services.crypto import Cipher, generate_key
 from app.services.storage import LocalObjectStore, StorageError
 from app.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import (
+    IN_WINDOW,
     give_bank,
     give_counter,
     give_fee,
@@ -40,8 +41,18 @@ OTHER = "sam@example.com"
 
 @pytest.fixture
 def wizard(
-    engine: Engine, factory: sessionmaker[Session], tmp_path
+    engine: Engine,
+    factory: sessionmaker[Session],
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[tuple[TestClient, Settings, Cipher]]:
+    # The wizard reads the clock through one function, and these tests are
+    # written for September: the invoice window, kudos due at a quarter end,
+    # period 2026-09. Left on the real clock they passed through September and
+    # failed in the first week of October, seven at once, because the month
+    # they assume had ended. Pinned here, they say the same thing in any month.
+    monkeypatch.setattr("app.web.member._now", lambda: IN_WINDOW)
+
     settings = Settings(
         _env_file=None,
         environment="staging",
