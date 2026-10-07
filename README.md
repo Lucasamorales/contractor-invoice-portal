@@ -55,7 +55,7 @@ uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
 Without the container every integration test is **skipped**, not failed, and
-the run still looks green. Check the count: 605 pass and 8 skip when everything
+the run still looks green. Check the count: 735 pass and 8 skip when everything
 ran.
 
 There is no local sign-in. Every request is identified by Google's IAP, so the
@@ -148,4 +148,6 @@ All run from the repository root, and all are a dry run until `--commit`.
 | `TUTORIAL.md` | A written walkthrough of the app. Behind the app since 25 September; the in-app tutorial (the ? button) is current |
 | `CHANGELOG.md` | What changed, release by release |
 | `BACKLOG.md` | What is still open, and what was decided but not built |
+| `docs/decisions/0001-modular-hub.md` | The plan to make this a hub of modules, with the architecture diagram, the phases, and what is decided versus proposed |
+| `modules/leave/SPEC.md`, `modules/leave/BACKLOG.md` | The leave module (a replacement for Leave Dates): the rules built so far, and everything still missing. Draft; nothing is wired into the app |
 | `design_handoff_invoice_portal_ui/` | The original UI design |

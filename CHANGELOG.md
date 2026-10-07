@@ -15,6 +15,25 @@ has not been released yet.
   next push to `staging` or `main` would have. The shared fixture now pins the
   clock. Test-only; nothing in `app/` changes and nothing needs deploying.
 
+## 7 October 2026, leave module (on the `leave-module` branch, not deployed)
+
+Nothing here is in the image: `app/`, the Dockerfile and the database are
+untouched.
+
+- **The leave module's rules**, as pure code and tests (R-LEAVE-01 to 19): the
+  leave year, half-day counting over working days and holidays, a request's
+  lifecycle and overlap, a balance kept as a ledger nobody edits so a
+  cancellation gives days back by an entry, the leaver formula from the brief
+  exact and unrounded, and the birthday rule. Nothing is wired in and nothing
+  about any person is stored. The spec is `modules/leave/SPEC.md`; what is
+  missing, and what each piece waits on, is `modules/leave/BACKLOG.md`.
+- **The walls between modules are tests** (`tests/architecture`): the invoice
+  app never imports a module, a module never imports the invoice app or another
+  module, and a module's domain uses only the standard library and never reads
+  the clock. `tests/domain/test_purity.py` now walks `modules/*/domain` too.
+- `docs/decisions/0001-modular-hub.md`: the plan, the architecture diagram, and
+  what is decided versus proposed.
+
 ## 29 September 2026
 
 - **The invoice PDF is named after the month and the amount** (R-PDF-15):

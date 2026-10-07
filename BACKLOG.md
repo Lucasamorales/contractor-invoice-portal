@@ -6,6 +6,19 @@ when is in `CHANGELOG.md`.
 
 ---
 
+## 0. The hub and the leave module
+
+A decision is waiting on you: **should the invoice app be moved into
+`modules/invoices/` (Phase 1) before the invoice window opens on 22 October, or
+after it closes on the 28th?** Everything else about the hub stands without it.
+The plan, the architecture diagram and what is decided versus proposed are in
+`docs/decisions/0001-modular-hub.md`.
+
+Leave (a replacement for Leave Dates) has its rules written as pure code and
+tested, and nothing else. **Its backlog is its own:** `modules/leave/BACKLOG.md`
+lists every open question, the problems in the policy document, what to build
+once unblocked, and the hub work it depends on.
+
 ## 1. Waiting on accounts, this week
 
 Three people are holding a live September invoice that carries the wrong
