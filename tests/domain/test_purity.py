@@ -10,7 +10,10 @@ from __future__ import annotations
 import ast
 import pathlib
 
-DOMAIN = pathlib.Path(__file__).resolve().parents[2] / "app" / "domain"
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+DOMAIN = ROOT / "app" / "domain"
+# Each module's domain package is held to the same rule (modules/*/domain).
+DOMAINS = [DOMAIN, *sorted((ROOT / "modules").glob("*/domain"))]
 
 FORBIDDEN_PREFIXES = (
     "app.db",
@@ -47,12 +50,15 @@ def imported_modules(source: str) -> set[str]:
 
 def test_domain_has_no_io_imports() -> None:
     offences: list[str] = []
-    for path in sorted(DOMAIN.glob("*.py")):
-        for module in imported_modules(path.read_text(encoding="utf-8")):
-            root = module.split(".")[0]
-            if module.startswith(FORBIDDEN_PREFIXES) or root in FORBIDDEN_PREFIXES:
-                offences.append(f"{path.name} imports {module}")
-    assert offences == [], "app/domain must stay pure: " + "; ".join(offences)
+    for directory in DOMAINS:
+        for path in sorted(directory.glob("*.py")):
+            for module in imported_modules(path.read_text(encoding="utf-8")):
+                root = module.split(".")[0]
+                if module.startswith(FORBIDDEN_PREFIXES) or root in FORBIDDEN_PREFIXES:
+                    offences.append(
+                        f"{directory.parent.name}/{path.name} imports {module}"
+                    )
+    assert offences == [], "a domain package must stay pure: " + "; ".join(offences)
 
 
 def test_domain_is_not_empty() -> None:
