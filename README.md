@@ -55,7 +55,7 @@ uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
 Without the container every integration test is **skipped**, not failed, and
-the run still looks green. Check the count: 735 pass and 8 skip when everything
+the run still looks green. Check the count: 739 pass and 8 skip when everything
 ran.
 
 There is no local sign-in. Every request is identified by Google's IAP, so the
@@ -128,16 +128,18 @@ The full list is `CLAUDE.md` §2. The ones that catch people out:
 
 ## Scripts
 
-All run from the repository root, and all are a dry run until `--commit`.
+All run from the repository root with `uv run python -m <name>`, and all are a dry
+run until `--commit`. They live in the invoice module, so the name starts
+`modules.invoices.scripts.`
 
 | Script | For | What it does |
 |---|---|---|
-| `app.scripts.seed` | Production, once | Imports the spreadsheet: people, their invoice numbering, bank details (unconfirmed) |
-| `app.scripts.seed_kudos_aliases` | Production, once | Maps names in the kudos sheet to people |
-| `app.scripts.seed_demo`, `seed_demo_kudos` | Staging only | Invented people and kudos. Refuse to run against production |
-| `app.scripts.reset_person` | Staging only | Removes one person so first sign-in can be tested again. Refuses production |
-| `app.scripts.set_counter` | Either, rarely | Corrects one person's next invoice number. Moves forward freely, backwards only onto a number a cancelled invoice released (R-NUM-05) |
-| `app.scripts.set_payout_region` | Either, rarely | Moves somebody between UK and international payouts, retiring their old account in the same transaction so they cannot invoice against the wrong set of fields |
+| `modules.invoices.scripts.seed` | Production, once | Imports the spreadsheet: people, their invoice numbering, bank details (unconfirmed) |
+| `modules.invoices.scripts.seed_kudos_aliases` | Production, once | Maps names in the kudos sheet to people |
+| `modules.invoices.scripts.seed_demo`, `seed_demo_kudos` | Staging only | Invented people and kudos. Refuse to run against production |
+| `modules.invoices.scripts.reset_person` | Staging only | Removes one person so first sign-in can be tested again. Refuses production |
+| `modules.invoices.scripts.set_counter` | Either, rarely | Corrects one person's next invoice number. Moves forward freely, backwards only onto a number a cancelled invoice released (R-NUM-05) |
+| `modules.invoices.scripts.set_payout_region` | Either, rarely | Moves somebody between UK and international payouts, retiring their old account in the same transaction so they cannot invoice against the wrong set of fields |
 
 ## Other documents
 

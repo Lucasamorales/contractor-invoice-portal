@@ -103,8 +103,8 @@ nothing is lost. The reasoning and the plan are in
 
 | ID | What | Status |
 |---|---|---|
-| H-01 | **Phase 1: move the invoice app into `modules/invoices/`**, with a file-by-file split of the mixed files (models, mailer, config, templates). No behaviour change, no migrations | **Needs a go.** Prove it on staging before the invoice window opens on 22 October, or wait until after it closes on the 28th |
-| H-02 | **Packaging:** `packages = ["app"]` in `pyproject.toml` and `COPY app` in the Dockerfile must list `modules/` and `core/`, or the image will not contain them. Nothing in the image imports them yet, so nothing is broken | lands with H-01 |
+| H-01 | **Phase 1: move the invoice app into `modules/invoices/`, and the shared infrastructure into `core/`.** No behaviour change, no migrations | **Built on branch `hub-phase-1`:** 48 routes identical to `staging`, the suite green, the image built and booted locally. **Still to do:** prove it on staging, and deploy to production only outside an invoice window (opens 22 October, closes the 28th) |
+| H-02 | **Packaging:** `pyproject.toml` lists `app`, `core` and `modules`, and the Dockerfile copies them | **Done** on the branch. The image contains all three and imports them |
 | H-03 | **Access per module** (`PORTAL_ACCESS_<MODULE>`), replacing the single finance list. Touches non-negotiable §2.1, so it needs your explicit sign-off, and version one must be provably identical in effect for invoices | needs sign-off |
 | H-04 | **One database schema and one database role per module**, so the leave module cannot read bank details as a fact of the database rather than a convention | needs a decision |
 | H-05 | **URLs and a landing page:** `/` as a module chooser, `/invoices` and `/leave`, with permanent redirects for every old path, because live emails link to `/`, `/me` and `/admin/...` | needs a decision |
@@ -112,3 +112,6 @@ nothing is lost. The reasoning and the plan are in
 | H-07 | **Scheduled jobs per module**, generated into Terraform | after H-06 |
 | H-08 | **Do not rename the Cloud Run services.** The name sets the IAP audience, so a rename means reconfiguring IAP and everyone signing in again | decided: not now |
 | H-09 | **Turn on Secret Manager data-access logging before any HR data is loaded.** Today nobody can say who read the production database credential | before L-21 |
+| H-10 | **Phase 1b: the tangled files.** `Person`, the audit log, the outbox and `Base` into `core` (`Person` has relationships to invoice tables and two invoicing columns, so the relationships are declared from the invoice side); the person, audit and outbox queries out of `repo.py`; the mail transport and dispatcher out of `mailer.py`, with each module registering its own email content by kind | after H-06. **Leave cannot get past its pure rules until this is done**, because it needs the person, the audit log and the outbox |
+| H-11 | **The page shell:** `base.html`, the stylesheet, scripts and fonts into `core`, with the navigation driven by the modules instead of written into the template; the template engine and the tutorial engine into `core`, with each module registering its filters, globals and tutorial copy; the static handler serving more than one root | after H-06 |
+| H-12 | **Split `Settings`.** One class holds every setting and moved to `core` whole. The invoice-specific fields (kudos, bank key, PDF) should come back out to the module | after H-06 |

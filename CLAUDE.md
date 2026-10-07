@@ -85,7 +85,7 @@ uv run pytest                  # all tests
 uv run pytest tests/domain     # fast, no DB
 uv run ruff check . && uv run ruff format .
 uv run alembic upgrade head
-uv run python -m app.scripts.seed --file data/Data_Invoices.xlsx --dry-run
+uv run python -m modules.invoices.scripts.seed --file data/Data_Invoices.xlsx --dry-run
 ```
 
 Never commit if `ruff check` or `pytest` fails.
@@ -94,44 +94,66 @@ Never commit if `ruff check` or `pytest` fails.
 
 ## 5. Repo layout
 
+The repo is a hub of modules (docs/decisions/0001-modular-hub.md). The invoice
+app is the `invoices` module; `leave` is being built beside it.
+
 ```
-app/
-  main.py              FastAPI app, middleware, router registration
-  config.py            pydantic-settings; all config from env, no literals
-  auth.py              IAP JWT verification, finance-group check
-  domain/              PURE functions. No I/O, no DB, no network.
-                       totals, rounding, numbering rules, period rules,
-                       IBAN validation, bank-field normalisation
-  db/
-    models.py          SQLAlchemy models
-    repo.py            query functions — the only place raw queries live
-    migrations/        Alembic
-  services/
-    invoicing.py       the submit transaction
-    pdf.py             WeasyPrint rendering
-    kudos_sync.py      Google Sheets read-only
-    mailer.py          Resend client + outbox dispatcher
-    crypto.py          encrypt/decrypt bank fields
-  web/
-    member.py          the wizard routes
-    admin.py           admin routes
-    tasks.py           scheduler endpoints
-  templates/
-    invoice.html       THE invoice — matches Robin's template exactly
-    ...
-  scripts/
-    seed.py            spreadsheet → database, with a report
-infra/                 Terraform
+app/                       the composition root: the one place allowed to import
+                           both core and the modules
+  main.py                  FastAPI app, middleware, router registration
+  db/migrations/           Alembic: the single migration chain, for now
+core/                      shared infrastructure; imports nothing above it
+  config.py                pydantic-settings; all config from env, no literals
+  auth.py                  IAP JWT verification, finance-group check
+  transport.py             the HTTP client the auth code uses
+  db/                      session, and the migration banner
+  services/                crypto (bank fields), storage (GCS), backup
+  web/                     csrf, ratelimit mechanism, theme
+modules/
+  invoices/                the invoice app, moved here without changing behaviour
+    domain/                PURE functions. No I/O, no DB, no network.
+                           totals, rounding, numbering rules, period rules,
+                           IBAN validation, bank-field normalisation
+    db/
+      models.py            SQLAlchemy models (Person, audit and outbox are
+                           still in here: see the Phase 1 list in the record)
+      repo.py              query functions: the only place raw queries live
+    services/
+      invoicing.py         the submit transaction
+      pdf.py               WeasyPrint rendering
+      kudos_sync.py        Google Sheets read-only
+      mailer.py            Resend client + outbox dispatcher
+    web/
+      member.py            the wizard routes
+      admin.py             admin routes
+      tasks.py             scheduler endpoints
+    templates/
+      invoice.html         THE invoice: matches Robin's template exactly
+      ...
+    static/                the stylesheet, scripts and fonts
+    scripts/
+      seed.py              spreadsheet -> database, with a report
+  leave/                   draft; pure rules and tests only. Nothing is wired in
+    domain/
+    SPEC.md  BACKLOG.md
+infra/                     Terraform
 tests/
-  domain/              pure unit tests, no DB, must run in <1s
-  integration/         against a throwaway Postgres
-data/                  the source spreadsheet (gitignored — contains bank details)
+  domain/                  pure unit tests, no DB, must run in <1s
+  leave/                   the leave rules
+  architecture/            the walls between layers, as failing tests
+  integration/             against a throwaway Postgres
+data/                      the source spreadsheet (gitignored: contains bank details)
 ```
 
-**`app/domain/` must have zero imports from `app/db`, `app/services`, or any
-I/O library.** It is where correctness lives and it must be testable without a
-database. If you find yourself wanting to query inside `domain/`, pass the data
-in instead.
+**The layers, and what holds them.** `core/` imports nothing above it. A module
+imports `core` and itself, never `app` and never another module. Only `app/`
+imports both. `tests/architecture` fails the build if any of that is crossed.
+
+**A module's `domain/` must have zero imports from its own `db`, `services` or
+`web`, from `core`, or from any I/O library; the standard library and itself
+only. It never reads the clock: every date is a parameter.** It is where
+correctness lives and it must be testable without a database. If you find
+yourself wanting to query inside `domain/`, pass the data in instead.
 
 ---
 

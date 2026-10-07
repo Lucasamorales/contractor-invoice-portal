@@ -43,7 +43,7 @@ Three changes are needed before it goes anywhere:
 - `postgresql://` becomes **`postgresql+psycopg://`** — we use psycopg 3.
 - `sslmode=require` becomes **`sslmode=verify-full`** (R-SEC-07). `require`
   encrypts the traffic but does not prove who is on the other end, and Neon is
-  a third party on the public internet. `app/db/session.py` refuses to start a
+  a third party on the public internet. `core/db/session.py` refuses to start a
   production engine without it.
 - **`sslrootcert`** must be added. `verify-full` needs a certificate authority
   to verify *against*, and libpq's default path — `%APPDATA%/postgresql/root.crt`
@@ -279,7 +279,7 @@ rotation, or a new environment — generate it straight into Secret Manager
 rather than through a terminal, so it never reaches a scrollback buffer:
 
 ```bash
-uv run python -c "import pathlib,sys; from app.services.crypto import generate_key; pathlib.Path(sys.argv[1]).write_text(generate_key())" /tmp/k && gcloud secrets versions add portal-bank-encryption-key-staging --data-file=/tmp/k; rm -f /tmp/k
+uv run python -c "import pathlib,sys; from core.services.crypto import generate_key; pathlib.Path(sys.argv[1]).write_text(generate_key())" /tmp/k && gcloud secrets versions add portal-bank-encryption-key-staging --data-file=/tmp/k; rm -f /tmp/k
 ```
 
 Bump `PORTAL_BANK_ENCRYPTION_KEY_ID` when you rotate. The id is stored beside
@@ -297,13 +297,13 @@ so a rotation does not require re-encrypting everything at once.
 Dry run first, always. It writes nothing:
 
 ```bash
-uv run python -m app.scripts.seed --file "data/Data Invoices 1.xlsx"
+uv run python -m modules.invoices.scripts.seed --file "data/Data Invoices 1.xlsx"
 ```
 
 Read the report with Remy before committing it (build order step 2), then:
 
 ```bash
-PORTAL_DATABASE_URL='...staging...' uv run python -m app.scripts.seed --file "data/Data Invoices 1.xlsx" --commit
+PORTAL_DATABASE_URL='...staging...' uv run python -m modules.invoices.scripts.seed --file "data/Data Invoices 1.xlsx" --commit
 ```
 
 `--commit` refuses to run if any row has an error, or if no encryption key is

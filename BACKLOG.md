@@ -8,11 +8,12 @@ when is in `CHANGELOG.md`.
 
 ## 0. The hub and the leave module
 
-A decision is waiting on you: **should the invoice app be moved into
-`modules/invoices/` (Phase 1) before the invoice window opens on 22 October, or
-after it closes on the 28th?** Everything else about the hub stands without it.
-The plan, the architecture diagram and what is decided versus proposed are in
-`docs/decisions/0001-modular-hub.md`.
+**Phase 1 is built and sitting on a branch.** The invoice app lives in
+`modules/invoices/` and the shared infrastructure in `core/`, on branch
+`hub-phase-1`, with all 48 routes identical to `staging` and the suite green. It
+is **not merged and not deployed**: the invoice window opens on 22 October, and
+the one thing left before it can go anywhere is proving it on staging. What is
+still tangled, and why, is in `docs/decisions/0001-modular-hub.md`.
 
 Leave (a replacement for Leave Dates) has its rules written as pure code and
 tested, and nothing else. **Its backlog is its own:** `modules/leave/BACKLOG.md`
@@ -78,6 +79,6 @@ closed on the 28th. That is cosmetic and blocks nothing.
   A redirect in Webflow does it for nothing; the address bar still shows the
   Cloud Run address. Serving the app on `invoices.example.com` needs a
   load balancer at about £15–18 a month, which breaks the £0 target (R-ENV-06).
-- **Deleting `app/templates/home.html`**, a screen no route renders.
+- **Deleting `modules/invoices/templates/home.html`**, a screen no route renders.
 - **`docs/setup.md` §4's seed instructions** now describe something that has
   been run once, in production, and will not be run again.

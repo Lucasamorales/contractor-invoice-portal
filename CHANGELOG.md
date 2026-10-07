@@ -15,6 +15,36 @@ has not been released yet.
   next push to `staging` or `main` would have. The shared fixture now pins the
   clock. Test-only; nothing in `app/` changes and nothing needs deploying.
 
+## 7 October 2026, hub Phase 1 (on the `hub-phase-1` branch, not deployed)
+
+- **The invoice app is now a module.** It moved from `app/` to
+  `modules/invoices/` with `git mv`, so history is kept, and 355 imports were
+  rewritten from the syntax tree. `app/` is now only the entrypoint and the
+  single migration chain, so `uvicorn app.main:app` and `alembic.ini` are
+  unchanged. All 48 routes are identical to `staging`, in the same order.
+- **The shared infrastructure moved to `core/`:** configuration, sign-in, the
+  database session, encryption, file storage, the nightly backup, CSRF, the
+  theme cookie and the rate-limit mechanism. `core/` imports nothing from a
+  module. What is still tangled inside the invoice module, and why, is in
+  `docs/decisions/0001-modular-hub.md`.
+- **Scripts have new names.** `uv run python -m app.scripts.<name>` is now
+  `uv run python -m modules.invoices.scripts.<name>` for every script: `seed`,
+  `set_counter`, `set_payout_region`, `reset_person` and the rest.
+- **The image contains `core/` and `modules/`.** Built and booted locally: the
+  health check and static files answer, and an unauthenticated request to a
+  protected page is refused.
+- **A migration run for real now persists what it reports.** The banner added on
+  28 September that names the database before a migration ran its queries on
+  the migration's own connection. That opened a transaction first, which
+  Alembic treats as somebody else's to commit, so every upgrade printed
+  "Running upgrade" and rolled back on close: no error and no tables. No harm
+  was done: production's `0005` was applied before the banner existed. Found by
+  running a real upgrade, which the offline test cannot do; a new integration
+  test now does, and fails against the old behaviour.
+- The boundary tests now describe the layers: `core` imports nothing above it, a
+  module imports `core` and itself and never `app` or another module, and `app`
+  alone may import both. CLAUDE.md's layout section is updated to match.
+
 ## 7 October 2026, leave module (on the `leave-module` branch, not deployed)
 
 Nothing here is in the image: `app/`, the Dockerfile and the database are
