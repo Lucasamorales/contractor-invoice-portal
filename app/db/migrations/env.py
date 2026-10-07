@@ -22,7 +22,11 @@ from modules.invoices.db.models import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Not disabling the loggers that already exist, which is fileConfig's default.
+    # Run in the same process as the application, as the test suite does, that
+    # silenced every logger the app had created and anything capturing them saw
+    # nothing from then on.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
@@ -105,14 +109,20 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
         connect_args=connect_args,
     )
+    # Said out loud before anything is changed. Both databases are called
+    # neondb, so the name alone proves nothing; this names the database, its
+    # revision and how many people are in it.
+    #
+    # On a connection of its own, and closed before the migration's begins. The
+    # queries start a transaction, and Alembic treats a transaction that is
+    # already open as somebody else's to commit. Run on the migration's own
+    # connection, this banner made every upgrade report "Running upgrade" and
+    # then roll back on close: no error, no tables.
+    with connectable.connect() as probe:
+        described = describe_target(probe)
+    logging.getLogger("alembic.runtime.migration").warning("migrating %s", described)
+
     with connectable.connect() as connection:
-        # Said out loud before anything is changed. The host alone cannot tell
-        # two environments apart — they can share an endpoint, with the branch
-        # chosen inside the connection string — so this names the database, its
-        # revision and how many people are in it.
-        logging.getLogger("alembic.runtime.migration").warning(
-            "migrating %s", describe_target(connection)
-        )
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
