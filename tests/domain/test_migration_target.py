@@ -12,8 +12,8 @@ import os
 
 import pytest
 
-from app.config import Settings, get_settings
-from app.db.migration_target import (
+from modules.invoices.config import Settings, get_settings
+from modules.invoices.db.migration_target import (
     ENVIRONMENT_VAR,
     migration_settings,
     migration_url,

@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from app.domain.seeding import COLUMNS, build_rows
-from app.scripts.seed import SHEET_NAME, read_rows
+from modules.invoices.domain.seeding import COLUMNS, build_rows
+from modules.invoices.scripts.seed import SHEET_NAME, read_rows
 
 # Every awkward shape the real file contains, one per row.
 FIXTURE_ROWS: list[tuple[str, str, str, float, str, str, float]] = [

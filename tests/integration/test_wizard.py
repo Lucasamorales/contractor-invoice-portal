@@ -16,14 +16,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth import Identity, current_identity
-from app.config import Settings, get_settings
-from app.db.models import BankState, Invoice, InvoiceStatus, Outbox, Person
-from app.db.session import get_session, get_sessionmaker
 from app.main import app
-from app.services.crypto import Cipher, generate_key
-from app.services.storage import LocalObjectStore, StorageError
-from app.web.member import get_cipher, get_renderer, get_store
+from modules.invoices.auth import Identity, current_identity
+from modules.invoices.config import Settings, get_settings
+from modules.invoices.db.models import BankState, Invoice, InvoiceStatus, Outbox, Person
+from modules.invoices.db.session import get_session, get_sessionmaker
+from modules.invoices.services.crypto import Cipher, generate_key
+from modules.invoices.services.storage import LocalObjectStore, StorageError
+from modules.invoices.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import (
     IN_WINDOW,
     give_bank,
@@ -51,7 +51,7 @@ def wizard(
     # period 2026-09. Left on the real clock they passed through September and
     # failed in the first week of October, seven at once, because the month
     # they assume had ended. Pinned here, they say the same thing in any month.
-    monkeypatch.setattr("app.web.member._now", lambda: IN_WINDOW)
+    monkeypatch.setattr("modules.invoices.web.member._now", lambda: IN_WINDOW)
 
     settings = Settings(
         _env_file=None,
@@ -241,7 +241,7 @@ def test_a_form_without_a_token_is_refused(wizard, factory) -> None:
 def test_a_token_minted_for_someone_else_is_refused(wizard, factory) -> None:
     client, settings, box = wizard
     seed_ready(factory, box)
-    from app.web import csrf
+    from modules.invoices.web import csrf
 
     stolen = csrf.issue(settings, OTHER)
     response = client.post("/details", data={"csrf_token": stolen, "legal_name": "J"})
@@ -276,7 +276,7 @@ def test_the_owner_confirms_their_own_details(wizard, factory) -> None:
     )
     assert response.status_code == 303
 
-    from app.db.models import AuditLog, BankDetail
+    from modules.invoices.db.models import AuditLog, BankDetail
 
     with factory() as session:
         detail = session.scalars(select(BankDetail)).one()
@@ -630,7 +630,7 @@ def test_a_receipt_survives_preview_and_lands_on_the_invoice(wizard, factory) ->
     assert sent.status_code == 200
 
     with factory() as session:
-        from app.db.models import Expense
+        from modules.invoices.db.models import Expense
 
         expense = session.scalars(select(Expense)).one()
         assert expense.receipt_uri is not None
@@ -653,7 +653,7 @@ def test_an_uploaded_receipt_reaches_the_email_named_after_its_expense(
     and checks each one is named for the expense it belongs to and carries
     its real type — not a random id sent as a generic download.
     """
-    from app.services import mailer
+    from modules.invoices.services import mailer
 
     client, settings, box = wizard
     seed_ready(factory, box, kudos=0)
@@ -725,7 +725,7 @@ def test_an_expense_without_a_receipt_is_still_fine(wizard, factory) -> None:
     )
     assert sent.status_code == 200
     with factory() as session:
-        from app.db.models import Expense
+        from modules.invoices.db.models import Expense
 
         assert session.scalars(select(Expense)).one().receipt_uri is None
 
@@ -955,7 +955,7 @@ def test_a_shut_window_ends_the_chain_at_this_month(
     """
     from datetime import UTC, datetime
 
-    from app.web import member
+    from modules.invoices.web import member
 
     monkeypatch.setattr(member, "_now", lambda: datetime(2026, 9, 10, 12, tzinfo=UTC))
 

@@ -9,8 +9,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.config import ConfigError, Environment, Settings, assert_production_ready
-from app.services.crypto import generate_key
+from modules.invoices.config import (
+    ConfigError,
+    Environment,
+    Settings,
+    assert_production_ready,
+)
+from modules.invoices.services.crypto import generate_key
 
 
 def test_finance_emails_arrive_as_a_comma_separated_list(monkeypatch) -> None:

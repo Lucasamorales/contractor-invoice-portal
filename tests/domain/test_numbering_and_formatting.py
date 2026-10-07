@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from app.domain.formatting import (
+from modules.invoices.domain.formatting import (
     format_iban,
     format_invoice_date,
     format_read_time,
@@ -15,7 +15,7 @@ from app.domain.formatting import (
     month_heading,
     name_from_email,
 )
-from app.domain.numbering import (
+from modules.invoices.domain.numbering import (
     NumberingError,
     advance,
     format_number,
@@ -23,7 +23,7 @@ from app.domain.numbering import (
     released_floor,
     seed_next_number,
 )
-from app.domain.period import Period
+from modules.invoices.domain.period import Period
 
 
 @pytest.mark.parametrize(

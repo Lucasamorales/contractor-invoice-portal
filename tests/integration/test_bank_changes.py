@@ -16,15 +16,21 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth import Identity, current_identity
-from app.config import Settings, get_settings
-from app.db.models import AuditLog, BankDetail, BankSource, BankState, Outbox
-from app.db.session import get_session, get_sessionmaker
 from app.main import app
-from app.services import bank_changes
-from app.services.crypto import Cipher, field_aad, generate_key
-from app.services.storage import LocalObjectStore
-from app.web.member import get_cipher, get_renderer, get_store
+from modules.invoices.auth import Identity, current_identity
+from modules.invoices.config import Settings, get_settings
+from modules.invoices.db.models import (
+    AuditLog,
+    BankDetail,
+    BankSource,
+    BankState,
+    Outbox,
+)
+from modules.invoices.db.session import get_session, get_sessionmaker
+from modules.invoices.services import bank_changes
+from modules.invoices.services.crypto import Cipher, field_aad, generate_key
+from modules.invoices.services.storage import LocalObjectStore
+from modules.invoices.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import give_bank, give_counter, give_fee, make_person
 
 pytestmark = pytest.mark.integration
@@ -555,7 +561,7 @@ def test_a_changed_account_is_immediately_the_one_that_would_be_invoiced(
             follow_redirects=False,
         )
 
-    from app.db import repo
+    from modules.invoices.db import repo
 
     with factory() as session:
         active = repo.active_bank_detail(session, person_id)
@@ -571,7 +577,7 @@ def test_a_changed_account_is_immediately_the_one_that_would_be_invoiced(
 def test_hammering_the_bank_change_endpoint_is_throttled(wired, factory) -> None:
     """R-SEC-08. This endpoint decrypts bank fields and queues mail to two
     people, so it is not one to leave wide open."""
-    from app.web.ratelimit import bank_limiter
+    from modules.invoices.web.ratelimit import bank_limiter
 
     as_user, _, cipher = wired
     seed(factory, cipher)
@@ -604,7 +610,7 @@ def test_hammering_the_bank_change_endpoint_is_throttled(wired, factory) -> None
 def test_the_limit_is_keyed_by_the_verified_identity(wired, factory) -> None:
     """Not by anything the client sends, so it cannot be dodged by varying a
     header."""
-    from app.web.ratelimit import RateLimiter
+    from modules.invoices.web.ratelimit import RateLimiter
 
     limiter = RateLimiter(limit=2, window_seconds=60)
     limiter.check("jane@example.com", now=0.0)

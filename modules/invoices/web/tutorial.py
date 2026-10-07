@@ -1,0 +1,466 @@
+"""The on-screen tutorial's copy (design handoff, "The tutorial").
+
+Kept here rather than in the templates so all of the app's explanatory English
+sits in one reviewable place, and so a screen's markup only has to carry a
+stable key.
+
+Cadence drove the design: people use this once a month and come back knowing
+most of it but needing one specific answer. So the steps are numbered pins you
+can jump between, not a tour you have to walk through.
+
+**No personal names.** Roles outlive the people holding them, and this copy
+should not need editing when somebody leaves. "accounts" and "the IT
+department", never a first name.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from modules.invoices.domain.period import WINDOW_CLOSES_DAY, WINDOW_OPENS_DAY, ordinal
+
+
+@dataclass(frozen=True, slots=True)
+class Step:
+    """One pin. ``key`` matches a ``data-tut`` attribute in the template."""
+
+    key: str
+    title: str
+    body: str
+
+
+MEMBER_MONTH = (
+    Step(
+        "member.month.fee",
+        "Your fee",
+        "Set by finance, never by you, and nobody else can see it. If it says "
+        "not set, accounts have already been told automatically.",
+    ),
+    Step(
+        "member.month.kudos",
+        "Kudos",
+        "Worth £20 each and paid quarterly — they land "
+        "on your March, June, September and December invoice. Two months in "
+        "three this line says when, not how much. That is the policy, not a "
+        "fault.",
+    ),
+    Step(
+        "member.month.total",
+        "Running total",
+        "Fee plus kudos, before anything you add yourself. Expenses come on the "
+        "next screen and change this figure.",
+    ),
+    Step(
+        "member.month.blocks",
+        "Anything in your way",
+        "Every block appears here with its fix attached. Confirming your bank "
+        "account is the usual one, and it is the one thing no admin can do for "
+        "you.",
+    ),
+    Step(
+        "member.month.steps",
+        "Three screens a month",
+        "Check these figures, add anything extra, send. Your letterhead and "
+        "bank account live on their own pages because they almost never change.",
+    ),
+    Step(
+        "member.month.window",
+        "The window",
+        f"Send opens on the {ordinal(WINDOW_OPENS_DAY)} and closes on the "
+        f"{ordinal(WINDOW_CLOSES_DAY)}. After the {ordinal(WINDOW_CLOSES_DAY)} "
+        "nobody is locked out: your invoice is still accepted, marked late, and "
+        "still gets your next number in sequence.",
+    ),
+)
+
+MEMBER_BANK = (
+    Step(
+        "member.bank.flag",
+        "Accounts flagged your bank details",
+        "Accounts want you to check what the card says. Change it, or press It "
+        "is correct if nothing needs changing. Either way the card goes, and "
+        "accounts see your answer.",
+    ),
+    Step(
+        "member.bank.decision",
+        "Why this is a decision",
+        "These details came out of the old spreadsheet. Nothing has verified "
+        "them — a person has to. Confirming is what makes the account payable; "
+        "until you do, you cannot invoice.",
+    ),
+    Step(
+        "member.bank.masked",
+        "Last four digits only",
+        "The full number is encrypted and is never shown back on screen, to you "
+        "or to anyone. It appears in exactly two places: the invoice PDF and "
+        "the payment-run file.",
+    ),
+    Step(
+        "member.bank.owner",
+        "Only you can change it",
+        "Accounts can propose a correction and flag a row back to you, but can "
+        "never make one payable. That is the control which means an admin "
+        "account in the wrong hands still cannot redirect your pay.",
+    ),
+)
+
+MEMBER_ADDITIONAL = (
+    Step(
+        "member.additional.kudos",
+        "Kudos are read, not typed",
+        "They come from the sheet, so the figure cannot be edited here. If the "
+        "sheet is unreadable it says so, and you have to consciously tick "
+        "“invoice without them” — it will never quietly bill you £0 "
+        "of kudos.",
+    ),
+    Step(
+        "member.additional.receipts",
+        "Receipts",
+        "One file per row, straight from your phone. Location data is stripped "
+        "and an iPhone HEIC is converted to JPEG so accounts can open it. "
+        "Leaving every row empty is fine and means zero.",
+    ),
+)
+
+MEMBER_PREVIEW = (
+    Step(
+        "member.preview.fixed",
+        "The document is fixed",
+        "This layout matches the template accounts already use, down to the "
+        "margins. The portal around it changed; the invoice did not.",
+    ),
+    Step(
+        "member.preview.real",
+        "Not a summary",
+        "This is the invoice itself, rendered by the same template that "
+        "produces the PDF. What you approve is byte-for-byte what accounts "
+        "receives.",
+    ),
+    Step(
+        "member.preview.send",
+        "One press",
+        "The button disables itself the moment you click it, and pressing twice "
+        "cannot produce two invoices — the second press returns the first one. "
+        "Nothing has been sent until you press it.",
+    ),
+)
+
+MEMBER_ME = (
+    Step(
+        "member.me.flag",
+        "Accounts flagged something",
+        "Accounts want you to check what the card says. Change it, or press It "
+        "is correct if nothing needs changing. Either way the card goes, and "
+        "accounts see your answer.",
+    ),
+    Step(
+        "member.me.masked",
+        "Last four, always",
+        "Your own account number is never shown back in full. If something here "
+        "looks wrong, change it — you do not need an admin.",
+    ),
+    Step(
+        "member.me.history",
+        "This list is a tripwire",
+        "Every change ever made to the account, as old to new last-four pairs. "
+        "If you see a change here you did not make, tell the IT department "
+        "straight away. That is the only reason this list exists.",
+    ),
+    Step(
+        "member.me.invoices",
+        "You never need the email",
+        "Every invoice you have ever issued stays downloadable here. Rows that "
+        "say not sent are drafts that never finished.",
+    ),
+)
+
+MEMBER_DETAILS = (
+    Step(
+        "member.details.flag",
+        "Accounts flagged your letterhead",
+        "Accounts want you to check what the card says. Saving this form "
+        "answers it, or press It is correct if nothing needs changing. "
+        "Accounts see your answer.",
+    ),
+    Step(
+        "member.details.letterhead",
+        "Your letterhead",
+        "These five lines print at the top of every invoice you send from now "
+        "on. Invoices already sent keep the details they were sent with.",
+    ),
+)
+
+MEMBER_BANK_CHANGE = (
+    Step(
+        "member.bank_change.current",
+        "What we have now",
+        "The account you are replacing. It stays the one we pay until you save "
+        "the new one.",
+    ),
+    Step(
+        "member.bank_change.payable",
+        "Saving makes it payable",
+        "Your next invoice is paid into the new account. You and accounts both "
+        "get an email saying it changed. If you get that email and did not "
+        "make the change, tell the IT department straight away.",
+    ),
+)
+
+MEMBER_SENT = (
+    Step(
+        "member.sent.done",
+        "Nothing else to do",
+        "Accounts have your invoice and a copy is on its way to you. The "
+        "number is now used, and your next invoice takes the one after it.",
+    ),
+    Step(
+        "member.sent.fix",
+        "If something is wrong",
+        "A sent invoice cannot be edited. Tell accounts: they cancel it and "
+        "you send it again, keeping the same invoice number. You will get an "
+        "email when it is cancelled. Every invoice stays in My details.",
+    ),
+)
+
+ADMIN_OVERVIEW = (
+    Step(
+        "admin.overview.questions",
+        "The only two questions",
+        f"Between the {ordinal(WINDOW_OPENS_DAY)} and the 29th you need to know "
+        "who has not invoiced "
+        "and what is stuck. Both are already computed — nothing on this screen "
+        "is a new metric.",
+    ),
+    Step(
+        "admin.overview.stuck",
+        "Needs fixing",
+        "The panel that answers “what if an invoice silently does not "
+        "arrive?”. An invoice that took a number and never finished counts "
+        "as received on Period, because a row exists. Only here is it named as "
+        "unfinished. If this panel is empty, nothing is stuck.",
+    ),
+    Step(
+        "admin.overview.missing",
+        "The chasing list",
+        "Who has not invoiced yet, with the reason where there is one. This is "
+        "the list that used to be a phone call.",
+    ),
+    Step(
+        "admin.overview.flags",
+        "Flags, not blocks",
+        "Late, fee changed mid-period, bank changed inside 72 hours, an expense "
+        "over the threshold. None of them stop anything, there is nothing to do "
+        "about them, and they clear themselves when the month rolls over.",
+    ),
+    Step(
+        "admin.overview.waiting",
+        "Waiting on somebody",
+        "The ordinary backlog: people with no fee, bank changes their owner has "
+        "not answered, imported rows nobody confirmed. Each opens the queue.",
+    ),
+    Step(
+        "admin.overview.hidden",
+        "Amounts are hidden",
+        "Every amount on the Finance screens opens as £•••, so a screenshare "
+        "does not show anybody's pay. Press it to show it, and press it again "
+        "to hide it.",
+    ),
+)
+
+ADMIN_PEOPLE = (
+    Step(
+        "admin.people.fees",
+        "Fees are bullets on purpose",
+        "A screenshare of this page should not leak the payroll. Reveal one at "
+        "a time, and the reveal writes your address to the audit log. Press "
+        "the fee again to hide it; showing it again is not a second reveal.",
+    ),
+)
+
+ADMIN_PERSON = (
+    Step(
+        "admin.person.bank",
+        "Read, propose, flag — never confirm",
+        "You can reveal the account because you pay it, and every reveal is "
+        "recorded in the audit log. A change you propose sits pending until "
+        "its owner agrees, and the account number is typed twice because "
+        "double entry catches transpositions no checksum can. There is no "
+        "button here that makes a row payable.",
+    ),
+    Step(
+        "admin.person.invoices",
+        "Fixing a wrong invoice",
+        "An invoice is immutable once issued, so a correction is a void and a "
+        "reissue. The reason you type is the confirmation, it is required, and "
+        "it goes in the email both of you receive. The number goes back: the "
+        "replacement carries the same one, so their books have no gap in "
+        "them.",
+    ),
+    Step(
+        "admin.person.fee",
+        "The note is required",
+        "Effective-dated: a new fee closes the current row the day before, "
+        "rather than overwriting it. A change with no reason is refused, "
+        "because in six months that note is the only thing that explains the "
+        "number.",
+    ),
+    Step(
+        "admin.person.profile",
+        "Their details",
+        "What they entered for their letterhead. Only they can change it. Flag "
+        "back asks them to check it, and the note under it says whether they have "
+        "changed it or said it is correct.",
+    ),
+    Step(
+        "admin.person.deactivate",
+        "Deactivating",
+        "For someone who has left. They stop getting reminders and cannot "
+        "invoice, and their history stays. It cannot be undone from here: tell "
+        "the IT department if it was a mistake.",
+    ),
+)
+
+ADMIN_PERIOD = (
+    Step(
+        "admin.period.table",
+        "Everything, with its flags",
+        "The full month. No flag blocks a payment. Late means after the 28th "
+        "— still valid, still paid, still next in that sequence.",
+    ),
+)
+
+ADMIN_QUEUE = (
+    Step(
+        "admin.queue.fee",
+        "Blocked at the door",
+        "No fee, so they cannot invoice at all. They can see it is with you. "
+        "Set one on their page and they leave this list.",
+    ),
+    Step(
+        "admin.queue.pending",
+        "Proposals you cannot complete",
+        "Bank changes you proposed and flags you raised, waiting on the person. "
+        "A proposal stays until they accept it, and only they can make it "
+        "payable. A flag clears when they change the thing or say it is "
+        "correct.",
+    ),
+    Step(
+        "admin.queue.unconfirmed",
+        "Everything stuck, in one list",
+        "Nothing else in the app reports these. A stuck invoice clears when "
+        "they send it again; an email when it sends; a bank row when its owner "
+        "confirms it, which no admin can do for them; a kudos name when "
+        "somebody says who it is. An empty panel means nothing is stuck.",
+    ),
+    Step(
+        "admin.queue.names",
+        "A name that matches nobody",
+        "The kudos sheet spells names by hand. Choose who it is, or Nobody for "
+        "someone who has left or does not invoice here. Their kudos then count "
+        "towards that person. It cannot be changed from here afterwards.",
+    ),
+)
+
+ADMIN_PAYMENT_RUN = (
+    Step(
+        "admin.payment_run.batches",
+        "Who to pay this month",
+        "The month's invoices, split by how the money goes: UK by sort code, "
+        "International by IBAN. The account shown is the one printed on the "
+        "invoice. A voided invoice drops off.",
+    ),
+    Step(
+        "admin.payment_run.show_all",
+        "Show all",
+        "Every amount opens hidden. Show all reveals the whole page at once, "
+        "and Hide all puts them back.",
+    ),
+    Step(
+        "admin.payment_run.export",
+        "The export",
+        "The CSV has the full account numbers, so it goes to the bank and "
+        "nowhere else. Every export is recorded with who took it.",
+    ),
+)
+
+ADMIN_KUDOS = (
+    Step(
+        "admin.kudos.quarter",
+        "One quarter at a time",
+        "Kudos are counted per quarter and paid on the quarter-end invoice: "
+        "March, June, September and December. The arrows move between "
+        "quarters.",
+    ),
+    Step(
+        "admin.kudos.standings",
+        "Standings",
+        "Counted from the kudos sheet. Anyone who cannot win, such as "
+        "leadership, is left out. The top three places win a prize.",
+    ),
+    Step(
+        "admin.kudos.refresh",
+        "Reading the sheet again",
+        "The kudos sheet is read automatically every morning, so a kudo given "
+        "today appears tomorrow. Press this to read it now — useful while "
+        "people are invoicing. It only ever reads, and it cannot change an "
+        "invoice that has already been sent.",
+    ),
+    Step(
+        "admin.kudos.award",
+        "Nothing is paid until you press Award",
+        "The place is suggested from the counts. On a tie, choose the place "
+        "yourself and say why; the prize follows the place you choose. An "
+        "award goes on their next quarter-end invoice and cannot be undone "
+        "from here.",
+    ),
+)
+
+ADMIN_DATA_CHECK = (
+    Step(
+        "admin.data_check.ready",
+        "Ready to invoice",
+        "Someone is ready when all four say yes: a fee, a complete letterhead, "
+        "a bank account they have confirmed, and an invoice number carried "
+        "over from the old spreadsheet.",
+    ),
+    Step(
+        "admin.data_check.flagged",
+        "Worth checking by hand",
+        "Things to look at on the person's page before their first invoice, "
+        "such as a payee name that differs from theirs or a missing role.",
+    ),
+)
+
+# Exact paths only. A prefix match would put the member steps on /admin.
+BY_PATH: dict[str, tuple[Step, ...]] = {
+    "/": MEMBER_MONTH,
+    "/bank": MEMBER_BANK,
+    "/additional": MEMBER_ADDITIONAL,
+    "/preview": MEMBER_PREVIEW,
+    "/me": MEMBER_ME,
+    "/details": MEMBER_DETAILS,
+    "/bank/change": MEMBER_BANK_CHANGE,
+    # The Sent screen is the answer to the POST, so it lives at /submit.
+    "/submit": MEMBER_SENT,
+    "/admin": ADMIN_OVERVIEW,
+    "/admin/": ADMIN_OVERVIEW,
+    "/admin/people": ADMIN_PEOPLE,
+    "/admin/period": ADMIN_PERIOD,
+    "/admin/queue": ADMIN_QUEUE,
+    "/admin/payment-run": ADMIN_PAYMENT_RUN,
+    "/admin/kudos": ADMIN_KUDOS,
+    "/admin/data-check": ADMIN_DATA_CHECK,
+}
+
+
+def steps_for(path: str) -> list[dict[str, str]]:
+    """The steps for one screen, ready to serialise.
+
+    A screen with no steps returns nothing and the ``?`` button says so rather
+    than opening an empty tutorial.
+    """
+    if path.startswith("/admin/people/") and path.count("/") == 3:
+        found: tuple[Step, ...] = ADMIN_PERSON
+    else:
+        found = BY_PATH.get(path, ())
+    return [{"key": s.key, "title": s.title, "body": s.body} for s in found]

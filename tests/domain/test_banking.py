@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.domain.banking import (
+from modules.invoices.domain.banking import (
     KEY_MAP,
     BankingError,
     PayoutRegion,

@@ -15,17 +15,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import MailMode, Settings, get_settings, mail_mode
-from app.db.models import Outbox, OutboxStatus, PersonStatus
-from app.db.session import get_session
-from app.domain.period import Period
 from app.main import app
-from app.services import bank_changes, jobs, mailer
-from app.services.crypto import Cipher, generate_key
-from app.services.invoicing import ExpenseInput, submit
-from app.services.storage import LocalObjectStore
-from app.web.member import get_store
-from app.web.tasks import verify_scheduler
+from modules.invoices.config import MailMode, Settings, get_settings, mail_mode
+from modules.invoices.db.models import Outbox, OutboxStatus, PersonStatus
+from modules.invoices.db.session import get_session
+from modules.invoices.domain.period import Period
+from modules.invoices.services import bank_changes, jobs, mailer
+from modules.invoices.services.crypto import Cipher, generate_key
+from modules.invoices.services.invoicing import ExpenseInput, submit
+from modules.invoices.services.storage import LocalObjectStore
+from modules.invoices.web.member import get_store
+from modules.invoices.web.tasks import verify_scheduler
 from tests.integration.conftest import (
     give_bank,
     give_counter,
@@ -272,7 +272,7 @@ def test_mail_that_is_taking_too_long_reaches_the_queue(
     """A pending row reports nowhere. It has not failed, so the failure list
     does not have it, and it can retry for days while the person who submitted
     believes it arrived."""
-    from app.services import admin as admin_service
+    from modules.invoices.services import admin as admin_service
 
     store = LocalObjectStore(tmp_path / "objects")
     seed_and_submit(factory, cipher, settings, store)
@@ -498,7 +498,7 @@ def test_an_inactive_person_is_not_reminded(factory, settings, cipher) -> None:
     """R-ADM-09: deactivated means no reminders."""
     ids = make_people(factory, cipher, 2)
     with factory() as session, session.begin():
-        from app.db.models import Person
+        from modules.invoices.db.models import Person
 
         session.get(Person, ids[0]).status = PersonStatus.INACTIVE
 
@@ -679,7 +679,7 @@ def test_staging_does_not_send_unless_everything_goes_to_one_address() -> None:
 
 def test_production_refuses_to_start_with_a_redirect_set() -> None:
     """Every invoice quietly landing in one inbox is worse than not starting."""
-    from app.config import ConfigError, assert_production_ready
+    from modules.invoices.config import ConfigError, assert_production_ready
 
     settings = Settings(
         _env_file=None,
@@ -735,8 +735,8 @@ def test_the_tasks_service_serves_nothing_but_tasks() -> None:
     loosened the wizard and the admin screens would be sitting there
     unauthenticated. They are not: this process answers 404 to them.
     """
-    from app.config import get_settings
     from app.main import app as real_app
+    from modules.invoices.config import get_settings
 
     tasks_only = Settings(_env_file=None, environment="staging", tasks_only=True)
     real_app.dependency_overrides[get_settings] = lambda: tasks_only
@@ -746,8 +746,8 @@ def test_the_tasks_service_serves_nothing_but_tasks() -> None:
     def only_tasks() -> Settings:
         return tasks_only
 
-    import app.config as config_module
     import app.main as main_module
+    import modules.invoices.config as config_module
 
     main_module.get_settings = only_tasks
     try:
@@ -774,8 +774,8 @@ def test_every_message_is_laid_out_and_points_back_at_the_portal() -> None:
     """
     import re
 
-    from app.config import Settings
-    from app.db.models import Outbox
+    from modules.invoices.config import Settings
+    from modules.invoices.db.models import Outbox
 
     settings = Settings(
         _env_file=None,
@@ -824,7 +824,7 @@ def test_no_message_names_a_person_who_might_leave() -> None:
     import re
     from pathlib import Path
 
-    source = Path("app/services/mailer.py").read_text(encoding="utf-8")
+    source = Path("modules/invoices/services/mailer.py").read_text(encoding="utf-8")
     # Strings only: a docstring explaining the reasoning to a developer is
     # not something a contractor ever reads.
     for literal in re.findall(r'"([^"\n]{12,})"', source):
@@ -862,7 +862,7 @@ def test_nothing_is_said_when_every_expense_has_its_receipt(
     invoice_id = seed_and_submit(factory, cipher, settings, store)
     uri = store.put("receipts/x.png", b"\x89PNG\r\n\x1a\n", content_type="image/png")
     with factory() as session, session.begin():
-        from app.db.models import Expense
+        from modules.invoices.db.models import Expense
 
         expense = session.scalars(
             select(Expense).where(Expense.invoice_id == invoice_id)

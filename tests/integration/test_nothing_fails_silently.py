@@ -16,13 +16,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.config import Settings
-from app.db.models import Invoice, InvoiceStatus, Outbox, OutboxStatus
-from app.domain.period import Period
-from app.services import admin, jobs, mailer
-from app.services.crypto import Cipher, generate_key
-from app.services.invoicing import ExpenseInput, submit
-from app.services.storage import LocalObjectStore, StorageError
+from modules.invoices.config import Settings
+from modules.invoices.db.models import Invoice, InvoiceStatus, Outbox, OutboxStatus
+from modules.invoices.domain.period import Period
+from modules.invoices.services import admin, jobs, mailer
+from modules.invoices.services.crypto import Cipher, generate_key
+from modules.invoices.services.invoicing import ExpenseInput, submit
+from modules.invoices.services.storage import LocalObjectStore, StorageError
 from tests.integration.conftest import (
     give_bank,
     give_counter,
@@ -144,7 +144,7 @@ def test_a_missing_receipt_does_not_cost_the_invoice_its_email(
 
     # A receipt recorded against the expense, but the file is not there.
     with factory() as session, session.begin():
-        from app.db.models import Expense
+        from modules.invoices.db.models import Expense
 
         expense = session.scalars(
             select(Expense).where(Expense.invoice_id == invoice_id)
@@ -306,7 +306,7 @@ def test_a_migration_names_the_database_it_is_about_to_change(engine) -> None:
     ran against staging and still announced a clean upgrade. What the guard
     prints now is the database itself.
     """
-    from app.db.migration_target import describe_target
+    from modules.invoices.db.migration_target import describe_target
 
     with engine.connect() as connection:
         described = describe_target(connection)
@@ -324,7 +324,7 @@ def test_it_describes_an_empty_database_without_falling_over(engine) -> None:
     """
     from sqlalchemy import text
 
-    from app.db.migration_target import describe_target
+    from modules.invoices.db.migration_target import describe_target
 
     with engine.connect() as connection:
         connection.execute(text("create schema if not exists empty_probe"))

@@ -1,6 +1,7 @@
-"""app/domain must stay pure (CLAUDE.md §5).
+"""A domain package must stay pure (CLAUDE.md §5).
 
-Zero imports from app.db, app.services, or any I/O library. This is the rule
+Zero imports from a module's db, services or web, from core, from the app that
+composes them, or from any I/O library. This is the rule
 that keeps the correctness layer testable without a database, so it is asserted
 rather than trusted.
 """
@@ -11,15 +12,17 @@ import ast
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-DOMAIN = ROOT / "app" / "domain"
-# Each module's domain package is held to the same rule (modules/*/domain).
-DOMAINS = [DOMAIN, *sorted((ROOT / "modules").glob("*/domain"))]
+DOMAIN = ROOT / "modules" / "invoices" / "domain"
+# Every module's domain package is held to the same rule (modules/*/domain).
+DOMAINS = sorted((ROOT / "modules").glob("*/domain"))
 
 FORBIDDEN_PREFIXES = (
-    "app.db",
-    "app.services",
-    "app.web",
-    "app.config",
+    "app",
+    "core",
+    "modules.invoices.db",
+    "modules.invoices.services",
+    "modules.invoices.web",
+    "modules.invoices.config",
     "sqlalchemy",
     "alembic",
     "fastapi",

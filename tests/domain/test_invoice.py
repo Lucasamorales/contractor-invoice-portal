@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.domain.invoice import (
+from modules.invoices.domain.invoice import (
     LineKind,
     compose,
     detail_note,
@@ -12,7 +12,7 @@ from app.domain.invoice import (
     format_gbp_compact,
     kudos_amount_pence,
 )
-from app.domain.money import MoneyError
+from modules.invoices.domain.money import MoneyError
 
 RATE = 2000  # £20 per kudo (R-KUD-04), passed in, never hardcoded in app code.
 
@@ -144,7 +144,7 @@ def test_what_is_outstanding_comes_back_in_the_order_to_do_it() -> None:
     consequential one and is better as the last deliberate act. A missing fee
     is last because it is the only one nobody on this side can fix.
     """
-    from app.services.invoicing import Readiness
+    from modules.invoices.services.invoicing import Readiness
 
     def state(*reasons: str) -> Readiness:
         return Readiness(

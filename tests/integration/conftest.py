@@ -23,8 +23,8 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import Settings
-from app.db.models import (
+from modules.invoices.config import Settings
+from modules.invoices.db.models import (
     AwardKind,
     BankDetail,
     BankSource,
@@ -39,8 +39,8 @@ from app.db.models import (
     Person,
     PersonStatus,
 )
-from app.services.crypto import Cipher, field_aad, generate_key
-from app.services.storage import LocalObjectStore
+from modules.invoices.services.crypto import Cipher, field_aad, generate_key
+from modules.invoices.services.storage import LocalObjectStore
 
 DEFAULT_TEST_URL = "postgresql+psycopg://postgres:test@localhost:5433/portaltest"
 
@@ -269,7 +269,7 @@ def ready_person(
 def _reset_rate_limits() -> Iterator[None]:
     """The limiters are process-global by design (R-SEC-08), so tests would
     otherwise spend each other's budget."""
-    from app.web.ratelimit import bank_limiter, submit_limiter
+    from modules.invoices.web.ratelimit import bank_limiter, submit_limiter
 
     bank_limiter.reset()
     submit_limiter.reset()

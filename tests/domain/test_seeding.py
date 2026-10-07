@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from app.domain.banking import PayoutRegion
-from app.domain.numbering import NumberingError
-from app.domain.seeding import build_row, build_rows, names_agree, parse_invoice_number
+from modules.invoices.domain.banking import PayoutRegion
+from modules.invoices.domain.numbering import NumberingError
+from modules.invoices.domain.seeding import (
+    build_row,
+    build_rows,
+    names_agree,
+    parse_invoice_number,
+)
 
 UK_BLOB = "\n".join(
     [

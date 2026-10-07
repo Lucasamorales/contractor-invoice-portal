@@ -10,7 +10,7 @@ import io
 
 import pytest
 
-from app.services.receipts import (
+from modules.invoices.services.receipts import (
     MAX_BYTES,
     Kind,
     ReceiptRejected,

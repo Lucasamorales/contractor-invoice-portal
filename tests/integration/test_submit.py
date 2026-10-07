@@ -13,8 +13,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import Settings
-from app.db.models import (
+from modules.invoices.config import Settings
+from modules.invoices.db.models import (
     BankState,
     Counter,
     Expense,
@@ -26,16 +26,16 @@ from app.db.models import (
     OutboxStatus,
     PrintSnapshot,
 )
-from app.domain.period import Period
-from app.services.crypto import Cipher
-from app.services.invoicing import (
+from modules.invoices.domain.period import Period
+from modules.invoices.services.crypto import Cipher
+from modules.invoices.services.invoicing import (
     ExpenseInput,
     SubmissionBlocked,
     decrypt_bank_block,
     submit,
     void,
 )
-from app.services.storage import LocalObjectStore
+from modules.invoices.services.storage import LocalObjectStore
 from tests.integration.conftest import (
     IN_WINDOW,
     LATE,
@@ -405,7 +405,7 @@ def test_void_then_reissue_takes_the_same_number_back(
 def test_voiding_writes_an_audit_row(
     factory, settings, cipher, store, fake_pdf
 ) -> None:
-    from app.db.models import AuditLog
+    from modules.invoices.db.models import AuditLog
 
     person_id = ready_person(factory, cipher)
     invoice_id = do_submit(factory, settings, cipher, store, fake_pdf, person_id)
@@ -575,7 +575,7 @@ def test_voiding_gives_the_kudos_back_so_a_reissue_bills_them(
     out without them and no later invoice could pick them up either, because
     "already billed" is exactly "claimed_by_invoice_id is set".
     """
-    from app.db.models import KudosEvent
+    from modules.invoices.db.models import KudosEvent
 
     person_id = ready_person(factory, cipher, next_number=8, kudos=4)
     first = do_submit(factory, settings, cipher, store, fake_pdf, person_id)

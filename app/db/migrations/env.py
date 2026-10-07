@@ -15,9 +15,9 @@ from urllib.parse import urlparse
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.db.migration_target import describe_target, migration_url
-from app.db.models import Base
-from app.db.session import resolve_trust_store
+from modules.invoices.db.migration_target import describe_target, migration_url
+from modules.invoices.db.models import Base
+from modules.invoices.db.session import resolve_trust_store
 
 config = context.config
 

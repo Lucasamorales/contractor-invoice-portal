@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.domain.iban import mask, mod97, normalise_iban, validate_bic, validate_iban
+from modules.invoices.domain.iban import (
+    mask,
+    mod97,
+    normalise_iban,
+    validate_bic,
+    validate_iban,
+)
 
 GB_VALID = "GB82WEST12345698765432"
 LU_VALID = "LU280019400644750000"

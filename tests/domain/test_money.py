@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.domain.money import MoneyError, format_gbp, invoice_total, parse_gbp_to_pence
+from modules.invoices.domain.money import (
+    MoneyError,
+    format_gbp,
+    invoice_total,
+    parse_gbp_to_pence,
+)
 
 
 @pytest.mark.parametrize(

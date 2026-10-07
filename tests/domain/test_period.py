@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.domain.period import (
+from modules.invoices.domain.period import (
     LONDON,
     Period,
     PeriodError,
@@ -109,6 +109,6 @@ def test_window_dates() -> None:
 def test_a_window_day_is_written_the_way_people_write_it(
     day: int, written: str
 ) -> None:
-    from app.domain.period import ordinal
+    from modules.invoices.domain.period import ordinal
 
     assert ordinal(day) == written

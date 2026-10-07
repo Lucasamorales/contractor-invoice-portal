@@ -15,16 +15,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.domain.invoice import compose
-from app.domain.period import Period
-from app.services.pdf import BankBlock, Letterhead, build_context
+from modules.invoices.domain.invoice import compose
+from modules.invoices.domain.period import Period
+from modules.invoices.services.pdf import BankBlock, Letterhead, build_context
 
 pdfplumber = pytest.importorskip("pdfplumber", reason="pdfplumber not installed")
 
 
 def _render(context: dict) -> bytes:
     try:
-        from app.services.pdf import render_pdf
+        from modules.invoices.services.pdf import render_pdf
     except OSError as exc:  # pragma: no cover - platform dependent
         pytest.skip(f"WeasyPrint's native libraries are missing: {exc}")
     try:

@@ -12,7 +12,7 @@ from datetime import date, datetime
 
 import pytest
 
-from app.domain.kudos import (
+from modules.invoices.domain.kudos import (
     KudosError,
     Quarter,
     billable,

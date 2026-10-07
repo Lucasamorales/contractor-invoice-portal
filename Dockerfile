@@ -20,6 +20,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 COPY app ./app
+COPY core ./core
+COPY modules ./modules
 COPY alembic.ini ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
@@ -62,6 +64,8 @@ WORKDIR /app
 
 COPY --from=build --chown=portal:portal /app/.venv /app/.venv
 COPY --from=build --chown=portal:portal /app/app /app/app
+COPY --from=build --chown=portal:portal /app/core /app/core
+COPY --from=build --chown=portal:portal /app/modules /app/modules
 COPY --from=build --chown=portal:portal /app/alembic.ini /app/alembic.ini
 
 ENV PATH="/app/.venv/bin:$PATH" \

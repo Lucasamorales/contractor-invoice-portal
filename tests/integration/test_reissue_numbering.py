@@ -17,12 +17,12 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 
-from app.config import Settings
-from app.db import repo
-from app.db.models import Invoice, InvoiceStatus, Outbox
-from app.domain.period import Period
-from app.services.invoicing import OUTBOX_INVOICE_VOIDED, submit, void
-from app.services.storage import LocalObjectStore
+from modules.invoices.config import Settings
+from modules.invoices.db import repo
+from modules.invoices.db.models import Invoice, InvoiceStatus, Outbox
+from modules.invoices.domain.period import Period
+from modules.invoices.services.invoicing import OUTBOX_INVOICE_VOIDED, submit, void
+from modules.invoices.services.storage import LocalObjectStore
 from tests.integration.conftest import IN_WINDOW, ready_person
 
 pytestmark = pytest.mark.integration
@@ -205,7 +205,7 @@ def test_the_saved_file_is_still_named_after_the_invoice(
 ) -> None:
     """The object name carries the invoice id now; a person's download must
     not (R-PDF-15)."""
-    from app.services.invoicing import download_name
+    from modules.invoices.services.invoicing import download_name
 
     person_id = ready_person(factory, cipher, next_number=10, kudos=0)
     invoice_id = send(factory, settings, cipher, store, fake_pdf, person_id)

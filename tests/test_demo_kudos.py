@@ -14,9 +14,9 @@ from datetime import date
 
 import pytest
 
-from app.config import Environment, Settings
-from app.domain.kudos import Quarter, parse_rows, podium, standings
-from app.scripts import seed_demo_kudos as demo
+from modules.invoices.config import Environment, Settings
+from modules.invoices.domain.kudos import Quarter, parse_rows, podium, standings
+from modules.invoices.scripts import seed_demo_kudos as demo
 
 CLAIMABLE_FROM = date(2026, 7, 1)
 

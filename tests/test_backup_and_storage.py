@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from app.config import Settings
-from app.services import backup
-from app.services.storage import (
+from modules.invoices.config import Settings
+from modules.invoices.services import backup
+from modules.invoices.services.storage import (
     GcsObjectStore,
     LocalObjectStore,
     StorageError,
@@ -234,7 +234,7 @@ def test_the_wizard_uses_the_bucket_when_one_is_configured() -> None:
     the last step, with the bucket sitting there unused. Asserting the wiring
     rather than the branch is the point: build_store was already correct.
     """
-    from app.web.member import get_store
+    from modules.invoices.web.member import get_store
 
     assert isinstance(get_store(Settings(_env_file=None)), LocalObjectStore)
     deployed = get_store(Settings(_env_file=None, gcs_bucket="portal-invoices-staging"))

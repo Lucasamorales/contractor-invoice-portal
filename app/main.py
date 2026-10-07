@@ -9,10 +9,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 
-from app.config import Environment, assert_production_ready, get_settings
-from app.web import admin, member, tasks
-from app.web.static import CachedStaticFiles
-from app.web.templates import templates
+from modules.invoices.config import Environment, assert_production_ready, get_settings
+from modules.invoices.web import admin, member, tasks
+from modules.invoices.web.static import CachedStaticFiles
+from modules.invoices.web.templates import templates
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,8 +21,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Everything the browser needs is served from this origin. HTMX is vendored
-# into app/static rather than pulled from a CDN, so the policy can stay strict
-# and there is no third party in the request path for a page showing fees.
+# into modules/invoices/static rather than pulled from a CDN, so the policy can
+# stay strict and there is no third party in the request path for a page
+# showing fees.
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "img-src 'self' data:; "
@@ -64,7 +65,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.mount("/static", CachedStaticFiles(directory="app/static"), name="static")
+app.mount(
+    "/static", CachedStaticFiles(directory="modules/invoices/static"), name="static"
+)
 # Admin first: every one of its routes carries the finance check (R-ACC-04).
 app.include_router(admin.router)
 app.include_router(member.router)

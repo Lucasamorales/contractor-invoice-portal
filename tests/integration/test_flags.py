@@ -15,8 +15,8 @@ import re
 import pytest
 from sqlalchemy import select
 
-from app.db.models import AuditLog, BankState, Outbox
-from app.services import flags
+from modules.invoices.db.models import AuditLog, BankState, Outbox
+from modules.invoices.services import flags
 from tests.integration.conftest import give_bank, give_counter, give_fee, make_person
 from tests.integration.test_bank_changes import (  # noqa: F401 - fixture
     JANE,
@@ -92,7 +92,7 @@ def test_a_letterhead_flag_is_emailed_to_that_person_and_nobody_else(
     jane = seed(factory, cipher)
     seed_sam(factory, cipher)
     with factory() as session, session.begin():
-        from app.db.models import Person
+        from modules.invoices.db.models import Person
 
         # A contact address that is not the sign-in one: the flag must still
         # reach the address Google has verified as hers.

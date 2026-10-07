@@ -14,8 +14,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import Settings
-from app.db.models import (
+from modules.invoices.config import Settings
+from modules.invoices.db.models import (
     Invoice,
     InvoiceStatus,
     KudosAlias,
@@ -25,11 +25,11 @@ from app.db.models import (
     LineKind,
     Person,
 )
-from app.domain.kudos import Quarter, normalise_name
-from app.services import kudos_admin, kudos_sync
-from app.services.crypto import Cipher
-from app.services.invoicing import submit
-from app.services.storage import LocalObjectStore
+from modules.invoices.domain.kudos import Quarter, normalise_name
+from modules.invoices.services import kudos_admin, kudos_sync
+from modules.invoices.services.crypto import Cipher
+from modules.invoices.services.invoicing import submit
+from modules.invoices.services.storage import LocalObjectStore
 from tests.integration.conftest import (
     IN_WINDOW,
     give_award,
@@ -180,7 +180,7 @@ def test_an_unmapped_name_is_reported_and_holds_its_kudos(factory, cipher) -> No
         )
     assert report.unmatched == ("Someone Else",)
     with factory() as session:
-        from app.db import repo
+        from modules.invoices.db import repo
 
         assert repo.unresolved_kudos_names(session) == [("Someone Else", 1)]
 
@@ -223,7 +223,7 @@ def test_ignoring_a_name_silences_it_without_deleting_anything(factory, cipher) 
             note="left the agency",
         )
     with factory() as session:
-        from app.db import repo
+        from modules.invoices.db import repo
 
         assert repo.unresolved_kudos_names(session) == []
         assert session.scalar(select(func.count()).select_from(KudosEvent)) == 1
@@ -256,7 +256,7 @@ def test_a_kudo_is_billed_once_and_never_again(factory, cipher, tmp_path) -> Non
         session.get(Invoice, invoice_id).status = InvoiceStatus.VOID
         give_kudos_snapshot(session, person_id, period="2026-12")
 
-    from app.domain.period import Period
+    from modules.invoices.domain.period import Period
 
     second = _submit(
         factory,
@@ -274,7 +274,7 @@ def test_a_kudo_is_billed_once_and_never_again(factory, cipher, tmp_path) -> Non
 
 def test_kudos_only_appear_on_a_quarter_end_invoice(factory, cipher, tmp_path) -> None:
     """KUDOS.md §4: paid quarterly, so October bills none of them."""
-    from app.domain.period import Period
+    from modules.invoices.domain.period import Period
 
     person_id = seeded(factory, cipher)
     settings = settings_for(csrf_secret="x")
@@ -331,7 +331,11 @@ def test_an_award_is_billed_as_its_own_line(factory, cipher, tmp_path) -> None:
         invoice = session.get(Invoice, invoice_id)
         assert invoice.additional_pence == 10000
         lines = session.scalars(
-            select(__import__("app.db.models", fromlist=["InvoiceLine"]).InvoiceLine)
+            select(
+                __import__(
+                    "modules.invoices.db.models", fromlist=["InvoiceLine"]
+                ).InvoiceLine
+            )
         ).all()
         award_lines = [line for line in lines if line.kind is LineKind.AWARD]
         assert len(award_lines) == 1
@@ -498,7 +502,7 @@ def _submit(
     period=None,
     now=IN_WINDOW,
 ):
-    from app.domain.period import Period
+    from modules.invoices.domain.period import Period
 
     return submit(
         factory,
@@ -524,9 +528,9 @@ def test_joining_after_the_sync_is_not_the_same_as_an_unreadable_sheet(
     per person told a new joiner their kudos were unavailable while their
     events sat there, attached and claimable, and parked them on the queue.
     """
-    from app.db import repo
-    from app.domain.period import Period
-    from app.services.invoicing import readiness
+    from modules.invoices.db import repo
+    from modules.invoices.domain.period import Period
+    from modules.invoices.services.invoicing import readiness
 
     period = Period(2026, 9)
     now = datetime(2026, 9, 8, 12, tzinfo=UTC)
@@ -578,9 +582,9 @@ def test_a_sheet_that_was_never_read_still_refuses_to_guess(
     factory, settings, cipher
 ) -> None:
     """The protection it exists for is unchanged."""
-    from app.db import repo
-    from app.domain.period import Period
-    from app.services.invoicing import readiness
+    from modules.invoices.db import repo
+    from modules.invoices.domain.period import Period
+    from modules.invoices.services.invoicing import readiness
 
     period = Period(2026, 9)
     now = datetime(2026, 9, 8, 12, tzinfo=UTC)

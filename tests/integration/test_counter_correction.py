@@ -14,8 +14,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import select
 
-from app.db.models import AuditLog, Counter, Invoice, InvoiceStatus, Person
-from app.scripts.set_counter import ACTION, CorrectionRefused, correct
+from modules.invoices.db.models import AuditLog, Counter, Invoice, InvoiceStatus, Person
+from modules.invoices.scripts.set_counter import ACTION, CorrectionRefused, correct
 from tests.integration.conftest import give_counter, make_person
 
 pytestmark = pytest.mark.integration

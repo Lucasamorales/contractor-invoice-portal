@@ -12,9 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from app.domain.invoice import compose
-from app.domain.period import Period
-from app.services.pdf import BankBlock, Letterhead, build_context, render_html
+from modules.invoices.domain.invoice import compose
+from modules.invoices.domain.period import Period
+from modules.invoices.services.pdf import (
+    BankBlock,
+    Letterhead,
+    build_context,
+    render_html,
+)
 
 ISSUED = datetime(2026, 9, 24, 10, 0, tzinfo=UTC)
 PERIOD = Period.parse("2026-09")
@@ -205,7 +210,7 @@ def test_no_vat_or_tax_line_anywhere(uk_html: str, intl_html: str) -> None:
 
 
 def test_the_page_is_a4(uk_html: str) -> None:
-    from app.services.pdf import STYLESHEET
+    from modules.invoices.services.pdf import STYLESHEET
 
     assert "size: A4 portrait" in STYLESHEET.read_text(encoding="utf-8")
 
@@ -237,7 +242,7 @@ def test_the_preview_style_never_reaches_the_printed_document() -> None:
     screen goes on the preview copy only, and the two paths are never both
     asked for at once.
     """
-    from app.services.pdf import PREVIEW_STYLE
+    from modules.invoices.services.pdf import PREVIEW_STYLE
 
     printed = render()
     assert "scrollbar-width" not in printed
@@ -284,7 +289,9 @@ def test_the_preview_hides_the_frames_scrollbars() -> None:
     assert "<style>" not in previewed
     assert previewed.count("</head>") == 1
 
-    sheet = Path("app/static/preview-sheet.css").read_text(encoding="utf-8")
+    sheet = Path("modules/invoices/static/preview-sheet.css").read_text(
+        encoding="utf-8"
+    )
     assert "scrollbar-width: none" in sheet
     # Hidden, not clipped: overflow:hidden would lose the bottom of a long
     # invoice, and preview.js grows the frame instead.

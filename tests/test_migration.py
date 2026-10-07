@@ -15,7 +15,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 
-from app.db.models import Base
+from modules.invoices.db.models import Base
 
 
 def offline_sql(direction: str) -> str:

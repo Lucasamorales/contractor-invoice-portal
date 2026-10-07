@@ -21,16 +21,16 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.testclient import TestClient
 
-from app.auth import Identity, current_identity
-from app.config import Settings, get_settings
-from app.db.models import AuditLog, KudosEvent, KudosSnapshot
-from app.db.session import get_session, get_sessionmaker
 from app.main import app
-from app.services import kudos_sync
-from app.services.crypto import Cipher, generate_key
-from app.services.storage import LocalObjectStore
-from app.web.member import get_cipher, get_store
-from app.web.ratelimit import kudos_refresh_limiter
+from modules.invoices.auth import Identity, current_identity
+from modules.invoices.config import Settings, get_settings
+from modules.invoices.db.models import AuditLog, KudosEvent, KudosSnapshot
+from modules.invoices.db.session import get_session, get_sessionmaker
+from modules.invoices.services import kudos_sync
+from modules.invoices.services.crypto import Cipher, generate_key
+from modules.invoices.services.storage import LocalObjectStore
+from modules.invoices.web.member import get_cipher, get_store
+from modules.invoices.web.ratelimit import kudos_refresh_limiter
 from tests.integration.conftest import give_counter, give_fee, make_person
 
 pytestmark = pytest.mark.integration
@@ -130,10 +130,10 @@ def press_refresh(client, *, token: str | None = None, quarter: str = "2026-Q3")
 
 
 def alias(factory, name: str, person_id):
-    from app.services import kudos_admin
+    from modules.invoices.services import kudos_admin
 
     with factory() as session, session.begin():
-        from app.db.models import Person
+        from modules.invoices.db.models import Person
 
         kudos_admin.map_name(
             session,

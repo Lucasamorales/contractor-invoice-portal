@@ -13,11 +13,11 @@ import pytest
 from openpyxl import Workbook
 from sqlalchemy import select
 
-from app.config import get_settings
-from app.db.models import Person
-from app.domain.seeding import COLUMNS, build_rows
 from app.main import app
-from app.scripts.seed import SHEET_NAME, apply_row, read_rows
+from modules.invoices.config import get_settings
+from modules.invoices.db.models import Person
+from modules.invoices.domain.seeding import COLUMNS, build_rows
+from modules.invoices.scripts.seed import SHEET_NAME, apply_row, read_rows
 from tests.integration.test_wizard import EMAIL, seed_ready, wizard  # noqa: F401
 
 pytestmark = pytest.mark.integration

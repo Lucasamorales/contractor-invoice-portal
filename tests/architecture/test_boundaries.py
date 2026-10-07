@@ -1,19 +1,20 @@
-"""The walls between the invoice app and the modules (docs/decisions/0001).
+"""The walls between core and the modules (docs/decisions/0001).
 
-The hub idea only works if a module cannot quietly reach into another, so the
-rule is a failing test rather than a sentence in a document. These run on the
-source with no database and no network.
+The hub only works if a module cannot quietly reach into another, so the rule is
+a failing test rather than a sentence in a document. These run on the source
+with no database and no network.
 
-Today there is one module (``modules/leave``) and the invoice app is still in
-``app/``. The rules are written for where it is going, so the invoice code can
-move later without these changing:
+The layers, from the bottom:
 
-* ``app`` never imports ``modules``: the invoice app does not depend on leave.
-* ``modules`` never import ``app``: leave does not depend on invoicing.
-* no module imports another module.
-* a module's ``domain/`` package uses the standard library and nothing else, and
-  never reads the clock. A calculation somebody will check months later has to
-  give the same answer when it is asked again.
+* ``core/``: shared infrastructure. Imports nothing above it.
+* ``modules/<name>/``: a self-contained tool. May import ``core`` and itself;
+  never ``app`` and never another module.
+* ``app/``: the composition root. It is the one place allowed to import both,
+  because putting the pieces together is its job.
+
+And inside a module, ``domain/`` is the calculation layer: the standard library
+and nothing else, and never the clock. A calculation somebody will check months
+later has to give the same answer when it is asked again.
 
 Not covered yet, and why, is in modules/leave/BACKLOG.md (H-01 .. H-09).
 """
@@ -29,6 +30,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "app"
+CORE = ROOT / "core"
 MODULES = ROOT / "modules"
 
 # Reading the wall clock makes a calculation depend on the day it is run, which
@@ -54,6 +56,10 @@ def imports_of(path: Path) -> set[str]:
     return found
 
 
+def is_within(name: str, package: str) -> bool:
+    return name == package or name.startswith(package + ".")
+
+
 def module_names() -> list[str]:
     return sorted(
         p.name for p in MODULES.iterdir() if p.is_dir() and (p / "__init__.py").exists()
@@ -74,27 +80,33 @@ def relative(path: Path) -> str:
 
 def test_there_is_something_to_check() -> None:
     """Guards against every test below passing because it found nothing."""
-    assert "leave" in module_names()
+    assert module_names() == ["invoices", "leave"]
+    assert len(list(python_files(MODULES / "invoices"))) > 40
     assert len(list(python_files(MODULES / "leave" / "domain"))) >= 6
-    assert len(list(python_files(APP))) > 30
+    assert (CORE / "__init__.py").exists()
 
 
-def test_the_invoice_app_does_not_import_a_module() -> None:
+def test_core_imports_nothing_above_it() -> None:
+    """``core`` is what modules share, so it cannot depend on any of them or on
+    the app that composes them. The moment it does, a module is no longer
+    something that can be switched off."""
     offences = [
         f"{relative(path)} imports {name}"
-        for path in python_files(APP)
+        for path in python_files(CORE)
         for name in imports_of(path)
-        if name == "modules" or name.startswith("modules.")
+        if is_within(name, "modules") or is_within(name, "app")
     ]
-    assert offences == [], "app/ must not depend on modules/: " + "; ".join(offences)
+    assert offences == [], "core/ must not depend on modules/ or app/: " + "; ".join(
+        offences
+    )
 
 
-def test_a_module_does_not_import_the_invoice_app() -> None:
+def test_a_module_does_not_import_the_app_that_composes_it() -> None:
     offences = [
         f"{relative(path)} imports {name}"
         for path in python_files(MODULES)
         for name in imports_of(path)
-        if name == "app" or name.startswith("app.")
+        if is_within(name, "app")
     ]
     assert offences == [], "modules/ must not depend on app/: " + "; ".join(offences)
 
@@ -107,7 +119,7 @@ def test_a_module_does_not_import_another_module(name: str) -> None:
         for path in python_files(MODULES / name)
         for imported in imports_of(path)
         for other in others
-        if imported == f"modules.{other}" or imported.startswith(f"modules.{other}.")
+        if is_within(imported, f"modules.{other}")
     ]
     assert offences == [], f"modules/{name} reached into another module: " + "; ".join(
         offences
@@ -125,12 +137,7 @@ def test_a_module_domain_uses_the_standard_library_and_nothing_else(
     offences = []
     for path in python_files(domain):
         for name in imports_of(path):
-            root = name.split(".")[0]
-            if (
-                root in sys.stdlib_module_names
-                or name == own
-                or name.startswith(own + ".")
-            ):
+            if name.split(".")[0] in sys.stdlib_module_names or is_within(name, own):
                 continue
             offences.append(f"{relative(path)} imports {name}")
     assert offences == [], "a domain package must be pure: " + "; ".join(offences)

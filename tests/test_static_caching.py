@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.web.static import IMMUTABLE, fingerprint, static_url
+from modules.invoices.web.static import IMMUTABLE, fingerprint, static_url
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def test_the_url_changes_when_the_file_does(tmp_path, monkeypatch) -> None:
     Without this a deploy could serve last week's stylesheet out of somebody's
     cache for a year.
     """
-    import app.web.static as static_module
+    import modules.invoices.web.static as static_module
 
     first = fingerprint("app.css")
     assert first and first in static_url("app.css")
@@ -61,7 +61,7 @@ def test_the_url_changes_when_the_file_does(tmp_path, monkeypatch) -> None:
 
 def test_a_missing_file_does_not_break_a_page(tmp_path, monkeypatch) -> None:
     """A cache-busting query string is never worth a 500."""
-    import app.web.static as static_module
+    import modules.invoices.web.static as static_module
 
     monkeypatch.setattr(static_module, "STATIC_ROOT", tmp_path)
     fingerprint.cache_clear()
@@ -85,7 +85,7 @@ def test_every_form_opts_out_of_boosting() -> None:
     forms = re.compile(r"<form[^>]*>", re.S)
 
     missing: list[str] = []
-    for template in sorted(Path("app/templates").rglob("*.html")):
+    for template in sorted(Path("modules/invoices/templates").rglob("*.html")):
         for tag in forms.findall(template.read_text(encoding="utf-8")):
             if 'method="post"' in tag and not unboosted.match(tag):
                 missing.append(f"{template}: {tag[:70]}")
@@ -105,7 +105,7 @@ def test_boosting_does_not_override_the_swap() -> None:
     import re
     from pathlib import Path
 
-    base = Path("app/templates/base.html").read_text(encoding="utf-8")
+    base = Path("modules/invoices/templates/base.html").read_text(encoding="utf-8")
     tag = re.search(r"<body[^>]*>", base, re.S)
     assert tag is not None
     body = tag.group(0)
@@ -126,11 +126,11 @@ def test_the_footer_is_the_same_width_as_the_page() -> None:
     import re
     from pathlib import Path
 
-    base = Path("app/templates/base.html").read_text(encoding="utf-8")
+    base = Path("modules/invoices/templates/base.html").read_text(encoding="utf-8")
     assert '<main class="{{ page_width | trim }}">' in base
     assert '<footer class="foot {{ page_width | trim }}">' in base
 
-    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    css = Path("modules/invoices/static/app.css").read_text(encoding="utf-8")
     widths = set(re.findall(r"^main\.([a-z-]+) \{", css, re.M))
     feet = set(re.findall(r"^\.foot\.([a-z-]+) \{", css, re.M))
     assert widths <= feet, f"no .foot rule for: {sorted(widths - feet)}"
@@ -151,7 +151,7 @@ def test_every_download_link_opts_out_of_boosting() -> None:
     downloads = re.compile(r"<a[^>]*href=\"[^\"]*(?:/pdf|\.csv)[^\"]*\"[^>]*>", re.S)
 
     missing: list[str] = []
-    for template in sorted(Path("app/templates").rglob("*.html")):
+    for template in sorted(Path("modules/invoices/templates").rglob("*.html")):
         for tag in downloads.findall(template.read_text(encoding="utf-8")):
             if 'hx-boost="false"' not in tag:
                 missing.append(f"{template}: {tag[:70]}")
@@ -169,7 +169,7 @@ def test_every_colour_lives_in_a_token_block() -> None:
     import re
     from pathlib import Path
 
-    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    css = Path("modules/invoices/static/app.css").read_text(encoding="utf-8")
     # Everything after the last token block is ordinary rules.
     end = css.rindex("@media print {")
     end = css.index("}\n}", end) + 3
@@ -184,7 +184,7 @@ def test_the_two_night_blocks_agree() -> None:
     import re
     from pathlib import Path
 
-    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    css = Path("modules/invoices/static/app.css").read_text(encoding="utf-8")
 
     def tokens(block: str) -> dict[str, str]:
         return {
@@ -214,9 +214,9 @@ def test_the_tab_icon_is_present_and_hashed() -> None:
     no hash in its URL is one that cannot be changed for a year."""
     from pathlib import Path
 
-    base = Path("app/templates/base.html").read_text(encoding="utf-8")
+    base = Path("modules/invoices/templates/base.html").read_text(encoding="utf-8")
     for name in ("favicon.ico", "favicon-32.png", "apple-touch-icon.png"):
-        assert (Path("app/static") / name).exists(), f"{name} is missing"
+        assert (Path("modules/invoices/static") / name).exists(), f"{name} is missing"
         assert f"static('{name}')" in base, f"{name} is not linked, or not hashed"
 
 
@@ -243,7 +243,7 @@ def test_scripts_in_the_body_bind_their_global_listeners_once() -> None:
         "receipts.js",
         "money.js",
     ):
-        source = Path("app/static") / name
+        source = Path("modules/invoices/static") / name
         text = source.read_text(encoding="utf-8")
         globals_bound = re.findall(
             r"(?:document|window)\.addEventListener\(\s*\"(\w+)\"", text
@@ -269,7 +269,7 @@ def test_the_toggle_does_not_depend_on_a_request_finishing() -> None:
     """
     from pathlib import Path
 
-    source = Path("app/static/theme.js").read_text(encoding="utf-8")
+    source = Path("modules/invoices/static/theme.js").read_text(encoding="utf-8")
     assert "document.cookie =" in source, "the press must not need a request"
     assert "keepalive: true" in source, "the fallback must survive a navigation"
     # Painted first, so the page never waits on anything.
@@ -286,14 +286,14 @@ def test_the_repeated_account_number_is_checked_as_it_is_typed() -> None:
     """
     from pathlib import Path
 
-    forms = Path("app/static/forms.js").read_text(encoding="utf-8")
+    forms = Path("modules/invoices/static/forms.js").read_text(encoding="utf-8")
     assert "data-match" in forms
     # setCustomValidity is what makes the browser refuse the submit and move
     # focus, the same as it already does for a malformed email address.
     assert "setCustomValidity" in forms
 
     for name in ("bank_change.html", "admin/person.html"):
-        markup = (Path("app/templates") / name).read_text(encoding="utf-8")
+        markup = (Path("modules/invoices/templates") / name).read_text(encoding="utf-8")
         assert 'name="account_number_again"' in markup, name
         pair = markup[markup.index('name="account_number_again"') :][:400]
         assert 'data-match="account_number"' in pair, (
@@ -313,7 +313,7 @@ def test_no_screen_loads_its_script_from_the_head() -> None:
     import re
     from pathlib import Path
 
-    templates = Path("app/templates")
+    templates = Path("modules/invoices/templates")
     for path in templates.rglob("*.html"):
         text = path.read_text(encoding="utf-8")
         assert "block scripts" not in text, (
@@ -339,7 +339,7 @@ def test_every_amount_on_a_finance_screen_opens_hidden() -> None:
     from pathlib import Path
 
     allowed = {("kudos.html", "kudos_rate_pence")}
-    for path in Path("app/templates/admin").glob("*.html"):
+    for path in Path("modules/invoices/templates/admin").glob("*.html"):
         if path.name == "_money.html":
             continue
         text = path.read_text(encoding="utf-8")
@@ -367,9 +367,9 @@ def test_every_screen_has_a_tutorial_and_every_step_has_a_place() -> None:
     import re
     from pathlib import Path
 
-    from app.web import tutorial
+    from modules.invoices.web import tutorial
 
-    templates = Path("app/templates")
+    templates = Path("modules/invoices/templates")
     anchors: dict[str, list[str]] = {}
     for path in templates.rglob("*.html"):
         text = path.read_text(encoding="utf-8")
@@ -419,15 +419,15 @@ def test_every_screen_has_a_tutorial_and_every_step_has_a_place() -> None:
 
 
 def test_the_scheduler_sends_on_the_days_the_window_rule_names() -> None:
-    """The window days live in app/domain/period.py and the schedule lives in
-    Terraform, which cannot import Python. Moving the window without moving the
-    schedule would announce it on the wrong day, so the two are held together
-    here.
+    """The window days live in modules/invoices/domain/period.py and the schedule
+    lives in Terraform, which cannot import Python. Moving the window without
+    moving the schedule would announce it on the wrong day, so the two are held
+    together here.
     """
     import re
     from pathlib import Path
 
-    from app.domain.period import WINDOW_CLOSES_DAY, WINDOW_OPENS_DAY
+    from modules.invoices.domain.period import WINDOW_CLOSES_DAY, WINDOW_OPENS_DAY
 
     text = Path("infra/scheduler.tf").read_text(encoding="utf-8")
 

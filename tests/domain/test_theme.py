@@ -1,4 +1,4 @@
-"""The theme's pure parts (app/web/theme.py).
+"""The theme's pure parts (modules/invoices/web/theme.py).
 
 Where it goes back to after toggling comes off a form, and a value straight
 from a form into a Location header is an open redirect.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.web.theme import DAY, NIGHT, next_theme, safe_next
+from modules.invoices.web.theme import DAY, NIGHT, next_theme, safe_next
 
 
 def test_the_toggle_alternates_and_treats_no_choice_as_day() -> None:

@@ -15,9 +15,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth import Identity, current_identity
-from app.config import Settings, get_settings
-from app.db.models import (
+from app.main import app
+from modules.invoices.auth import Identity, current_identity
+from modules.invoices.config import Settings, get_settings
+from modules.invoices.db.models import (
     AuditLog,
     BankState,
     Fee,
@@ -26,11 +27,10 @@ from app.db.models import (
     PayoutRegion,
     PersonStatus,
 )
-from app.db.session import get_session, get_sessionmaker
-from app.main import app
-from app.services.crypto import Cipher, generate_key
-from app.services.storage import LocalObjectStore
-from app.web.member import get_cipher, get_renderer, get_store
+from modules.invoices.db.session import get_session, get_sessionmaker
+from modules.invoices.services.crypto import Cipher, generate_key
+from modules.invoices.services.storage import LocalObjectStore
+from modules.invoices.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import (
     give_bank,
     give_counter,
@@ -172,8 +172,8 @@ def test_a_non_finance_caller_is_refused_everywhere(
 
 def test_every_admin_route_is_behind_the_finance_dependency() -> None:
     """A structural check, so a new route cannot be added without the guard."""
-    from app.auth import require_finance
-    from app.web import admin as admin_routes
+    from modules.invoices.auth import require_finance
+    from modules.invoices.web import admin as admin_routes
 
     def calls(dependencies) -> list:
         found = []
@@ -334,7 +334,7 @@ def test_setting_a_fee_activates_a_pending_person(admin_client, factory) -> None
         follow_redirects=False,
     )
     with factory() as session:
-        from app.db.models import Person
+        from modules.invoices.db.models import Person
 
         assert session.get(Person, person_id).status is PersonStatus.ACTIVE
 
@@ -383,7 +383,7 @@ def test_no_admin_route_can_make_a_bank_row_payable(admin_client, factory) -> No
     An admin may read, review, flag and propose. The absence of a confirm route
     is the control, so the test looks for its absence.
     """
-    from app.web import admin as admin_routes
+    from modules.invoices.web import admin as admin_routes
 
     paths = [route.path for route in admin_routes.router.routes]
     assert not [p for p in paths if "confirm" in p or "verify" in p]
@@ -413,8 +413,8 @@ def test_period_view_counts_expected_against_received(admin_client, factory) -> 
 
 
 def test_period_view_flags_a_large_expense(admin_client, factory) -> None:
-    from app.domain.period import Period
-    from app.services.invoicing import ExpenseInput, submit
+    from modules.invoices.domain.period import Period
+    from modules.invoices.services.invoicing import ExpenseInput, submit
 
     client, settings, cipher = admin_client
     person_id = seed_person(factory, cipher)
@@ -444,8 +444,8 @@ def test_period_view_flags_a_large_expense(admin_client, factory) -> None:
 def test_payment_run_splits_uk_and_international(admin_client, factory) -> None:
     from pathlib import Path
 
-    from app.domain.period import Period
-    from app.services.invoicing import submit
+    from modules.invoices.domain.period import Period
+    from modules.invoices.services.invoicing import submit
 
     client, settings, cipher = admin_client
     uk = seed_person(factory, cipher, email="uk@example.com")
@@ -478,8 +478,8 @@ def test_exporting_the_payment_run_is_a_post_and_is_audited(
 ) -> None:
     from pathlib import Path
 
-    from app.domain.period import Period
-    from app.services.invoicing import submit
+    from modules.invoices.domain.period import Period
+    from modules.invoices.services.invoicing import submit
 
     client, settings, cipher = admin_client
     person_id = seed_person(factory, cipher)
@@ -557,7 +557,7 @@ def test_deactivating_preserves_history_and_audits(admin_client, factory) -> Non
         follow_redirects=False,
     )
     with factory() as session:
-        from app.db.models import Person
+        from modules.invoices.db.models import Person
 
         person = session.get(Person, person_id)
         assert person.status is PersonStatus.INACTIVE
@@ -712,7 +712,7 @@ def test_voiding_frees_the_month_but_never_the_number(admin_client, factory) -> 
         assert entry.after["reason"] == "wrong month"
 
     # The month is free again, which is what makes a reissue possible.
-    from app.db import repo
+    from modules.invoices.db import repo
 
     with factory() as session:
         assert repo.live_invoice_for_period(session, person_id, "2026-09") is None
@@ -751,7 +751,7 @@ def test_a_void_without_a_reason_is_refused(admin_client, factory) -> None:
 def test_a_stopped_email_can_be_put_back_in_the_queue(admin_client, factory) -> None:
     """R-JOB-04. The only way a message leaves the queue is by being sent, so
     the counterpart to a permanent failure is a retry, never a dismissal."""
-    from app.db.models import Outbox, OutboxStatus
+    from modules.invoices.db.models import Outbox, OutboxStatus
 
     client, _, _cipher = admin_client
     with factory() as session:
@@ -792,7 +792,9 @@ def test_there_is_no_way_to_dismiss_an_unsent_email() -> None:
     outcome this design exists to prevent."""
     from pathlib import Path
 
-    queue = Path("app/templates/admin/queue.html").read_text(encoding="utf-8")
+    queue = Path("modules/invoices/templates/admin/queue.html").read_text(
+        encoding="utf-8"
+    )
     for wording in ("Give up", "Dismiss", "Ignore this email"):
         assert wording not in queue
 
@@ -882,7 +884,9 @@ def test_the_page_offers_no_way_to_make_a_bank_row_payable() -> None:
     """R-BANK-*, CLAUDE.md 2.2. The layout changed; the boundary did not."""
     from pathlib import Path
 
-    markup = Path("app/templates/admin/person.html").read_text(encoding="utf-8")
+    markup = Path("modules/invoices/templates/admin/person.html").read_text(
+        encoding="utf-8"
+    )
     assert "/bank/confirm" not in markup
     for wording in ("Make payable", "Confirm the account", "Approve"):
         assert wording not in markup
