@@ -26,7 +26,7 @@ by default.
 | **The chat assistant is not part of it.** It is a separate system, used only as a style reference for a modular layout | **Decided** | |
 | Reuse this system's stack and Google sign-in | **Decided** | Python, FastAPI, HTMX, Postgres on Neon, Cloud Run behind IAP, Terraform, Resend |
 | Plan first, **staging first**, nothing on production until proven there | **Decided** | |
-| **Phase 1: move the invoice app into `modules/invoices/`** | **Decided** (7 October) | Built on branch `hub-phase-1`. Not merged and not deployed |
+| **Phase 1: move the invoice app into `modules/invoices/`** | **Decided** (7 October) | Built on branch `hub-phase-1` (draft PR #2). Running on staging as `0.9.0-rc1`; not merged, and not on production |
 | One service, one image, one deploy, not a service per module | Proposed | A service per module would mean another IAP configuration, set of secrets and scheduler identity each, and would break the £0 target |
 | `core/` shared, `modules/<name>/` self-contained, and **tests that fail when a wall is crossed** | Proposed | Built; see below |
 | One database schema and **one database role per module** | Proposed | Not built. Needs a decision (H-04) |
@@ -99,7 +99,7 @@ are still inside `modules/invoices`, and why is below.
 | `modules/invoices/`: the whole invoice app, moved with `git mv` so history is kept | **Built on `hub-phase-1`.** 48 routes identical to `staging`, in the same order |
 | `core/`: config, auth, transport, database session, encryption, file storage, backup, CSRF, theme, the rate-limit mechanism | **Built on `hub-phase-1`** |
 | The boundary tests | **Built** |
-| The image | **Built and booted locally:** contains `core/` and `modules/`, serves the health check and static files, and refuses unauthenticated requests |
+| The image | **Built, booted locally, and running on staging** as `0.9.0-rc1`. CI is green on the draft PR, including the PDF tests. The invoice HTML it renders is byte-identical to production's |
 | `app/` | Reduced to the entrypoint and the single migration chain, so `uvicorn app.main:app` and `alembic.ini` are unchanged |
 | The module contract and registry, per-module access, per-module schema and role, the landing page | Not started |
 | Any leave screen, table or stored data | Not started. Blocked on `modules/leave/BACKLOG.md` |
@@ -109,7 +109,7 @@ are still inside `modules/invoices`, and why is below.
 ```mermaid
 flowchart LR
     p0["Phase 0: decide and specify<br/>DONE: this record, the leave spec<br/>and backlog, the leave rules as code"]
-    p1["Phase 1: move invoices into modules/invoices<br/>BUILT on a branch, no behaviour change<br/>NEXT: prove on staging"]
+    p1["Phase 1: move invoices into modules/invoices<br/>RUNNING on staging, no behaviour change<br/>NEXT: a person clicks through it"]
     p1b["Phase 1b: split what is still tangled<br/>people, audit, outbox, shell, static<br/>needs the module contract"]
     p2["Phase 2: module contract and registry<br/>per-module access: needs sign-off"]
     p3["Phase 3: leave on staging<br/>BLOCKED on the open questions"]
@@ -133,7 +133,7 @@ flowchart LR
 | Phase | Gate to leave it |
 |---|---|
 | 0. Decide and specify | **Done.** You sign off the spec and the answers to the open questions |
-| 1. Repackage | **Met on the branch:** the existing tests pass with import paths changed and no assertion touched, and the route table is identical. **Still to do:** staging verified, and production only outside an invoice window |
+| 1. Repackage | **Met on the branch:** the existing tests pass with import paths changed and no assertion touched, and the route table is identical. **Staging verified on 7 October:** both services healthy, no warnings, and the backup, outbox and kudos-sync jobs ran on the new image. **Still to do:** somebody signs in to staging and clicks through it as a person, and production only outside an invoice window |
 | 1b. Split the tangled files | Each split is its own commit, with the suite green and the route table identical |
 | 2. Contract | Architecture tests green with invoices as the only registered module; the access change provably identical in effect for invoices |
 | 3. Leave on staging | A leave spec signed off; staging holds invented people only |
@@ -180,9 +180,10 @@ makes, and doing it now would mean inventing that contract by accident.
 
 ## The decision needed now
 
-**Prove Phase 1 on staging, and when?**
+**Merge Phase 1, and when?**
 
-The branch is built and verified locally. The remaining step is to deploy it to
-the staging environment and look at it. The next invoice window opens on **22
-October**, 15 days from now, and closes on the 28th. Deploying to staging is
-safe at any time; the window only matters for production.
+It is running on staging and CI is green. What remains is a person signing in to
+staging and clicking through the portal, because the checks so far cannot sign
+in. After that it can be merged. The next invoice window opens on **22
+October**, 15 days from now, and closes on the 28th: merging is safe at any time,
+but **deploying to production should be outside that window**.

@@ -8,12 +8,18 @@ when is in `CHANGELOG.md`.
 
 ## 0. The hub and the leave module
 
-**Phase 1 is built and sitting on a branch.** The invoice app lives in
+**Phase 1 is built and running on staging.** The invoice app lives in
 `modules/invoices/` and the shared infrastructure in `core/`, on branch
-`hub-phase-1`, with all 48 routes identical to `staging` and the suite green. It
-is **not merged and not deployed**: the invoice window opens on 22 October, and
-the one thing left before it can go anywhere is proving it on staging. What is
-still tangled, and why, is in `docs/decisions/0001-modular-hub.md`.
+`hub-phase-1` (draft PR #2), with all 48 routes identical to `staging`, the suite
+and CI green, and the image running on the staging environment as `0.9.0-rc1`.
+**It is not merged, and production is untouched.** What is left is somebody
+signing in to staging and clicking through it, then merging; production only
+outside an invoice window (opens 22 October, closes the 28th). What is still
+tangled, and why, is in `docs/decisions/0001-modular-hub.md`.
+
+**Staging is running a build that `staging.tfvars` does not name.** It was
+applied with the image on the command line, so a plan from the `staging` branch
+would put it back on `0.8.23`. That is intended until this merges.
 
 Leave (a replacement for Leave Dates) has its rules written as pure code and
 tested, and nothing else. **Its backlog is its own:** `modules/leave/BACKLOG.md`

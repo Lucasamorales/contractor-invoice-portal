@@ -15,7 +15,7 @@ has not been released yet.
   next push to `staging` or `main` would have. The shared fixture now pins the
   clock. Test-only; nothing in `app/` changes and nothing needs deploying.
 
-## 7 October 2026, hub Phase 1 (on the `hub-phase-1` branch, not deployed)
+## 7 October 2026, hub Phase 1 (on the `hub-phase-1` branch; staging only, not production)
 
 - **The invoice app is now a module.** It moved from `app/` to
   `modules/invoices/` with `git mv`, so history is kept, and 355 imports were
@@ -30,9 +30,12 @@ has not been released yet.
 - **Scripts have new names.** `uv run python -m app.scripts.<name>` is now
   `uv run python -m modules.invoices.scripts.<name>` for every script: `seed`,
   `set_counter`, `set_payout_region`, `reset_person` and the rest.
-- **The image contains `core/` and `modules/`.** Built and booted locally: the
-  health check and static files answer, and an unauthenticated request to a
-  protected page is refused.
+- **The image contains `core/` and `modules/`, and runs on staging** as
+  `0.9.0-rc1`. Both services start cleanly with no warnings, and the backup,
+  outbox and kudos-sync jobs ran on it: the backup wrote a real dump through
+  the moved code. The invoice HTML it renders is byte-identical to the image
+  running in production, for a UK and an international invoice. CI is green on
+  the draft PR, including the PDF tests the laptop cannot run.
 - **A migration run for real now persists what it reports.** The banner added on
   28 September that names the database before a migration ran its queries on
   the migration's own connection. That opened a transaction first, which
