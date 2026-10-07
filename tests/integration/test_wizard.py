@@ -17,12 +17,12 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.main import app
-from modules.invoices.auth import Identity, current_identity
-from modules.invoices.config import Settings, get_settings
+from core.auth import Identity, current_identity
+from core.config import Settings, get_settings
+from core.db.session import get_session, get_sessionmaker
+from core.services.crypto import Cipher, generate_key
+from core.services.storage import LocalObjectStore, StorageError
 from modules.invoices.db.models import BankState, Invoice, InvoiceStatus, Outbox, Person
-from modules.invoices.db.session import get_session, get_sessionmaker
-from modules.invoices.services.crypto import Cipher, generate_key
-from modules.invoices.services.storage import LocalObjectStore, StorageError
 from modules.invoices.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import (
     IN_WINDOW,
@@ -241,7 +241,7 @@ def test_a_form_without_a_token_is_refused(wizard, factory) -> None:
 def test_a_token_minted_for_someone_else_is_refused(wizard, factory) -> None:
     client, settings, box = wizard
     seed_ready(factory, box)
-    from modules.invoices.web import csrf
+    from core.web import csrf
 
     stolen = csrf.issue(settings, OTHER)
     response = client.post("/details", data={"csrf_token": stolen, "legal_name": "J"})

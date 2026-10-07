@@ -18,8 +18,8 @@ from fastapi import Depends, HTTPException, Request, status
 from google.auth.exceptions import GoogleAuthError
 from google.oauth2 import id_token
 
-from modules.invoices.config import Settings, get_settings
-from modules.invoices.transport import HttpxRequest
+from core.config import Settings, get_settings
+from core.transport import HttpxRequest
 
 logger = logging.getLogger(__name__)
 

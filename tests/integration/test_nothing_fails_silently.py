@@ -16,13 +16,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from modules.invoices.config import Settings
+from core.config import Settings
+from core.services.crypto import Cipher, generate_key
+from core.services.storage import LocalObjectStore, StorageError
 from modules.invoices.db.models import Invoice, InvoiceStatus, Outbox, OutboxStatus
 from modules.invoices.domain.period import Period
 from modules.invoices.services import admin, jobs, mailer
-from modules.invoices.services.crypto import Cipher, generate_key
 from modules.invoices.services.invoicing import ExpenseInput, submit
-from modules.invoices.services.storage import LocalObjectStore, StorageError
 from tests.integration.conftest import (
     give_bank,
     give_counter,
@@ -306,7 +306,7 @@ def test_a_migration_names_the_database_it_is_about_to_change(engine) -> None:
     ran against staging and still announced a clean upgrade. What the guard
     prints now is the database itself.
     """
-    from modules.invoices.db.migration_target import describe_target
+    from core.db.migration_target import describe_target
 
     with engine.connect() as connection:
         described = describe_target(connection)
@@ -324,7 +324,7 @@ def test_it_describes_an_empty_database_without_falling_over(engine) -> None:
     """
     from sqlalchemy import text
 
-    from modules.invoices.db.migration_target import describe_target
+    from core.db.migration_target import describe_target
 
     with engine.connect() as connection:
         connection.execute(text("create schema if not exists empty_probe"))

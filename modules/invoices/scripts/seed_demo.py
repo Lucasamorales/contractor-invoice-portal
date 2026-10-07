@@ -20,7 +20,9 @@ from datetime import UTC, date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Environment, Settings, get_settings
+from core.config import Environment, Settings, get_settings
+from core.db.session import get_sessionmaker
+from core.services.crypto import Cipher, field_aad
 from modules.invoices.db.models import (
     BankDetail,
     BankSource,
@@ -32,9 +34,7 @@ from modules.invoices.db.models import (
     Person,
     PersonStatus,
 )
-from modules.invoices.db.session import get_sessionmaker
 from modules.invoices.domain.period import Period
-from modules.invoices.services.crypto import Cipher, field_aad
 
 # The marker that says a row came from here and is safe to remove.
 DEMO_DOMAIN = "@example.com"

@@ -23,10 +23,10 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import MailMode, Settings, mail_mode
+from core.config import MailMode, Settings, mail_mode
+from core.services.storage import ObjectStore, StorageError
 from modules.invoices.db.models import Outbox, OutboxStatus
 from modules.invoices.services import receipts as receipt_files
-from modules.invoices.services.storage import ObjectStore, StorageError
 
 logger = logging.getLogger(__name__)
 

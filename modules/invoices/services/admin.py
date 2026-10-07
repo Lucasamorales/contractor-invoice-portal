@@ -16,7 +16,8 @@ from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Settings
+from core.config import Settings
+from core.services.crypto import Cipher, field_aad
 from modules.invoices.db import repo
 from modules.invoices.db.models import (
     BankDetail,
@@ -32,7 +33,6 @@ from modules.invoices.domain.kudos import is_quarter_end
 from modules.invoices.domain.money import format_gbp
 from modules.invoices.domain.period import Period
 from modules.invoices.services import mailer
-from modules.invoices.services.crypto import Cipher, field_aad
 
 
 @dataclass(frozen=True, slots=True)

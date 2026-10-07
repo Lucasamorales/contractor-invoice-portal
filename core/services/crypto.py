@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from modules.invoices.config import ConfigError, Settings
+from core.config import ConfigError, Settings
 
 NONCE_BYTES = 12
 KEY_BYTES = 32

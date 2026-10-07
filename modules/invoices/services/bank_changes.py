@@ -21,6 +21,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from core.services.crypto import Cipher, field_aad
 from modules.invoices.db import repo
 from modules.invoices.db.models import BankDetail, BankSource, BankState, Person
 from modules.invoices.domain.banking import (
@@ -32,7 +33,6 @@ from modules.invoices.domain.banking import (
     validate_bank,
 )
 from modules.invoices.domain.iban import mask
-from modules.invoices.services.crypto import Cipher, field_aad
 
 ENCRYPTED_FIELDS = ("account_number", "sort_code", "iban", "swift_bic")
 

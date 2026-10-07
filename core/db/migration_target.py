@@ -15,7 +15,7 @@ import os
 
 from sqlalchemy import Connection
 
-from modules.invoices.config import Environment, Settings, get_settings
+from core.config import Environment, Settings, get_settings
 
 ENVIRONMENT_VAR = "PORTAL_ENVIRONMENT"
 

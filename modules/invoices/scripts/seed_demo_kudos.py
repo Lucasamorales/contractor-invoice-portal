@@ -33,9 +33,9 @@ from datetime import UTC, date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Environment, Settings, get_settings
+from core.config import Environment, Settings, get_settings
+from core.db.session import get_sessionmaker
 from modules.invoices.db.models import KudosAlias, KudosEvent, Person
-from modules.invoices.db.session import get_sessionmaker
 from modules.invoices.domain.kudos import SHEETS_EPOCH, normalise_name, parse_rows
 from modules.invoices.services import kudos_sync
 

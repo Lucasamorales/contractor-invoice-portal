@@ -17,7 +17,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from modules.invoices.config import Settings
+from core.config import Settings
+from core.services.crypto import Cipher
 from modules.invoices.db.models import (
     AuditLog,
     BankState,
@@ -33,7 +34,6 @@ from modules.invoices.scripts.set_payout_region import (
     RegionChangeRefused,
     change_region,
 )
-from modules.invoices.services.crypto import Cipher
 from modules.invoices.services.invoicing import SubmissionBlocked, prepare
 from tests.integration.conftest import (
     IN_WINDOW,

@@ -14,7 +14,7 @@ from datetime import date
 
 import pytest
 
-from modules.invoices.config import Environment, Settings
+from core.config import Environment, Settings
 from modules.invoices.domain.kudos import Quarter, parse_rows, podium, standings
 from modules.invoices.scripts import seed_demo_kudos as demo
 

@@ -16,8 +16,11 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.main import app
-from modules.invoices.auth import Identity, current_identity
-from modules.invoices.config import Settings, get_settings
+from core.auth import Identity, current_identity
+from core.config import Settings, get_settings
+from core.db.session import get_session, get_sessionmaker
+from core.services.crypto import Cipher, generate_key
+from core.services.storage import LocalObjectStore
 from modules.invoices.db.models import (
     AuditLog,
     BankState,
@@ -27,9 +30,6 @@ from modules.invoices.db.models import (
     PayoutRegion,
     PersonStatus,
 )
-from modules.invoices.db.session import get_session, get_sessionmaker
-from modules.invoices.services.crypto import Cipher, generate_key
-from modules.invoices.services.storage import LocalObjectStore
 from modules.invoices.web.member import get_cipher, get_renderer, get_store
 from tests.integration.conftest import (
     give_bank,
@@ -172,7 +172,7 @@ def test_a_non_finance_caller_is_refused_everywhere(
 
 def test_every_admin_route_is_behind_the_finance_dependency() -> None:
     """A structural check, so a new route cannot be added without the guard."""
-    from modules.invoices.auth import require_finance
+    from core.auth import require_finance
     from modules.invoices.web import admin as admin_routes
 
     def calls(dependencies) -> list:

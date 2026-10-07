@@ -18,7 +18,7 @@ import time
 
 from fastapi import HTTPException, Request, status
 
-from modules.invoices.config import Settings
+from core.config import Settings
 
 FIELD_NAME = "csrf_token"
 HEADER_NAME = "X-CSRF-Token"

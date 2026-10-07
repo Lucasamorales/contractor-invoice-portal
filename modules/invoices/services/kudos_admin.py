@@ -19,7 +19,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Settings
+from core.config import Settings
 from modules.invoices.db import repo
 from modules.invoices.db.models import (
     AwardKind,

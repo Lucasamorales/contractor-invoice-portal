@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from modules.invoices.config import ConfigError, Environment, Settings
-from modules.invoices.db.session import assert_tls, build_engine, resolve_trust_store
+from core.config import ConfigError, Environment, Settings
+from core.db.session import assert_tls, build_engine, resolve_trust_store
 
 NEON = (
     "postgresql+psycopg://user:pass@ep-x.eu-central-1.aws.neon.tech/neondb"

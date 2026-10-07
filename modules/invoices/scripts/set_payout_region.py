@@ -42,6 +42,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.db.session import get_sessionmaker
 from modules.invoices.db import repo
 from modules.invoices.db.models import (
     BankDetail,
@@ -51,7 +52,6 @@ from modules.invoices.db.models import (
     PayoutRegion,
     Person,
 )
-from modules.invoices.db.session import get_sessionmaker
 
 REGION_ACTION = "person.payout_region"
 BANK_ACTION = "bank.retire"
@@ -222,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.reason.strip():
         raise SystemExit("--reason may not be empty")
 
-    from modules.invoices.config import get_settings
+    from core.config import get_settings
 
     print(f"environment: {get_settings().environment.value}")
 

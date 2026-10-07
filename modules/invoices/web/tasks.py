@@ -22,11 +22,12 @@ from google.auth.exceptions import GoogleAuthError
 from google.oauth2 import id_token
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Settings, get_settings
-from modules.invoices.db.session import get_session
-from modules.invoices.services import backup, jobs, kudos_sync, mailer
-from modules.invoices.services.storage import ObjectStore
-from modules.invoices.transport import HttpxRequest
+from core.config import Settings, get_settings
+from core.db.session import get_session
+from core.services import backup
+from core.services.storage import ObjectStore
+from core.transport import HttpxRequest
+from modules.invoices.services import jobs, kudos_sync, mailer
 from modules.invoices.web.member import get_store
 
 logger = logging.getLogger(__name__)

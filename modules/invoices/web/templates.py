@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi.templating import Jinja2Templates
 
+from core.web.theme import theme_of
 from modules.invoices.domain.formatting import (
     format_iban,
     format_invoice_date,
@@ -17,7 +18,6 @@ from modules.invoices.domain.iban import mask
 from modules.invoices.domain.money import format_gbp
 from modules.invoices.domain.period import WINDOW_OPENS_DAY, ordinal
 from modules.invoices.web.static import static_url
-from modules.invoices.web.theme import theme_of
 from modules.invoices.web.tutorial import steps_for
 
 templates = Jinja2Templates(directory="modules/invoices/templates")

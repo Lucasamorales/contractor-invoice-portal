@@ -27,9 +27,9 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import get_settings
+from core.config import get_settings
+from core.db.session import get_sessionmaker
 from modules.invoices.db.models import KudosAlias, KudosEvent, Person
-from modules.invoices.db.session import get_sessionmaker
 from modules.invoices.domain.kudos import normalise_name
 
 

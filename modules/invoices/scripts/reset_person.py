@@ -28,7 +28,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Environment, Settings, get_settings
+from core.config import Environment, Settings, get_settings
+from core.db.session import get_sessionmaker
 from modules.invoices.db.models import (
     AuditLog,
     BankDetail,
@@ -45,7 +46,6 @@ from modules.invoices.db.models import (
     Person,
     PrintSnapshot,
 )
-from modules.invoices.db.session import get_sessionmaker
 
 
 class ResetRefused(RuntimeError):

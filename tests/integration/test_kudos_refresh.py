@@ -22,13 +22,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.testclient import TestClient
 
 from app.main import app
-from modules.invoices.auth import Identity, current_identity
-from modules.invoices.config import Settings, get_settings
+from core.auth import Identity, current_identity
+from core.config import Settings, get_settings
+from core.db.session import get_session, get_sessionmaker
+from core.services.crypto import Cipher, generate_key
+from core.services.storage import LocalObjectStore
 from modules.invoices.db.models import AuditLog, KudosEvent, KudosSnapshot
-from modules.invoices.db.session import get_session, get_sessionmaker
 from modules.invoices.services import kudos_sync
-from modules.invoices.services.crypto import Cipher, generate_key
-from modules.invoices.services.storage import LocalObjectStore
 from modules.invoices.web.member import get_cipher, get_store
 from modules.invoices.web.ratelimit import kudos_refresh_limiter
 from tests.integration.conftest import give_counter, give_fee, make_person

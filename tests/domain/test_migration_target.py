@@ -12,12 +12,8 @@ import os
 
 import pytest
 
-from modules.invoices.config import Settings, get_settings
-from modules.invoices.db.migration_target import (
-    ENVIRONMENT_VAR,
-    migration_settings,
-    migration_url,
-)
+from core.config import Settings, get_settings
+from core.db.migration_target import ENVIRONMENT_VAR, migration_settings, migration_url
 
 STAGING_URL = "postgresql+psycopg://user:pw@staging.example/neondb"
 PRODUCTION_URL = "postgresql+psycopg://user:pw@production.example/neondb"

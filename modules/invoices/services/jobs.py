@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Settings
+from core.config import Settings
 from modules.invoices.db import repo
 from modules.invoices.db.models import Outbox, OutboxStatus, PersonStatus
 from modules.invoices.domain.period import (

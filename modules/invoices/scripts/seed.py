@@ -18,6 +18,8 @@ from pathlib import Path
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
+from core.db.session import get_sessionmaker
+from core.services.crypto import Cipher, field_aad
 from modules.invoices.db.models import (
     BankDetail,
     BankSource,
@@ -28,9 +30,7 @@ from modules.invoices.db.models import (
 )
 from modules.invoices.db.models import PayoutRegion as DbPayoutRegion
 from modules.invoices.db.repo import get_person_by_email
-from modules.invoices.db.session import get_sessionmaker
 from modules.invoices.domain.seeding import COLUMNS, SeedRow, build_rows
-from modules.invoices.services.crypto import Cipher, field_aad
 
 SHEET_NAME = "Data Invoices"
 
@@ -253,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Refusing to commit: {len(blocked)} rows have errors.")
         return 2
 
-    from modules.invoices.config import get_settings
+    from core.config import get_settings
 
     settings = get_settings()
     cipher = (

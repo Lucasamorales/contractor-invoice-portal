@@ -20,8 +20,8 @@ import subprocess
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
-from modules.invoices.config import Settings
-from modules.invoices.services.storage import ObjectStore, StorageError
+from core.config import Settings
+from core.services.storage import ObjectStore, StorageError
 
 logger = logging.getLogger(__name__)
 

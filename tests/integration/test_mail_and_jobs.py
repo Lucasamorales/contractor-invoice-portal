@@ -16,14 +16,14 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.main import app
-from modules.invoices.config import MailMode, Settings, get_settings, mail_mode
+from core.config import MailMode, Settings, get_settings, mail_mode
+from core.db.session import get_session
+from core.services.crypto import Cipher, generate_key
+from core.services.storage import LocalObjectStore
 from modules.invoices.db.models import Outbox, OutboxStatus, PersonStatus
-from modules.invoices.db.session import get_session
 from modules.invoices.domain.period import Period
 from modules.invoices.services import bank_changes, jobs, mailer
-from modules.invoices.services.crypto import Cipher, generate_key
 from modules.invoices.services.invoicing import ExpenseInput, submit
-from modules.invoices.services.storage import LocalObjectStore
 from modules.invoices.web.member import get_store
 from modules.invoices.web.tasks import verify_scheduler
 from tests.integration.conftest import (
@@ -679,7 +679,7 @@ def test_staging_does_not_send_unless_everything_goes_to_one_address() -> None:
 
 def test_production_refuses_to_start_with_a_redirect_set() -> None:
     """Every invoice quietly landing in one inbox is worse than not starting."""
-    from modules.invoices.config import ConfigError, assert_production_ready
+    from core.config import ConfigError, assert_production_ready
 
     settings = Settings(
         _env_file=None,
@@ -736,7 +736,7 @@ def test_the_tasks_service_serves_nothing_but_tasks() -> None:
     unauthenticated. They are not: this process answers 404 to them.
     """
     from app.main import app as real_app
-    from modules.invoices.config import get_settings
+    from core.config import get_settings
 
     tasks_only = Settings(_env_file=None, environment="staging", tasks_only=True)
     real_app.dependency_overrides[get_settings] = lambda: tasks_only
@@ -747,7 +747,7 @@ def test_the_tasks_service_serves_nothing_but_tasks() -> None:
         return tasks_only
 
     import app.main as main_module
-    import modules.invoices.config as config_module
+    import core.config as config_module
 
     main_module.get_settings = only_tasks
     try:
@@ -774,7 +774,7 @@ def test_every_message_is_laid_out_and_points_back_at_the_portal() -> None:
     """
     import re
 
-    from modules.invoices.config import Settings
+    from core.config import Settings
     from modules.invoices.db.models import Outbox
 
     settings = Settings(

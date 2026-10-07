@@ -27,7 +27,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from modules.invoices.config import Settings
+from core.config import Settings
 from modules.invoices.db.models import KudosAlias, KudosEvent, KudosSnapshot, Person
 from modules.invoices.domain.kudos import ParseResult, parse_rows
 from modules.invoices.domain.period import Period

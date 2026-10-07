@@ -35,9 +35,9 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from core.db.session import get_sessionmaker
 from modules.invoices.db import repo
 from modules.invoices.db.models import Counter, Person
-from modules.invoices.db.session import get_sessionmaker
 from modules.invoices.domain.numbering import seed_next_number
 
 ACTION = "counter.correct"
@@ -178,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.reason.strip():
         raise SystemExit("--reason may not be empty")
 
-    from modules.invoices.config import get_settings
+    from core.config import get_settings
 
     print(f"environment: {get_settings().environment.value}")
 

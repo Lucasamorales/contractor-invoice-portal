@@ -14,7 +14,7 @@ from openpyxl import Workbook
 from sqlalchemy import select
 
 from app.main import app
-from modules.invoices.config import get_settings
+from core.config import get_settings
 from modules.invoices.db.models import Person
 from modules.invoices.domain.seeding import COLUMNS, build_rows
 from modules.invoices.scripts.seed import SHEET_NAME, apply_row, read_rows

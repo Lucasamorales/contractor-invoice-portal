@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from modules.invoices.web.theme import DAY, NIGHT, next_theme, safe_next
+from core.web.theme import DAY, NIGHT, next_theme, safe_next
 
 
 def test_the_toggle_alternates_and_treats_no_choice_as_day() -> None:

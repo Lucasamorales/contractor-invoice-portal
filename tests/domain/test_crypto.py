@@ -4,13 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from modules.invoices.config import ConfigError, Settings
-from modules.invoices.services.crypto import (
-    Cipher,
-    CryptoError,
-    field_aad,
-    generate_key,
-)
+from core.config import ConfigError, Settings
+from core.services.crypto import Cipher, CryptoError, field_aad, generate_key
 
 PERSON = "8c1f1b2e-0000-0000-0000-000000000001"
 OTHER_PERSON = "8c1f1b2e-0000-0000-0000-000000000002"

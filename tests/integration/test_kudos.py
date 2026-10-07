@@ -14,7 +14,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from modules.invoices.config import Settings
+from core.config import Settings
+from core.services.crypto import Cipher
+from core.services.storage import LocalObjectStore
 from modules.invoices.db.models import (
     Invoice,
     InvoiceStatus,
@@ -27,9 +29,7 @@ from modules.invoices.db.models import (
 )
 from modules.invoices.domain.kudos import Quarter, normalise_name
 from modules.invoices.services import kudos_admin, kudos_sync
-from modules.invoices.services.crypto import Cipher
 from modules.invoices.services.invoicing import submit
-from modules.invoices.services.storage import LocalObjectStore
 from tests.integration.conftest import (
     IN_WINDOW,
     give_award,

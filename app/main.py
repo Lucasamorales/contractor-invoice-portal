@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 
-from modules.invoices.config import Environment, assert_production_ready, get_settings
+from core.config import Environment, assert_production_ready, get_settings
 from modules.invoices.web import admin, member, tasks
 from modules.invoices.web.static import CachedStaticFiles
 from modules.invoices.web.templates import templates

@@ -23,7 +23,9 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from modules.invoices.config import Settings
+from core.config import Settings
+from core.services.crypto import Cipher, field_aad, generate_key
+from core.services.storage import LocalObjectStore
 from modules.invoices.db.models import (
     AwardKind,
     BankDetail,
@@ -39,8 +41,6 @@ from modules.invoices.db.models import (
     Person,
     PersonStatus,
 )
-from modules.invoices.services.crypto import Cipher, field_aad, generate_key
-from modules.invoices.services.storage import LocalObjectStore
 
 DEFAULT_TEST_URL = "postgresql+psycopg://postgres:test@localhost:5433/portaltest"
 

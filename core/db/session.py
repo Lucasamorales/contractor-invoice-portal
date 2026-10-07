@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from modules.invoices.config import ConfigError, Settings, get_settings
+from core.config import ConfigError, Settings, get_settings
 
 REQUIRED_SSLMODE = "verify-full"
 

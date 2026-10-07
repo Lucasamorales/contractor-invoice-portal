@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from modules.invoices.config import Settings
-from modules.invoices.services import backup
-from modules.invoices.services.storage import (
+from core.config import Settings
+from core.services import backup
+from core.services.storage import (
     GcsObjectStore,
     LocalObjectStore,
     StorageError,

@@ -17,12 +17,12 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 
-from modules.invoices.config import Settings
+from core.config import Settings
+from core.services.storage import LocalObjectStore
 from modules.invoices.db import repo
 from modules.invoices.db.models import Invoice, InvoiceStatus, Outbox
 from modules.invoices.domain.period import Period
 from modules.invoices.services.invoicing import OUTBOX_INVOICE_VOIDED, submit, void
-from modules.invoices.services.storage import LocalObjectStore
 from tests.integration.conftest import IN_WINDOW, ready_person
 
 pytestmark = pytest.mark.integration

@@ -22,7 +22,6 @@ FORBIDDEN_PREFIXES = (
     "modules.invoices.db",
     "modules.invoices.services",
     "modules.invoices.web",
-    "modules.invoices.config",
     "sqlalchemy",
     "alembic",
     "fastapi",
