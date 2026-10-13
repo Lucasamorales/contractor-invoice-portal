@@ -1,5 +1,9 @@
 # Invoice Portal
 
+> **Placeholders:** "Your Company Ltd", its address, `example.com`, the people named in examples and
+> tests, and every project, bucket and secret name in `infra/` are examples. Bank details in the tests
+> are standard sample numbers. Set your own company details and settings before deploying.
+
 An internal web app for the company's contractors. Once a month each person checks
 their figures, adds any expenses, and sends a correctly numbered invoice in one
 standard format. It goes to accounts by email, and finance get a payment run.
