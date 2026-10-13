@@ -70,9 +70,7 @@ def test_names_normalise_without_deciding_two_people_are_one() -> None:
     assert normalise_name('Remy "Kit" Keller') == "remy kit keller"
     assert normalise_name("  Marta  Jamie Vance Gray ") == "marta jamie vance gray"
     # The 2025 tab spells her differently from the 2026 tab.
-    assert normalise_name("Jamie Blake Irwin") == normalise_name(
-        "Jamie Blake irwin"
-    )
+    assert normalise_name("Jamie Blake Irwin") == normalise_name("Jamie Blake irwin")
     # But two different people stay two different people.
     assert normalise_name("Remy Castellanos") != normalise_name("Charlie Castellanos")
 
