@@ -32,9 +32,7 @@ def test_finance_emails_arrive_as_a_comma_separated_list(monkeypatch) -> None:
 
 
 def test_the_list_tolerates_spacing_and_case(monkeypatch) -> None:
-    monkeypatch.setenv(
-        "PORTAL_FINANCE_EMAILS", " Julian@Example.com , charlie@x.com "
-    )
+    monkeypatch.setenv("PORTAL_FINANCE_EMAILS", " Julian@Example.com , charlie@x.com ")
     settings = Settings(_env_file=None)
     assert settings.is_finance("julian@example.com") is True
     assert settings.is_finance("JULIAN@EXAMPLE.COM") is True
