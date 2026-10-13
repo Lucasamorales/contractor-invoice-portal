@@ -71,6 +71,9 @@ class CachedStaticFiles(StaticFiles):
     """
 
     def file_response(self, *args: Any, **kwargs: Any) -> Response:
+        """Serve the file as immutable, and give fonts the content type browsers
+        require.
+        """
         response = super().file_response(*args, **kwargs)
         response.headers["Cache-Control"] = IMMUTABLE
 

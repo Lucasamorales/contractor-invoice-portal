@@ -39,6 +39,12 @@ class Cipher:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> Cipher:
+        """Build the cipher from the configured key, or refuse to start.
+
+        The key must be base64 for exactly ``KEY_BYTES`` bytes. A missing or
+        malformed key is a configuration error rather than a silent fallback,
+        because the alternative is bank details stored unencrypted.
+        """
         raw = settings.bank_encryption_key.get_secret_value()
         if not raw:
             raise ConfigError("bank_encryption_key is not configured")

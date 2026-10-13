@@ -87,9 +87,11 @@ class Period:
         return f"{self.month_name} {self.year}"
 
     def opens_on(self) -> date:
+        """The first day of this period's submission window (R-PER-*)."""
         return date(self.year, self.month, WINDOW_OPENS_DAY)
 
     def closes_on(self) -> date:
+        """The last day of this period's submission window (R-PER-*)."""
         return date(self.year, self.month, WINDOW_CLOSES_DAY)
 
     def __str__(self) -> str:

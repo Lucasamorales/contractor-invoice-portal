@@ -62,6 +62,7 @@ class LocalObjectStore:
         return candidate
 
     def put(self, name: str, data: bytes, *, content_type: str) -> str:
+        """Write under the storage root and return a ``file://`` URI."""
         del content_type  # Recorded by GCS; a filesystem has nowhere to put it.
         path = self._path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,6 +79,7 @@ class LocalObjectStore:
         return Path(uri.removeprefix("file://")).exists()
 
     def list_names(self, prefix: str) -> list[str]:
+        """Names relative to the root, with forward slashes on every platform."""
         base = self.root
         if not base.exists():
             return []
@@ -89,6 +91,7 @@ class LocalObjectStore:
         )
 
     def delete(self, name: str) -> None:
+        """Remove the object if it is there; a missing one is not an error."""
         path = self._path(name)
         if path.exists():
             path.unlink()
@@ -127,6 +130,9 @@ class GcsObjectStore:
 
     @property
     def client(self) -> object:
+        """The GCS client, created on first use so importing this module never needs
+        credentials.
+        """
         if self._client is None:
             # Imported here so the rest of the application — the seed, the
             # domain tests — does not need the GCS client to import.
@@ -139,11 +145,13 @@ class GcsObjectStore:
         return self.client.bucket(self.bucket_name).blob(name)
 
     def put(self, name: str, data: bytes, *, content_type: str) -> str:
+        """Upload to the bucket and return a ``gs://`` URI."""
         blob = self._blob(name)
         blob.upload_from_string(data, content_type=content_type)
         return f"gs://{self.bucket_name}/{name}"
 
     def get(self, uri: str) -> bytes:
+        """Download an object from this bucket; any other bucket is refused."""
         from google.api_core import exceptions
 
         try:
@@ -176,6 +184,7 @@ class GcsObjectStore:
         ]
 
     def delete(self, name: str) -> None:
+        """Delete the object; one that is already gone is not an error."""
         import contextlib
 
         from google.api_core import exceptions

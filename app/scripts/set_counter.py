@@ -149,6 +149,9 @@ def describe(correction: Correction) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: show the correction, and apply it only with
+    ``--commit``.
+    """
     parser = argparse.ArgumentParser(
         prog="set_counter",
         description="Correct one person's invoice counter.",

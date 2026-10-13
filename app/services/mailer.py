@@ -69,6 +69,8 @@ class MailError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class Attachment:
+    """A file sent with a message, held in memory."""
+
     name: str
     content: bytes
     content_type: str
@@ -76,6 +78,10 @@ class Attachment:
 
 @dataclass(frozen=True, slots=True)
 class Message:
+    """One email as handed to a client: recipients, subject, plain text and optional
+    HTML.
+    """
+
     to: tuple[str, ...]
     subject: str
     text: str
@@ -85,10 +91,17 @@ class Message:
     html: str | None = None
 
     def recipients(self) -> str:
+        """The recipients as one comma-separated string, for showing who a message
+        was meant for.
+        """
         return ", ".join(address for address in self.to if address)
 
 
 class MailClient(Protocol):
+    """Anything that can send a ``Message``. Production, staging and tests each
+    supply one.
+    """
+
     def send(self, message: Message) -> None: ...
 
 
@@ -110,6 +123,7 @@ class ResendClient:
         self._client = httpx.Client(timeout=timeout)
 
     def send(self, message: Message) -> None:
+        """Post the message to Resend. Raises so the outbox can retry or give up."""
         payload: dict[str, object] = {
             "from": self._sender,
             "to": [address for address in message.to if address],
@@ -180,6 +194,10 @@ class RedirectingClient:
         self._address = address
 
     def send(self, message: Message) -> None:
+        """Send to the redirect address with a banner naming the real recipients.
+
+        Used in staging so a real message can be read without reaching anybody.
+        """
         banner = [
             "[ REDIRECTED ]",
             f"This would have gone to: {message.recipients()}",
@@ -226,6 +244,9 @@ class SandboxClient:
         self.sent: list[Message] = []
 
     def send(self, message: Message) -> None:
+        """Record the message and send nothing. Only the subject and recipient count
+        are logged.
+        """
         self.sent.append(message)
         # Recipients, never bodies: a body carries the fee breakdown.
         logger.info(
@@ -412,6 +433,7 @@ def _recipients(*addresses: object) -> tuple[str, ...]:
 
 
 def para(text: str) -> tuple[str, object]:
+    """A paragraph block for ``compose``."""
     return ("para", text)
 
 
@@ -448,6 +470,7 @@ def _link(settings: Settings, path: str) -> str:
 
 
 def render_text(parts: list[tuple[str, object]], settings: Settings) -> str:
+    """Lay the blocks out as the plain-text body of the message."""
     out: list[str] = []
     for kind, value in parts:
         if kind == "para" or kind == "note":
@@ -550,6 +573,11 @@ def compose(
     settings: Settings,
     attachments: tuple[Attachment, ...] = (),
 ) -> Message:
+    """Build a ``Message`` from layout blocks, rendering both bodies from one source.
+
+    The plain-text and HTML versions cannot drift apart because neither is
+    written by hand.
+    """
     return Message(
         to=to,
         subject=subject,

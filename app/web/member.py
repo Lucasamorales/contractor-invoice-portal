@@ -89,6 +89,7 @@ def get_store(settings: Config) -> ObjectStore:
 
 
 def get_cipher(settings: Config) -> Cipher:
+    """FastAPI dependency: the bank-field cipher built from settings."""
     return Cipher.from_settings(settings)
 
 
@@ -232,6 +233,9 @@ async def details_form(
     session: DbSession,
     settings: Config,
 ) -> HTMLResponse:
+    """The details step: the person's letterhead as it will print, with any open flag
+    on it.
+    """
     context = _base_context(request, person, identity, settings)
     context["errors"] = {}
     context["flag"] = flags.open_flags(session, person).get(flags.LETTERHEAD)
@@ -370,6 +374,9 @@ async def bank_form(
     settings: Config,
     cipher: Annotated[Cipher, Depends(get_cipher)],
 ) -> HTMLResponse:
+    """The bank step: stored details masked, any change awaiting confirmation, and
+    any open flag.
+    """
     context = _base_context(request, person, identity, settings)
     context["bank"] = _masked_bank(person, session, cipher)
     context["pending"] = _pending_proposal(person, session, cipher)
@@ -482,6 +489,7 @@ async def bank_change_form(
     settings: Config,
     cipher: Annotated[Cipher, Depends(get_cipher)],
 ) -> HTMLResponse:
+    """The form for proposing new bank details, which stay unpaid until confirmed."""
     context = _base_context(request, person, identity, settings)
     context.update(
         {"bank": _masked_bank(person, session, cipher), "errors": [], "entry": {}}

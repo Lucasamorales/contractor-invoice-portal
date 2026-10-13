@@ -220,6 +220,9 @@ def _apply_bank(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: read the spreadsheet, print the report, write only
+    with ``--commit``.
+    """
     parser = argparse.ArgumentParser(
         prog="seed", description="Import the invoice spreadsheet."
     )

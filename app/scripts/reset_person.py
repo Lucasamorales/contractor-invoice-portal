@@ -53,6 +53,7 @@ class ResetRefused(RuntimeError):
 
 
 def refuse_production(settings: Settings) -> None:
+    """Raise unless this is staging: production never deletes an invoice."""
     if settings.environment is Environment.PRODUCTION:
         raise ResetRefused(
             "This deletes invoices. In production a mistake is a void and a "
@@ -132,6 +133,11 @@ def _audit_for(
 
 
 def apply(session: Session, person: Person) -> None:
+    """Delete everything ``plan`` listed, children first.
+
+    Kudos given to the person are released rather than deleted, because
+    the kudo itself happened; only the claim on it goes.
+    """
     invoices = session.scalars(
         select(Invoice).where(Invoice.person_id == person.id)
     ).all()
@@ -183,6 +189,9 @@ def apply(session: Session, person: Person) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point. Returns 0 on success, 1 for an unknown email, 2 if
+    refused.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--email", required=True)
     parser.add_argument("--commit", action="store_true")
