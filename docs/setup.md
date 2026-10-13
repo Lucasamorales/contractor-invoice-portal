@@ -240,11 +240,11 @@ The integration suite (R-TEST-02) runs against a throwaway Postgres, never
 against staging. With Docker Desktop running:
 
 ```bash
-docker run --rm -d --name portal-test-db -e POSTGRES_PASSWORD=test -p 5433:5432 postgres:17
+docker run --rm -d --name portal-test-db -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=portaltest -p 127.0.0.1:5433:5432 postgres:17
 ```
 
 ```bash
-PORTAL_DATABASE_URL='postgresql+psycopg://postgres:test@localhost:5433/postgres' uv run pytest -m integration
+uv run pytest tests/integration
 ```
 
 ### 2.2 WeasyPrint on Windows

@@ -42,7 +42,8 @@ from app.db.models import (
 from app.services.crypto import Cipher, field_aad, generate_key
 from app.services.storage import LocalObjectStore
 
-DEFAULT_TEST_URL = "postgresql+psycopg://postgres:test@localhost:5433/portaltest"
+# No password: the throwaway container runs with trust auth (docs/setup.md §2.1).
+DEFAULT_TEST_URL = "postgresql+psycopg://postgres@localhost:5433/portaltest"
 
 # Not the real window, deliberately: 24 September 2026 is inside it, so the
 # tests exercise an on-time submission unless they say otherwise.

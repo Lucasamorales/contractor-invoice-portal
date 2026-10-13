@@ -51,7 +51,7 @@ uv sync
 Copy `.env.example` to `.env`. The tests need a throwaway Postgres on port 5433:
 
 ```bash
-docker run -d --name portaltest -e POSTGRES_PASSWORD=test -e POSTGRES_DB=portaltest -p 5433:5432 postgres:16
+docker run --rm -d --name portal-test-db -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=portaltest -p 127.0.0.1:5433:5432 postgres:17
 ```
 
 ```bash
