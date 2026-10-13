@@ -122,9 +122,7 @@ def test_nobody_can_approve_their_own_leave() -> None:
         approve(Status.PENDING, requester=JANE, approver=JANE)
 
 
-@pytest.mark.parametrize(
-    "spelling", ["JANE@example.com", "  jane@example.com "]
-)
+@pytest.mark.parametrize("spelling", ["JANE@example.com", "  jane@example.com "])
 def test_the_same_person_in_a_different_spelling_is_still_the_same_person(
     spelling: str,
 ) -> None:

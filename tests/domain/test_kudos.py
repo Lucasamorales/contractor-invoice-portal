@@ -74,9 +74,7 @@ def test_names_normalise_without_deciding_two_people_are_one() -> None:
         "Jamie Blake irwin"
     )
     # But two different people stay two different people.
-    assert normalise_name("Remy Castellanos") != normalise_name(
-        "Charlie Castellanos"
-    )
+    assert normalise_name("Remy Castellanos") != normalise_name("Charlie Castellanos")
 
 
 def test_a_multi_value_kudo_is_one_kudo() -> None:

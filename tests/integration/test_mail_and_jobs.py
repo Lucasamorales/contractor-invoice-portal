@@ -74,9 +74,7 @@ def cipher(settings: Settings) -> Cipher:
     return Cipher.from_settings(settings)
 
 
-def seed_and_submit(
-    factory, cipher, settings, store, *, email="jane@example.com"
-):
+def seed_and_submit(factory, cipher, settings, store, *, email="jane@example.com"):
     with factory() as session, session.begin():
         person = make_person(session, email=email)
         give_fee(session, person)
@@ -454,9 +452,7 @@ def test_the_27th_only_nudges_those_who_have_not_submitted(
     ignore the emails."""
     store = LocalObjectStore(tmp_path / "objects")
     make_people(factory, cipher, 3)
-    seed_and_submit(
-        factory, cipher, settings, store, email="done@example.com"
-    )
+    seed_and_submit(factory, cipher, settings, store, email="done@example.com")
 
     with factory() as session, session.begin():
         report = jobs.remind(

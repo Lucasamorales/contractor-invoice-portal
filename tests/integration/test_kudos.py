@@ -59,9 +59,7 @@ def settings_for(**kwargs) -> Settings:
 
 def seeded(factory: sessionmaker[Session], cipher: Cipher, **kwargs) -> uuid.UUID:
     with factory() as session, session.begin():
-        person = make_person(
-            session, email=kwargs.get("email", "jane@example.com")
-        )
+        person = make_person(session, email=kwargs.get("email", "jane@example.com"))
         if kwargs.get("leadership"):
             person.kudos_eligible = False
         give_fee(session, person)
