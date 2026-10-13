@@ -1,0 +1,13 @@
+{
+  "name": "contractor-invoice-portal-static-tests",
+  "private": true,
+  "type": "module",
+  "description": "Test tooling for the browser scripts in app/static. The app itself has no build step.",
+  "scripts": {
+    "test": "node --test \"tests/js/*.test.mjs\"",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"tests/**\" --test-reporter=lcov --test-reporter-destination=coverage/js.lcov --test-reporter=spec --test-reporter-destination=stdout  \"tests/js/*.test.mjs\""
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

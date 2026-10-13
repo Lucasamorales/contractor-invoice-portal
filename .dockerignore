@@ -20,3 +20,10 @@ __pycache__/
 Dockerfile
 .dockerignore
 *.md
+
+# Test tooling for the browser scripts and the coverage report; never part of the image
+node_modules/
+coverage/
+scripts/
+package.json
+package-lock.json
