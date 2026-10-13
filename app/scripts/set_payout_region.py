@@ -193,6 +193,9 @@ def describe(change: RegionChange) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: show the region change, and apply it only with
+    ``--commit``.
+    """
     parser = argparse.ArgumentParser(
         prog="set_payout_region",
         description="Move one person between payout regions.",

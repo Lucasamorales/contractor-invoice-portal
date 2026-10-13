@@ -166,6 +166,7 @@ def read_aliases(session: Session) -> tuple[dict[str, str], list[str]]:
 
 
 def parse(session: Session, rows: Sequence[Sequence[object]]) -> ParseResult:
+    """Parse sheet rows using the aliases and ignore list currently in the database."""
     aliases, ignored = read_aliases(session)
     return parse_rows(rows, aliases=aliases, ignored=ignored)
 

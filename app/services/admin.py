@@ -82,6 +82,8 @@ class Flag:
 
 @dataclass(frozen=True, slots=True)
 class PeriodRow:
+    """One person in a period: their invoice if they sent one, and any open flags."""
+
     person: Person
     invoice: Invoice | None
     flags: tuple[Flag, ...] = ()
@@ -89,6 +91,12 @@ class PeriodRow:
 
 @dataclass(frozen=True, slots=True)
 class PeriodView:
+    """Who has and has not invoiced for a period.
+
+    Only active people are expected; an inactive person who did invoice
+    still appears as received.
+    """
+
     period: Period
     rows: list[PeriodRow]
 
@@ -303,6 +311,9 @@ class CheckRow:
 
     @property
     def ready(self) -> bool:
+        """Whether the person can submit an invoice with nothing left for an admin to
+        set.
+        """
         return (
             self.fee_set
             and self.profile_complete
@@ -368,6 +379,7 @@ class QueueView:
 
 
 def queue(session: Session, *, on: date) -> QueueView:
+    """What is waiting on an admin today: fees to set and bank rows to review."""
     awaiting = [
         person
         for person in repo.all_people(session)
@@ -537,6 +549,7 @@ class Attention:
 
     @property
     def total(self) -> int:
+        """How many things need a human, across every kind this screen tracks."""
         return (
             len(self.stuck_drafts)
             + len(self.failed_mail)

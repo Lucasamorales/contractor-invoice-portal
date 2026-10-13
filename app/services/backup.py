@@ -37,6 +37,10 @@ class BackupError(RuntimeError):
 
 @dataclass(slots=True)
 class BackupReport:
+    """What one backup run wrote and what the retention sweep removed, for the job's
+    reply.
+    """
+
     job: str = "backup"
     object_name: str = ""
     bytes_written: int = 0

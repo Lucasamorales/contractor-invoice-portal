@@ -37,6 +37,9 @@ class BillTo(BaseModel):
     address_lines: tuple[str, ...]
 
     def as_lines(self) -> tuple[str, ...]:
+        """The addressee block exactly as it prints on the invoice, one entry per
+        line.
+        """
         return (self.name, self.company, *self.address_lines)
 
 

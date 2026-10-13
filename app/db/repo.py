@@ -56,6 +56,11 @@ def create_pending_person(session: Session, email: str, display_name: str) -> Pe
 
 
 def get_or_create_person(session: Session, email: str, display_name: str) -> Person:
+    """The person for this email, created as pending on their first visit.
+
+    Behind every member route, so somebody who was never in the seed
+    spreadsheet still gets a row, with no fee and no bank details.
+    """
     person = get_person_by_email(session, email)
     if person is not None:
         return person
@@ -145,6 +150,7 @@ def invoice_for_person(
 
 
 def invoice_history(session: Session, person_id: uuid.UUID) -> list[Invoice]:
+    """Every invoice the person has, newest number first, void ones included."""
     return list(
         session.scalars(
             select(Invoice)
@@ -270,6 +276,7 @@ def kudos_events_in(session: Session, *, since: date) -> list[KudosEvent]:
 
 
 def awards_for_quarter(session: Session, quarter: str) -> list[KudosAward]:
+    """The quarterly prizes already recorded for a quarter key such as ``2026-Q3``."""
     return list(
         session.scalars(select(KudosAward).where(KudosAward.quarter == quarter))
     )
