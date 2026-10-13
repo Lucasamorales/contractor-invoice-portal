@@ -17,7 +17,9 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_PASSWORD: test
+          # Trust auth: the container lives for one job on the runner's own
+          # network and holds nothing, so there is no password to write down.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: portaltest
         ports:
           - 5433:5432
@@ -28,7 +30,7 @@ jobs:
           --health-retries 10
 
     env:
-      PORTAL_TEST_DATABASE_URL: postgresql+psycopg://postgres:test@localhost:5433/portaltest
+      PORTAL_TEST_DATABASE_URL: postgresql+psycopg://postgres@localhost:5433/portaltest
 
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +75,19 @@ jobs:
             echo "::error::The PDF tests skipped. WeasyPrint's libraries are missing."
             exit 1
           fi
+
+      - name: Install Node for the browser-script tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Browser-script tests
+        # app/static has no build step, so these run the shipped files as they
+        # are, in jsdom. npm ci installs exactly what package-lock.json pins.
+        run: |
+          npm ci
+          npm test
 
       - name: Build the Cloud Run image
         run: docker build -t contractor-invoice-portal:ci .

@@ -334,6 +334,9 @@ async def person_detail(
     void: str | None = None,
     done: str | None = None,
 ) -> HTMLResponse:
+    """One person's page for finance. ``panel``, ``void`` and ``done`` reopen a panel
+    after a redirect.
+    """
     person = _get_person(session, person_id)
     return _person_page(
         request,
@@ -645,6 +648,7 @@ async def period_view(
     settings: Config,
     month: str | None = None,
 ) -> HTMLResponse:
+    """Who has and has not invoiced for the month given."""
     period = _period_from(month)
     context = _context(request, identity, settings)
     context["view"] = admin.period_view(session, period, settings=settings)
@@ -747,6 +751,9 @@ async def queue(
     session: DbSession,
     settings: Config,
 ) -> HTMLResponse:
+    """The admin work queue: fees to set, bank rows to review, open flags and
+    anything needing attention.
+    """
     context = _context(request, identity, settings)
     context["queue"] = admin.queue(session, on=_now().date())
     context["open_flags"] = flags.open_flags_for_everyone(session)

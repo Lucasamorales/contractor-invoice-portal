@@ -41,23 +41,51 @@ def _uuid_pk() -> Mapped[uuid.UUID]:
 
 
 class PersonStatus(enum.Enum):
+    """Where somebody is in their life with the portal.
+
+    ``PENDING`` is created on first login and cannot invoice until an admin
+    has set a fee. ``INACTIVE`` (R-ADM-09) gets no reminders and is left out
+    of what a period expects, but keeps their history.
+    """
+
     PENDING = "pending"
     ACTIVE = "active"
     INACTIVE = "inactive"
 
 
 class PayoutRegion(enum.Enum):
+    """How accounts pays the person, not a currency: everything is invoiced in GBP.
+
+    ``UK`` needs a sort code and account number; ``INTL`` needs an IBAN and a
+    SWIFT/BIC instead, and the payment run lists the two separately.
+    """
+
     UK = "UK"
     INTL = "INTL"
 
 
 class BankSource(enum.Enum):
+    """Who supplied a set of bank details.
+
+    ``IMPORT`` came from the seed spreadsheet, ``SELF`` was typed by the
+    person, and ``ADMIN_PROPOSED`` was entered by an admin and still has to
+    be confirmed by its owner before it can be paid to.
+    """
+
     IMPORT = "import"
     SELF = "self"
     ADMIN_PROPOSED = "admin_proposed"
 
 
 class BankState(enum.Enum):
+    """The life of one bank row (R-BANK-01).
+
+    ``UNVERIFIED`` rows were imported and never confirmed by their owner.
+    ``ACTIVE`` is the single row a person is paid to. ``PENDING`` is a change
+    waiting to be confirmed; it becomes ``ACTIVE`` or ``REJECTED``, and the
+    row it replaces is closed as ``SUPERSEDED`` rather than edited.
+    """
+
     UNVERIFIED = "unverified"
     ACTIVE = "active"
     PENDING = "pending"
@@ -66,12 +94,21 @@ class BankState(enum.Enum):
 
 
 class InvoiceStatus(enum.Enum):
+    """``DRAFT`` holds a number while it is being prepared, ``SUBMITTED`` is
+    issued and immutable, and ``VOID`` is how a mistake is corrected: the
+    number stays used and a new invoice is issued.
+    """
+
     DRAFT = "draft"
     SUBMITTED = "submitted"
     VOID = "void"
 
 
 class LineKind(enum.Enum):
+    """What a printed invoice line is for, which decides where it sits on the
+    invoice.
+    """
+
     FEE = "fee"
     KUDOS = "kudos"
     EXPENSE = "expense"
@@ -82,6 +119,10 @@ class LineKind(enum.Enum):
 
 
 class ExpenseKind(enum.Enum):
+    """Whether an added amount is a reimbursable expense or some other agreed
+    addition.
+    """
+
     EXPENSE = "expense"
     OTHER = "other"
 
@@ -95,6 +136,12 @@ class AwardKind(enum.Enum):
 
 
 class OutboxStatus(enum.Enum):
+    """Delivery state of a queued email.
+
+    ``FAILED`` means the retries were exhausted and somebody has to look;
+    a message still being retried stays ``PENDING``.
+    """
+
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"

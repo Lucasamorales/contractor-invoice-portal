@@ -35,16 +35,22 @@ from app.domain.kudos import normalise_name
 
 @dataclass(frozen=True, slots=True)
 class Row:
+    """One line of the alias file: a sheet name, the email it belongs to (blank to
+    ignore), and why.
+    """
+
     sheet_name: str
     email: str
     note: str
 
     @property
     def ignored(self) -> bool:
+        """A name with no email is a decision to pay nobody for it, not a gap."""
         return not self.email
 
 
 def read_file(path: Path) -> list[Row]:
+    """Read the alias CSV, lower-casing emails and skipping lines with no sheet name."""
     rows: list[Row] = []
     with path.open(encoding="utf-8-sig", newline="") as handle:
         for record in csv.DictReader(handle):
@@ -109,6 +115,12 @@ def plan(session: Session, rows: list[Row]) -> tuple[list[str], list[str]]:
 
 
 def apply(session: Session, rows: list[Row], *, actor: str) -> int:
+    """Write the mappings and attach kudos already in the ledger to their person.
+
+    Names that are already mapped are left as they were, and only kudos
+    that nobody owns and no invoice has claimed are attached. Returns how
+    many aliases were written.
+    """
     people = {
         email.lower(): person_id
         for person_id, email in session.execute(select(Person.id, Person.email)).all()
@@ -153,6 +165,7 @@ def apply(session: Session, rows: list[Row], *, actor: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point. Refuses to commit while any row has a problem."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--file", type=Path, required=True)
     parser.add_argument("--commit", action="store_true")

@@ -230,6 +230,9 @@ def build(session: Session, cipher: Cipher, *, now: datetime) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: list the invented people, or create them with
+    ``--commit``.
+    """
     parser = argparse.ArgumentParser(
         prog="seed_demo",
         description="Invented people for staging. Never production.",

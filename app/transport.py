@@ -61,4 +61,5 @@ class HttpxRequest(GoogleAuthRequest):
         return _Response(response)
 
     def close(self) -> None:
+        """Close the underlying HTTP client."""
         self._client.close()

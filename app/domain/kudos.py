@@ -61,10 +61,12 @@ class Quarter:
 
     @classmethod
     def containing(cls, day: date) -> Quarter:
+        """The quarter a calendar day falls in."""
         return cls(day.year, (day.month - 1) // 3 + 1)
 
     @property
     def key(self) -> str:
+        """The storage form, ``2026-Q3``."""
         return f"{self.year}-Q{self.number}"
 
     @property
@@ -121,6 +123,7 @@ class KudosEvent:
 
     @property
     def resolved(self) -> bool:
+        """Whether the receiver's name maps to a person who can be paid."""
         return self.email is not None
 
 
@@ -134,6 +137,12 @@ class RowProblem:
 
 @dataclass(frozen=True, slots=True)
 class ParseResult:
+    """What reading the kudos sheet produced.
+
+    Rows that could not be read are kept as problems instead of being
+    dropped, so a bad row is reported rather than silently unpaid.
+    """
+
     events: tuple[KudosEvent, ...]
     problems: tuple[RowProblem, ...]
 

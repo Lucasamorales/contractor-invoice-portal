@@ -170,6 +170,7 @@ def purge_foreign(session: Session, settings: Settings) -> tuple[int, list[str]]
 
 
 def refuse_production(settings: Settings) -> None:
+    """Raise unless this is staging: the demo ledger is invented data."""
     if settings.environment is Environment.PRODUCTION:
         raise DemoRefused("This writes invented data. Never in production.")
 
@@ -190,6 +191,9 @@ def refuse_real_kudos(session: Session) -> None:
 
 
 def seed_aliases(session: Session, *, actor: str) -> int:
+    """Map each demo sheet name to its demo person, leaving the deliberately unmapped
+    ones alone.
+    """
     written = 0
     people = {
         email.lower(): person_id
@@ -220,6 +224,9 @@ def seed_aliases(session: Session, *, actor: str) -> int:
 
 
 def mark_leadership(session: Session) -> int:
+    """Mark the demo leadership as ineligible for prizes (R-KUD-20). Returns how many
+    changed.
+    """
     changed = 0
     for email in LEADERSHIP:
         person = session.scalar(select(Person).where(Person.email == email))
@@ -230,6 +237,9 @@ def mark_leadership(session: Session) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: print the demo ledger, or write it with
+    ``--commit``.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--commit", action="store_true")
     parser.add_argument("--actor", default="seed-demo")

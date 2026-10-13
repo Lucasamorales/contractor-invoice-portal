@@ -54,6 +54,9 @@ class SeedRow:
 
     @property
     def importable(self) -> bool:
+        """Whether the row can be written as it stands, with nothing a human must fix
+        first.
+        """
         return not self.errors
 
     @property

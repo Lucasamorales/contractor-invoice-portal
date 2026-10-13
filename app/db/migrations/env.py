@@ -90,6 +90,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    """Run the migrations against the configured database.
+
+    Alembic calls this for ``upgrade`` and ``downgrade``. The target comes
+    from settings rather than alembic.ini, so no connection string is ever
+    written to a file.
+    """
     url = migration_url()
     guard_remote(url)
     # The same trust-store handling the application uses. Production's URL asks

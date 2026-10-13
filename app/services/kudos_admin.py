@@ -60,6 +60,10 @@ def cash_for(place: int, settings: Settings) -> int:
 
 @dataclass(frozen=True, slots=True)
 class StandingRow:
+    """One person's place in a quarter: their count, who they tie with, and any prize
+    already awarded.
+    """
+
     person: Person
     kudos_count: int
     place: int | None
@@ -75,12 +79,17 @@ class StandingRow:
 
 @dataclass(frozen=True, slots=True)
 class QuarterView:
+    """The standings for a quarter, plus how many kudos in it are not yet on an
+    invoice.
+    """
+
     quarter: Quarter
     rows: tuple[StandingRow, ...]
     unbilled_kudos: int
 
     @property
     def has_tie(self) -> bool:
+        """Whether any podium place still needs a human to break a tie."""
         return any(row.needs_a_decision for row in self.rows)
 
     @property

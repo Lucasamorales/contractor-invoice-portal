@@ -93,6 +93,7 @@ def build_engine(settings: Settings) -> Engine:
 
 @lru_cache
 def get_engine() -> Engine:
+    """The process-wide engine, built once from settings and reused by every session."""
     return build_engine(get_settings())
 
 

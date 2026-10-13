@@ -70,6 +70,12 @@ class FlagError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class Flag:
+    """A request from accounts for a person to check their bank details or letterhead.
+
+    Read back from audit rows: no table holds a flag, and its status is
+    whatever the person did after it was raised.
+    """
+
     kind: str
     person_id: uuid.UUID
     target_id: str  # the bank row for a bank flag, the person for a letterhead one
