@@ -110,11 +110,7 @@ def test_a_name_mismatch_is_flagged_but_still_imports() -> None:
     row = build_row(
         raw(
             NAME="Gabriel Marlow (SIMON)",
-            **{
-                "BANK ACCOUNTS": UK_BLOB.replace(
-                    "Jane Smith", "Simon Andrew Robinson"
-                )
-            },
+            **{"BANK ACCOUNTS": UK_BLOB.replace("Jane Smith", "Simon Andrew Robinson")},
         ),
         2,
     )
