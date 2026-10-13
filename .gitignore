@@ -36,3 +36,9 @@ build/
 
 # Rendered output from local runs
 /out/
+
+# Node tooling for the browser-script tests
+node_modules/
+# Parts of the coverage report; only the combined coverage/lcov.info is kept
+coverage/python.lcov
+coverage/js.lcov

@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.pdf binary
 *.xlsx binary
+# Shell scripts run in Linux containers and in CI; CRLF breaks the shebang.
+*.sh text eol=lf
